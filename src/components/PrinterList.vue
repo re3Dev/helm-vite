@@ -1,19 +1,29 @@
 <template>
     <div class="printer-list">
-      <base-card>
-        <h2>Printer Fleet</h2>
-        <ul>
-          <li v-for="printer in printers" :key="printer.ip">
-            <p>{{ printer.hostname }} ({{ printer.ip }})</p>
-          </li>
-        </ul>
-      </base-card>
+      <h2>Printer Fleet</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Hostname</th>
+            <th>IP Address</th>
+            <th>Status</th>
+            <th>Extruder Temp (°C)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="printer in printers" :key="printer.ip">
+            <td>{{ printer.hostname }}</td>
+            <td>{{ printer.ip }}</td>
+            <td>{{ printer.status }}</td>
+            <td>{{ printer.extruder_temperature }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </template>
   
   <script lang="ts">
   import { defineComponent, ref, onMounted } from 'vue';
-  import BaseCard from '../components/Cards/Card.vue';
   
   interface Printer {
     hostname: string;
@@ -23,13 +33,20 @@
   }
   
   export default defineComponent({
-    components: { BaseCard },
+    name: 'PrinterList',
     setup() {
       const printers = ref<Printer[]>([]);
   
       const fetchPrinters = async () => {
-        const response = await fetch('/api/devices');
-        printers.value = await response.json();
+        try {
+          const response = await fetch('/api/devices');
+          if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+          }
+          printers.value = await response.json();
+        } catch (error) {
+          console.error('Failed to fetch devices:', error);
+        }
       };
   
       onMounted(fetchPrinters);
@@ -39,3 +56,21 @@
   });
   </script>
   
+  <style scoped>
+  .printer-list {
+    padding: 20px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+  }
+  </style>
