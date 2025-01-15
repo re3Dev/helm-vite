@@ -1,8 +1,8 @@
 <!-- App.vue (or DefaultLayout.vue) -->
 <template>
     <v-app>
-        <v-app-bar app color="primary" dark>
-      <v-toolbar-title>My Top Bar</v-toolbar-title>
+        <v-app-bar app color="surface" dark>
+      <v-toolbar-title>HELM</v-toolbar-title>
 
       <!-- Optionally add other elements, e.g. a user menu, buttons, etc. -->
       <v-spacer />
