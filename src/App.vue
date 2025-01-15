@@ -1,23 +1,30 @@
 <template>
-  <v-app>
-    <v-app-bar app color="surface" dark>
-      <v-toolbar-title>Printer Fleet Management</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <ThemeToggle />
-    </v-app-bar>
-    <v-main>
-      <PrinterList />
+  <v-app class="d-flex">
+    <!-- Left Sidebar -->
+    <CommandSidebar />
+
+    <!-- Main Content -->
+    <v-main class="flex-grow-1">
+      <div class="content-wrapper">
+        <PrinterList />
+      </div>
     </v-main>
+
+    <!-- Right Sidebar -->
+    <NavigationSidebar />
   </v-app>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import CommandSidebar from './components/CommandSidebar.vue';
+import NavigationSidebar from './components/NavigationSidebar.vue';
 import PrinterList from './components/PrinterList.vue';
-import ThemeToggle from './components/ThemeToggle.vue';
 
 export default defineComponent({
   name: 'App',
-  components: { PrinterList, ThemeToggle },
+  components: { CommandSidebar, NavigationSidebar, PrinterList },
 });
 </script>
+
+<style scoped></style>
