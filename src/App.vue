@@ -7,14 +7,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import CommandSidebar from './components/CommandSidebar.vue';
 import NavigationSidebar from './components/TitleBar.vue';
 import PrinterList from './components/PrinterList.vue';
 import DefaultLayout from './components/DefaultLayout.vue';
 
 export default defineComponent({
   name: 'App',
-  components: { CommandSidebar, NavigationSidebar, PrinterList, DefaultLayout },
+  components: { NavigationSidebar, PrinterList, DefaultLayout },
 });
 </script>
 

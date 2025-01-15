@@ -1,36 +1,70 @@
+<!-- App.vue (or DefaultLayout.vue) -->
 <template>
     <v-app>
-      <div class="app-container">
-        <!-- Our resizable sidebar -->
-        <ResizableSidebar />
+        <v-app-bar app color="primary" dark>
+      <v-toolbar-title>My Top Bar</v-toolbar-title>
+
+      <!-- Optionally add other elements, e.g. a user menu, buttons, etc. -->
+      <v-spacer />
+      <v-btn icon>
+        <v-icon>mdi-account</v-icon>
+      </v-btn>
+    </v-app-bar>
+    <v-main></v-main>
+      <div class="layout-container">
+        <!-- Our resizable + expandable sidebar -->
+        <MachineCommandSidebar :groups="commandGroups" />
   
-        <!-- The main content area -->
+        <!-- Some placeholder main content on the right -->
         <div class="main-content">
-          <!-- If you use Vue Router -->
-          
           <PrinterList />
-          <!-- Or directly place your content, e.g. <PrinterList /> -->
         </div>
       </div>
+    
     </v-app>
   </template>
   
   <script setup>
-  import ResizableSidebar from './ResizableSidebar.vue'
+  import { ref } from 'vue'
+  import MachineCommandSidebar from './MachineCommandSidebar.vue' 
   import PrinterList from './PrinterList.vue';
+  // Adjust path if needed
+  
+  const commandGroups = ref([
+    {
+      title: 'Calibration',
+      icon: 'mdi-tools',
+      open: false,
+      commands: ['Bed Level', 'Extruder Calibration']
+    },
+    {
+      title: 'Material',
+      icon: 'mdi-flask',
+      open: false,
+      commands: ['Load Filament', 'Unload Filament', 'Purge']
+    },
+    {
+      title: 'Movement',
+      icon: 'mdi-robot',
+      open: false,
+      commands: ['Home All Axes', 'Move X', 'Move Y', 'Move Z']
+    }
+  ])
   </script>
   
   <style scoped>
-  .app-container {
+  .layout-container {
     display: flex;
     width: 100%;
-    height: 100vh; /* or whatever fits your design */
+    height: 100%;
   }
   
-  /* The main content should flex:1 so it takes the remaining space */
   .main-content {
     flex: 1;
-    overflow: auto;   /* let table or content scroll if needed */
+    overflow: auto;
+    padding: 16px;
+    display: flex;
+    height: 100%;
   }
   </style>
   
