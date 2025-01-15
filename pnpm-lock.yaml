@@ -14,6 +14,9 @@ importers:
       '@vueuse/core':
         specifier: ^12.4.0
         version: 12.4.0(typescript@5.6.3)
+      '@wdns/vuetify-resize-drawer':
+        specifier: ^3.2.0
+        version: 3.2.0(typescript@5.6.3)
       bootstrap:
         specifier: ^5.3.3
         version: 5.3.3(@popperjs/core@2.11.8)
@@ -26,12 +29,18 @@ importers:
       vue-chartjs:
         specifier: ^5.3.2
         version: 5.3.2(chart.js@4.4.7)(vue@3.5.13(typescript@5.6.3))
+      vue-draggable-resizable:
+        specifier: ^3.0.0
+        version: 3.0.0(vue@3.5.13(typescript@5.6.3))
       vue-router:
         specifier: ^4.5.0
         version: 4.5.0(vue@3.5.13(typescript@5.6.3))
       vuetify:
         specifier: ^3.7.6
         version: 3.7.6(typescript@5.6.3)(vue@3.5.13(typescript@5.6.3))
+      vuetify3-resize-drawer:
+        specifier: ^2.1.1
+        version: 2.1.1(typescript@5.6.3)
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^5.2.1
@@ -542,6 +551,9 @@ packages:
 
   '@vueuse/shared@12.4.0':
     resolution: {integrity: sha512-9yLgbHVIF12OSCojnjTIoZL1+UA10+O4E1aD6Hpfo/DKVm5o3SZIwz6CupqGy3+IcKI8d6Jnl26EQj/YucnW0Q==}
+
+  '@wdns/vuetify-resize-drawer@3.2.0':
+    resolution: {integrity: sha512-JfPDrV9G/6k6fCLLIurET6jdDIzEVSvjrqxoVeWhxTVUuS+Cs4oJga7wWNRgFTZdqfyZT8Id2aUDCEHYCjcQQg==}
 
   alien-signals@0.4.14:
     resolution: {integrity: sha512-itUAVzhczTmP2U5yX67xVpsbbOiquusbWVyA9N+sy6+r6YVbFkahXvNCeEPWEOMhwDYwbVbGHFkVL03N9I5g+Q==}
@@ -1064,6 +1076,11 @@ packages:
       chart.js: ^4.1.1
       vue: ^3.0.0-0 || ^2.7.0
 
+  vue-draggable-resizable@3.0.0:
+    resolution: {integrity: sha512-kABSggcXPoDB8dOTVE09ZkccxiMdNDUaLl7STTeghsFE3o+mk653iumrkmjKLfIBA/w5ZXWJmarBqoqsmWLzEg==}
+    peerDependencies:
+      vue: ^3.2.25
+
   vue-router@4.5.0:
     resolution: {integrity: sha512-HDuk+PuH5monfNuY+ct49mNmkCRK4xJAV9Ts4z9UFc4rzdDnxQLyCMGGc8pKhZhHTVzfanpNwB/lwqevcBwI4w==}
     peerDependencies:
@@ -1082,6 +1099,10 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  vuetify3-resize-drawer@2.1.1:
+    resolution: {integrity: sha512-CvYce3NAjiALTcK9JClrXeygXY3rZiE3kaNvvVD/JJgHSA6i9S2yxkgr6ryNJLnmtCB5DGtmHY5sHxbF5y534Q==}
+    deprecated: The Vuetify 3 Resize Drawer component has been changed and moved to the WebDevNerdStuff org @wdns. Please update your packages to it's new location. https://www.npmjs.com/package/@wdns/vuetify-resize-drawer
 
   vuetify@3.7.6:
     resolution: {integrity: sha512-lol0Va5HtMIqZfjccSD5DLv5v31R/asJXzc6s7ULy51PHr1DjXxWylZejhq0kVpMGW64MiV1FmA/p8eYQfOWfQ==}
@@ -1490,6 +1511,15 @@ snapshots:
       vue: 3.5.13(typescript@5.6.3)
     transitivePeerDependencies:
       - typescript
+
+  '@wdns/vuetify-resize-drawer@3.2.0(typescript@5.6.3)':
+    dependencies:
+      vue: 3.5.13(typescript@5.6.3)
+      vuetify: 3.7.6(typescript@5.6.3)(vue@3.5.13(typescript@5.6.3))
+    transitivePeerDependencies:
+      - typescript
+      - vite-plugin-vuetify
+      - webpack-plugin-vuetify
 
   alien-signals@0.4.14: {}
 
@@ -1991,6 +2021,10 @@ snapshots:
       chart.js: 4.4.7
       vue: 3.5.13(typescript@5.6.3)
 
+  vue-draggable-resizable@3.0.0(vue@3.5.13(typescript@5.6.3)):
+    dependencies:
+      vue: 3.5.13(typescript@5.6.3)
+
   vue-router@4.5.0(vue@3.5.13(typescript@5.6.3)):
     dependencies:
       '@vue/devtools-api': 6.6.4
@@ -2011,6 +2045,15 @@ snapshots:
       '@vue/shared': 3.5.13
     optionalDependencies:
       typescript: 5.6.3
+
+  vuetify3-resize-drawer@2.1.1(typescript@5.6.3):
+    dependencies:
+      vue: 3.5.13(typescript@5.6.3)
+      vuetify: 3.7.6(typescript@5.6.3)(vue@3.5.13(typescript@5.6.3))
+    transitivePeerDependencies:
+      - typescript
+      - vite-plugin-vuetify
+      - webpack-plugin-vuetify
 
   vuetify@3.7.6(typescript@5.6.3)(vue@3.5.13(typescript@5.6.3)):
     dependencies:
