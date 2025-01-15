@@ -1,17 +1,7 @@
 <template>
   <v-app class="d-flex">
     <!-- Left Sidebar -->
-    <CommandSidebar />
-
-    <!-- Main Content -->
-    <v-main class="flex-grow-1">
-      <div class="content-wrapper">
-        <PrinterList />
-      </div>
-    </v-main>
-
-    <!-- Right Sidebar -->
-    <NavigationSidebar />
+    <DefaultLayout />
   </v-app>
 </template>
 
@@ -20,10 +10,11 @@ import { defineComponent } from 'vue';
 import CommandSidebar from './components/CommandSidebar.vue';
 import NavigationSidebar from './components/TitleBar.vue';
 import PrinterList from './components/PrinterList.vue';
+import DefaultLayout from './components/DefaultLayout.vue';
 
 export default defineComponent({
   name: 'App',
-  components: { CommandSidebar, NavigationSidebar, PrinterList },
+  components: { CommandSidebar, NavigationSidebar, PrinterList, DefaultLayout },
 });
 </script>
 
