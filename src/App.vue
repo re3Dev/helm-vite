@@ -1,45 +1,30 @@
 <template>
   <v-app>
-    <v-container fluid class="d-flex pa-0" style="height: 100vh;">
+    <!-- Title Bar -->
+    <TitleBar />
+
+    <div class="app-layout">
       <!-- Left Sidebar -->
-      <v-navigation-drawer app permanent width="250" class="primary">
-        <CommandSidebar />
-      </v-navigation-drawer>
+      <CommandSidebar />
 
       <!-- Main Content -->
-      <v-main class="flex-grow-1">
+      <v-main>
         <PrinterList />
       </v-main>
-
-      <!-- Right Sidebar -->
-      <v-navigation-drawer app right permanent width="250" class="secondary">
-        <NavigationSidebar />
-      </v-navigation-drawer>
-    </v-container>
+    </div>
   </v-app>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import CommandSidebar from './components/CommandSidebar.vue';
-import NavigationSidebar from './components/NavigationSidebar.vue';
+import TitleBar from './components/TitleBar.vue';
 import PrinterList from './components/PrinterList.vue';
 
 export default defineComponent({
   name: 'App',
-  components: {
-    CommandSidebar,
-    NavigationSidebar,
-    PrinterList,
-  },
+  components: { CommandSidebar, TitleBar, PrinterList },
 });
 </script>
 
-<style scoped>
-.primary {
-  background-color: #2c3e50;
-}
-.secondary {
-  background-color: #34495e;
-}
-</style>
+<style scoped></style>
