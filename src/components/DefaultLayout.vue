@@ -1,79 +1,36 @@
 <template>
-    <div class="layout-container">
-      <div 
-        class="sidebar" 
-        :style="{ width: sidebarWidth + 'px' }"
-        @mousedown="startResize"
-      >
-        <CommandSidebar />
-        <div class="sidebar-resizer" @mousedown.stop.prevent="startResize"></div>
-      </div>
+    <v-app>
+      <div class="app-container">
+        <!-- Our resizable sidebar -->
+        <ResizableSidebar />
   
-      <div class="main-content">
-        <PrinterList />
+        <!-- The main content area -->
+        <div class="main-content">
+          <!-- If you use Vue Router -->
+          <router-view />
+          <PrinterList />
+          <!-- Or directly place your content, e.g. <PrinterList /> -->
+        </div>
       </div>
-    </div>
+    </v-app>
   </template>
   
   <script setup>
-  import { ref, onMounted, onBeforeUnmount } from 'vue'
-  import CommandSidebar from './CommandSidebar.vue'
-  import PrinterList from './PrinterList.vue'
-  
-  const sidebarWidth = ref(250) // default width
-  let isResizing = false
-  
-  function startResize(e) {
-    isResizing = true
-  }
-  
-  function handleMouseMove(e) {
-    if (!isResizing) return
-    sidebarWidth.value = e.clientX // or some clamp logic
-  }
-  
-  function stopResize() {
-    isResizing = false
-  }
-  
-  onMounted(() => {
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', stopResize)
-  })
-  
-  onBeforeUnmount(() => {
-    window.removeEventListener('mousemove', handleMouseMove)
-    window.removeEventListener('mouseup', stopResize)
-  })
+  import ResizableSidebar from './ResizableSidebar.vue'
+  import PrinterList from './PrinterList.vue';
   </script>
   
   <style scoped>
-  .layout-container {
+  .app-container {
     display: flex;
     width: 100%;
-    height: 100vh;
-    overflow: hidden;
+    height: 100vh; /* or whatever fits your design */
   }
   
-  .sidebar {
-    flex-shrink: 0;
-    background-color: #f1f1f1;
-    position: relative; /* so that the resizer is positioned relative to the sidebar */
-  }
-  
-  .sidebar-resizer {
-    width: 5px;
-    cursor: col-resize;
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    background-color: #ccc;
-  }
-  
+  /* The main content should flex:1 so it takes the remaining space */
   .main-content {
     flex: 1;
-    overflow: auto;
+    overflow: auto;   /* let table or content scroll if needed */
   }
   </style>
   
