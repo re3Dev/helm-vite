@@ -121,23 +121,27 @@
   </script>
   
   <style scoped>
-  .sidebar-wrapper {
-    /* The parent container of the drawer + resizer */
-    position: relative;
-    display: flex;     /* So children (drawer & resizer) can layer horizontally */
-    height: 100%;      /* You can also let a parent container handle height */
-  }
-  
-  /* The handle we drag to resize */
-  .resizer {
-    position: absolute;
-    top: 0;
-    right: 0;          /* On the right edge of the wrapper */
-    width: 5px;
-    height: 100%;
-    cursor: col-resize;
-    background-color: rgba(0, 0, 0, 0.05);
-    z-index: 10;       /* Ensure it's on top of the drawer content */
-  }
+.sidebar-wrapper {
+  position: relative; 
+  display: flex;
+}
+
+.v-navigation-drawer {
+  position: relative;
+  z-index: 1;
+}
+
+/* The resizer has a higher z-index so it sits on top */
+.resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: red;  /* for debugging */
+  z-index: 9999;          /* ensure highest stacking */
+}
+
   </style>
   

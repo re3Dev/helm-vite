@@ -7,7 +7,7 @@
         <!-- The main content area -->
         <div class="main-content">
           <!-- If you use Vue Router -->
-          <router-view />
+          
           <PrinterList />
           <!-- Or directly place your content, e.g. <PrinterList /> -->
         </div>
