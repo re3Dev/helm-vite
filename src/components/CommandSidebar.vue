@@ -1,15 +1,13 @@
 <template>
-    <v-navigation-drawer app color="primary" dark permanent>
-      <v-list>
-        <v-list-item>
-          <v-list-item-title>Commands</v-list-item-title>
-        </v-list-item>
-        <v-divider></v-divider>
-        <v-list-item v-for="(item, index) in commands" :key="index">
-          <v-list-item-title>{{ item.title }}</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-navigation-drawer>
+    <v-list>
+      <v-list-item>
+        <v-list-item-title>Commands</v-list-item-title>
+      </v-list-item>
+      <v-divider></v-divider>
+      <v-list-item v-for="(item, index) in commands" :key="index">
+        <v-list-item-title>{{ item.title }}</v-list-item-title>
+      </v-list-item>
+    </v-list>
   </template>
   
   <script lang="ts">
@@ -29,4 +27,3 @@
   });
   </script>
   
-  <style scoped></style>

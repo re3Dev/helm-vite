@@ -1,17 +1,21 @@
 <template>
-  <v-app class="d-flex">
-    <!-- Left Sidebar -->
-    <CommandSidebar />
+  <v-app>
+    <v-container fluid class="d-flex pa-0" style="height: 100vh;">
+      <!-- Left Sidebar -->
+      <v-navigation-drawer app permanent width="250" class="primary">
+        <CommandSidebar />
+      </v-navigation-drawer>
 
-    <!-- Main Content -->
-    <v-main class="flex-grow-1">
-      <div class="content-wrapper">
+      <!-- Main Content -->
+      <v-main class="flex-grow-1">
         <PrinterList />
-      </div>
-    </v-main>
+      </v-main>
 
-    <!-- Right Sidebar -->
-    <NavigationSidebar />
+      <!-- Right Sidebar -->
+      <v-navigation-drawer app right permanent width="250" class="secondary">
+        <NavigationSidebar />
+      </v-navigation-drawer>
+    </v-container>
   </v-app>
 </template>
 
@@ -23,8 +27,19 @@ import PrinterList from './components/PrinterList.vue';
 
 export default defineComponent({
   name: 'App',
-  components: { CommandSidebar, NavigationSidebar, PrinterList },
+  components: {
+    CommandSidebar,
+    NavigationSidebar,
+    PrinterList,
+  },
 });
 </script>
 
-<style scoped></style>
+<style scoped>
+.primary {
+  background-color: #2c3e50;
+}
+.secondary {
+  background-color: #34495e;
+}
+</style>
