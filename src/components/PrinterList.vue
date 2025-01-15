@@ -1,22 +1,21 @@
 <template>
-  <v-container>
-    <v-data-table
-      :headers="headers"
-      :items="printers"
-      class="elevation-1"
-    />
+  <v-container color="secondary">
+    <v-card :color="surfaceColor" class="pa-4">
+      <v-card-title class="text-h5">Printer Fleet</v-card-title>
+      <v-data-table
+        :headers="headers"
+        :items="printers"
+        class="elevation-1 mt-4"
+        :items-per-page="5"
+        dense
+      />
+    </v-card>
   </v-container>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
-
-interface Printer {
-  hostname: string;
-  ip: string;
-  status: string;
-  extruder_temperature: number;
-}
+import { defineComponent, ref, onMounted, computed } from 'vue';
+import { useTheme } from 'vuetify';
 
 export default defineComponent({
   name: 'PrinterList',
@@ -28,7 +27,7 @@ export default defineComponent({
       { text: 'Extruder Temp (°C)', value: 'extruder_temperature' },
     ]);
 
-    const printers = ref<Printer[]>([]);
+    const printers = ref([]);
 
     const fetchPrinters = async () => {
       try {
@@ -42,9 +41,16 @@ export default defineComponent({
       }
     };
 
+    // Use Vuetify's theme system to get the current surface color
+    const theme = useTheme();
+    const surfaceColor = computed(() => theme.global.current.value.surface); 
     onMounted(fetchPrinters);
 
-    return { headers, printers };
+    return { headers, printers, surfaceColor };
   },
 });
 </script>
+
+<style scoped>
+/* Optional styles for customization */
+</style>
