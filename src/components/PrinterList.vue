@@ -21,6 +21,7 @@ interface Printer {
   ip: string;
   status: string;
   extruder_temperature: number;
+  extruder1_temperature: number;
 }
 
 export default defineComponent({
@@ -31,6 +32,7 @@ export default defineComponent({
       { text: 'IP Address', value: 'ip' },
       { text: 'Status', value: 'status' },
       { text: 'Extruder Temp (°C)', value: 'extruder_temperature' },
+      { text: 'Extruder1 Temp (C)', value: 'extruder1_temperature' },
     ]);
 
     const printers = ref<Printer[]>([]);

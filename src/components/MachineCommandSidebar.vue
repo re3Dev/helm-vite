@@ -8,17 +8,18 @@
       <div class="header-content">
         <!-- Your Sidebar Title -->
          
-        <span class="sidebar-title">Machine Commands</span>
+        <span class="sidebar-title"></span>
          
         <!-- A button to collapse the sidebar -->
         <v-btn
-          size="small"
-          icon
+          size="x-small"
+          icon="mdi-plus"
           class="collapse-btn"
           @click="toggleCollapse"
+          color="surface"
         >
-          <v-icon>
-            {{ isCollapsed ? 'mdi-menu-right' : 'mdi-menu-left' }}
+          <v-icon color="white">
+            {{ isCollapsed ? 'mdi-plus' : 'mdi-plus' }}
           </v-icon>
         </v-btn>
       </div>
@@ -118,7 +119,7 @@ function toggleCollapse() {
   } else {
     // Store current width and collapse
     lastWidth = sidebarWidth.value
-    sidebarWidth.value = 50 // or 0, or any minimal width
+    sidebarWidth.value = 0 // or 0, or any minimal width
     isCollapsed.value = true
   }
 }
@@ -148,7 +149,7 @@ function runCommand(cmd) {
 */
 .sidebar-header {
   height: 40px;
-  background-color: #f1f1f1;
+  background-color: #333131;
   border-bottom: 1px solid #ccc;
   z-index: 1; /* so it sits above drawer content if needed */
 }
@@ -167,6 +168,7 @@ function runCommand(cmd) {
 
 .sidebar-title {
   font-weight: bold;
+  background-color: 'surface';
 }
 
 /* Main area (expansion panels) below the header */
@@ -184,7 +186,7 @@ function runCommand(cmd) {
   width: 5px;
   height: calc(100% - 40px);
   cursor: col-resize;
-  background-color: rgba(255, 0, 0, 0.938);
+  background-color: rgba(160, 2, 223, 0.938);
   z-index: 9999;
 }
 
@@ -192,6 +194,7 @@ function runCommand(cmd) {
    For example, you can give it a small margin, or change its color. 
 */
 .collapse-btn {
-  margin-right: 4px;
+  margin-right: -35px;
+  opacity: 100;
 }
 </style>
