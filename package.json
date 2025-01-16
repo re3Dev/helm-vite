@@ -14,6 +14,7 @@
     "@wdns/vuetify-resize-drawer": "^3.2.0",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.7",
+    "socket.io-client": "^4.8.1",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.2",
     "vue-draggable-resizable": "^3.0.0",
