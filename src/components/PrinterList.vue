@@ -1,11 +1,13 @@
 <template>
   <v-container>
     <v-card class="pa-4">
-      <v-card-title background-color="black" class="text-h5">Printer Fleet</v-card-title>
+      <v-card-title class="text-h5"></v-card-title>
+      <v-progress-linear indeterminate></v-progress-linear>
       <v-sheet
         class="elevation-0 mt-4"
-        style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
+        style="background-color: background; display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
       >
+        <v-skeleton-loader :elevation="8" type="article"></v-skeleton-loader>
         <v-card
           v-for="printer in printers"
           :key="printer.mac"
@@ -104,8 +106,8 @@ export default defineComponent({
 <style scoped>
 .floating-card {
   border-radius: 12px; /* Rounded corners */
-  box-shadow: 0px 4px 8px rgba(219, 218, 218, 0.1), 0px 2px 4px rgba(197, 195, 195, 0.548); /* Floating shadow */
-  background-color: #121212; /* White background */
+  box-shadow: 0px 4px 8px rgba(121, 120, 120, 0.562), 0px 2px 4px rgba(124, 123, 123, 0.548); /* Floating shadow */
+  background-color: #1E1E1E; /* White background */
   transition: transform 0.2s, box-shadow 0.2s; /* Smooth hover effects */
 }
 
@@ -124,5 +126,8 @@ export default defineComponent({
 
 .text-grey {
   color: grey;
+}
+.pa-4 {
+  background-color: #121212;
 }
 </style>
