@@ -11,13 +11,12 @@
           :key="printer.mac"
           class="pa-3 floating-card"
         >
-          <v-card-title class="text-h6">{{ printer.hostname }}</v-card-title>
-          <v-card-subtitle>
-            <a :href="`http://${printer.ip}`" target="_blank">{{ printer.ip }}</a>
-          </v-card-subtitle>
+          <v-card-title class="text-h6">
+         
+            <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
+          </v-card-title>
           <v-card-text>
             <div>
-              
               <span
                 :class="{
                   'text-yellow': printer.status === 'Printing',
@@ -32,7 +31,7 @@
             <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
             <div v-if="printer.print_progress !== null">
               <v-progress-circular
-                :model-value="printer.print_progress * 100" 
+                :model-value="printer.print_progress * 100"
                 color="green"
                 size="50"
                 width="5"
@@ -86,6 +85,7 @@ export default defineComponent({
     const updatePrinters = (newData: Printer[]) => {
       const updatedPrinters = [...printers.value];
 
+      // Merge or add new printers
       newData.forEach((device) => {
         const index = updatedPrinters.findIndex((printer) => printer.mac === device.mac);
         if (index !== -1) {
@@ -95,7 +95,16 @@ export default defineComponent({
         }
       });
 
-      printers.value = updatedPrinters;
+      // Remove duplicates by hostname
+      const uniquePrinters = updatedPrinters.reduce((acc: Printer[], current) => {
+        const isDuplicate = acc.some((printer) => printer.hostname === current.hostname);
+        if (!isDuplicate) {
+          acc.push(current);
+        }
+        return acc;
+      }, []);
+
+      printers.value = uniquePrinters;
     };
 
     onMounted(() => {
@@ -137,5 +146,26 @@ export default defineComponent({
 
 .text-grey {
   color: grey;
+}
+/* unvisited link */
+a:link {
+  color: rgb(0, 89, 255);
+  text-decoration: none;
+}
+
+/* visited link */
+a:visited {
+  color: rgb(117, 255, 152);
+  text-decoration: none;
+}
+
+/* mouse over link */
+a:hover {
+  color: hotpink;
+}
+
+/* selected link */
+a:active {
+  color: blue;
 }
 </style>
