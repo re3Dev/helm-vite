@@ -1,13 +1,11 @@
 <template>
   <v-container>
     <v-card class="pa-4">
-      <v-card-title class="text-h5"></v-card-title>
-      <v-progress-linear indeterminate></v-progress-linear>
+      <v-card-title class="text-h5">Printer Fleet</v-card-title>
       <v-sheet
         class="elevation-0 mt-4"
-        style="background-color: background; display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
+        style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
       >
-        <v-skeleton-loader :elevation="8" type="article"></v-skeleton-loader>
         <v-card
           v-for="printer in printers"
           :key="printer.mac"
@@ -19,7 +17,7 @@
           </v-card-subtitle>
           <v-card-text>
             <div>
-              <strong>Status:</strong>
+              
               <span
                 :class="{
                   'text-yellow': printer.status === 'Printing',
@@ -32,7 +30,17 @@
             </div>
             <div><strong>Extruder Temp:</strong> {{ printer.extruder_temperature }}°C</div>
             <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
-            <div><strong>MAC:</strong> {{ printer.mac }}</div>
+            <div v-if="printer.print_progress !== null">
+              <v-progress-circular
+                :model-value="printer.print_progress * 100" 
+                color="green"
+                size="50"
+                width="5"
+                class="mt-2"
+              >
+                {{ (printer.print_progress * 100).toFixed(0) }}%
+              </v-progress-circular>
+            </div>
           </v-card-text>
         </v-card>
       </v-sheet>
@@ -50,6 +58,7 @@ interface Printer {
   extruder_temperature: number;
   extruder1_temperature: number;
   mac: string;
+  print_progress: number; // Already included in the `/devices` API response
 }
 
 export default defineComponent({
@@ -105,15 +114,15 @@ export default defineComponent({
 
 <style scoped>
 .floating-card {
-  border-radius: 12px; /* Rounded corners */
-  box-shadow: 0px 4px 8px rgba(121, 120, 120, 0.562), 0px 2px 4px rgba(124, 123, 123, 0.548); /* Floating shadow */
-  background-color: #1E1E1E; /* White background */
-  transition: transform 0.2s, box-shadow 0.2s; /* Smooth hover effects */
+  border-radius: 12px;
+  box-shadow: 0px 4px 8px rgba(94, 93, 93, 0.37), 0px 2px 4px rgba(128, 128, 128, 0.342);
+  background-color: surface;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .floating-card:hover {
-  transform: translateY(-4px); /* Slight lift on hover */
-  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.12), 0px 4px 8px rgba(0, 0, 0, 0.08); /* Enhanced shadow on hover */
+  transform: translateY(-4px);
+  box-shadow: 0px 8px 16px rgb(202, 199, 13), 0px 4px 8px rgba(238, 255, 0, 0.356);
 }
 
 .text-yellow {
@@ -126,8 +135,5 @@ export default defineComponent({
 
 .text-grey {
   color: grey;
-}
-.pa-4 {
-  background-color: #121212;
 }
 </style>

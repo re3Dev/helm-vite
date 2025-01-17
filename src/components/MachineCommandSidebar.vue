@@ -183,10 +183,11 @@ function runCommand(cmd) {
   position: absolute;
   top: 0px; /* The same as .sidebar-header height */
   right: 0;
-  width: 5px;
+  width: 1px;
   height: calc(100% - 40px);
   cursor: col-resize;
-  background-color: rgba(75, 219, 8, 0.938);
+  background-color: rgba(255, 238, 0, 0.596);
+  box-shadow: 0px 8px 16px rgba(202, 199, 13, 0.404), 0px 4px 8px rgba(238, 255, 0, 0.5);
   z-index: 9999;
 }
 
