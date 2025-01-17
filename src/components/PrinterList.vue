@@ -41,6 +41,7 @@
                 {{ (printer.print_progress * 100).toFixed(0) }}%
               </v-progress-circular>
             </div>
+            {{ printer.state_message }}
           </v-card-text>
         </v-card>
       </v-sheet>
@@ -59,6 +60,7 @@ interface Printer {
   extruder1_temperature: number;
   mac: string;
   print_progress: number; // Already included in the `/devices` API response
+  state_message: string;
 }
 
 export default defineComponent({
