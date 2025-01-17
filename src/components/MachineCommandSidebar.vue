@@ -75,7 +75,7 @@ const props = defineProps({
 /** 
  * Sidebar width & collapse logic 
  */
-const sidebarWidth = ref(400)
+const sidebarWidth = ref(200)
 let isResizing = false
 
 // Remember the last expanded width before collapse

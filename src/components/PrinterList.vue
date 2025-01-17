@@ -11,13 +11,17 @@
           :key="printer.mac"
           class="pa-3 floating-card"
         >
+          <v-divider>
           <v-card-title class="text-h6">
          
             <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
+            
           </v-card-title>
+          </v-divider>
+          <v-divider :thickness="6"></v-divider>
           <v-card-text>
             <div>
-              <span
+              <strong><span
                 :class="{
                   'text-yellow': printer.status === 'Printing',
                   'text-green': printer.status === 'Ready',
@@ -26,21 +30,22 @@
               >
                 {{ printer.status }}
               </span>
-            </div>
-            <div><strong>Extruder Temp:</strong> {{ printer.extruder_temperature }}°C</div>
-            <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
-            <div v-if="printer.print_progress !== null">
-              <v-progress-circular
+              <v-progress-circular style="margin-left: 150px;"
                 :model-value="printer.print_progress * 100"
                 color="green"
-                size="50"
+                size="45"
                 width="5"
                 class="mt-2"
               >
                 {{ (printer.print_progress * 100).toFixed(0) }}%
-              </v-progress-circular>
+              </v-progress-circular></strong>
             </div>
-            {{ printer.state_message }}
+            <strong>{{ printer.state_message }}</strong>
+            <br><br>
+            <div><strong>Extruder Temp:</strong> {{ printer.extruder_temperature }}°C</div>
+            <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
+
+            
           </v-card-text>
         </v-card>
       </v-sheet>
@@ -155,7 +160,7 @@ a:link {
 
 /* visited link */
 a:visited {
-  color: rgb(117, 255, 152);
+  color: rgb(255, 252, 81);
   text-decoration: none;
 }
 
