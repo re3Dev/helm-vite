@@ -20,6 +20,18 @@
           </v-divider>
           <v-divider :thickness="6"></v-divider>
           <v-card-text>
+            <v-progress-linear
+                :model-value="printer.print_progress * 100"
+                color="blue"
+                :height="20"
+                class="mt-2"
+                :striped="true"
+                bg-color="grey"
+                bg-opacity="0.3"
+              >
+                <bold><strong><v-text style="color: white;">{{ (printer.print_progress * 100).toFixed(0) }}% </v-text></strong></bold>
+              </v-progress-linear>
+              <br>
             <div>
               <strong><span
                 :class="{
@@ -30,17 +42,12 @@
               >
                 {{ printer.status }}
               </span>
-              <v-progress-circular style="margin-left: 150px;"
-                :model-value="printer.print_progress * 100"
-                color="green"
-                size="45"
-                width="5"
-                class="mt-2"
-              >
-                {{ (printer.print_progress * 100).toFixed(0) }}%
-              </v-progress-circular></strong>
+              </strong>
             </div>
+            <br>
             <strong>{{ printer.state_message }}</strong>
+            <br><br>
+            <v-divider :thickness="6"></v-divider>
             <br><br>
             <div><strong>Extruder Temp:</strong> {{ printer.extruder_temperature }}°C</div>
             <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
@@ -160,7 +167,7 @@ a:link {
 
 /* visited link */
 a:visited {
-  color: rgb(255, 252, 81);
+  color: rgb(255, 255, 255);
   text-decoration: none;
 }
 
