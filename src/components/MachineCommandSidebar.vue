@@ -140,7 +140,7 @@ function runCommand(cmd) {
   position: relative;
   display: flex;
   flex-direction: column; 
-  height: 100vh; /* or adapt to your layout needs */
+  height: 100%; /* or adapt to your layout needs */
 }
 
 /* 
@@ -148,7 +148,7 @@ function runCommand(cmd) {
   We'll keep it at a fixed height (say 40px or 50px).
 */
 .sidebar-header {
-  height: 40px;
+  height: 30px;
   background-color: #333131;
   border-bottom: 1px solid #ccc;
   z-index: 1; /* so it sits above drawer content if needed */
@@ -162,7 +162,7 @@ function runCommand(cmd) {
   display: flex;
   align-items: center;
   height: 100%;
-  padding: 0 8px; /* some horizontal padding */
+  padding: 0 0px; /* some horizontal padding */
   justify-content: space-between; /* space between title + button */
 }
 
@@ -183,8 +183,8 @@ function runCommand(cmd) {
   position: absolute;
   top: 0px; /* The same as .sidebar-header height */
   right: 0;
-  width: 1px;
-  height: calc(100% - 40px);
+  width: 2px;
+  height: calc(100%);
   cursor: col-resize;
   background-color: rgba(255, 238, 0, 0.596);
   box-shadow: 0px 8px 16px rgba(202, 199, 13, 0.404), 0px 4px 8px rgba(238, 255, 0, 0.5);

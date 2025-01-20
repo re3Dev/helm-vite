@@ -10,55 +10,66 @@
           v-for="printer in printers"
           :key="printer.mac"
           class="pa-3 floating-card"
+          :class="{ 'selected-card': selectedPrinters.includes(printer.mac) }"
+          @click="toggleSelection(printer.mac)"
         >
           <v-divider>
-          <v-card-title class="text-h6">
-         
-            <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
-            
-          </v-card-title>
+            <v-card-title class="text-h6">
+              <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
+            </v-card-title>
           </v-divider>
-          <v-divider :thickness="6"></v-divider>
+          <v-divider color="cyan" :thickness="6"></v-divider>
           <v-card-text>
             <v-progress-linear
-                :model-value="printer.print_progress * 100"
-                color="cyan"
-                :height="20"
-                class="mt-2"
-                :striped="true"
-                bg-color="grey"
-                bg-opacity="0.3"
-              >
-                <bold><strong><v-text style="color: white;">{{ (printer.print_progress * 100).toFixed(0) }}% </v-text></strong></bold>
-              </v-progress-linear>
-              <br>
+              :model-value="printer.print_progress * 100"
+              color="cyan"
+              :height="20"
+              class="mt-2"
+              :striped="true"
+              bg-color="grey"
+              bg-opacity="0.3"
+            >
+              <bold>
+                <strong>
+                  <v-text style="color: white;">
+                    {{ (printer.print_progress * 100).toFixed(0) }}%
+                  </v-text>
+                </strong>
+              </bold>
+            </v-progress-linear>
+            <br />
             <div>
-              <strong><span
-                :class="{
-                  'text-yellow': printer.status === 'Printing',
-                  'text-green': printer.status === 'Ready',
-                  'text-grey': printer.status === 'Idle',
-                }"
-              >
-                {{ printer.status }}
-              </span>
+              <strong>
+                <span
+                  :class="{
+                    'text-yellow': printer.status === 'Printing',
+                    'text-green': printer.status === 'Ready',
+                    'text-grey': printer.status === 'Idle',
+                  }"
+                >
+                  {{ printer.status }}
+                </span>
               </strong>
             </div>
-            <br>
+            <br />
             <strong>{{ printer.state_message }}</strong>
-            <br><br>
-            <v-divider :thickness="6"></v-divider>
-            <br><br>
+            <br /><br />
+            <v-divider color="yellow" :thickness="2"></v-divider>
+            <br />
             <div><strong>Extruder Temp:</strong> {{ printer.extruder_temperature }}°C</div>
             <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
-
-            
+            <br />
+            <v-divider color="yellow" :thickness="2"></v-divider>
+            <br />
+            <div><strong>IP Address: </strong> {{ printer.ip }}</div>
+            <div><strong>MAC Address: </strong> {{ printer.mac }}</div>
           </v-card-text>
         </v-card>
       </v-sheet>
     </v-card>
   </v-container>
 </template>
+
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, onBeforeUnmount } from 'vue';
@@ -70,7 +81,7 @@ interface Printer {
   extruder_temperature: number;
   extruder1_temperature: number;
   mac: string;
-  print_progress: number; // Already included in the `/devices` API response
+  print_progress: number;
   state_message: string;
 }
 
@@ -78,6 +89,7 @@ export default defineComponent({
   name: 'PrinterGrid',
   setup() {
     const printers = ref<Printer[]>([]);
+    const selectedPrinters = ref<string[]>([]); // Store selected printer MAC addresses
 
     let fetchInterval: number | null = null;
 
@@ -97,7 +109,6 @@ export default defineComponent({
     const updatePrinters = (newData: Printer[]) => {
       const updatedPrinters = [...printers.value];
 
-      // Merge or add new printers
       newData.forEach((device) => {
         const index = updatedPrinters.findIndex((printer) => printer.mac === device.mac);
         if (index !== -1) {
@@ -107,7 +118,6 @@ export default defineComponent({
         }
       });
 
-      // Remove duplicates by hostname
       const uniquePrinters = updatedPrinters.reduce((acc: Printer[], current) => {
         const isDuplicate = acc.some((printer) => printer.hostname === current.hostname);
         if (!isDuplicate) {
@@ -117,6 +127,14 @@ export default defineComponent({
       }, []);
 
       printers.value = uniquePrinters;
+    };
+
+    const toggleSelection = (mac: string) => {
+      if (selectedPrinters.value.includes(mac)) {
+        selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== mac);
+      } else {
+        selectedPrinters.value.push(mac);
+      }
     };
 
     onMounted(() => {
@@ -130,10 +148,11 @@ export default defineComponent({
       }
     });
 
-    return { printers };
+    return { printers, selectedPrinters, toggleSelection };
   },
 });
 </script>
+
 
 <style scoped>
 .floating-card {
@@ -141,11 +160,18 @@ export default defineComponent({
   box-shadow: 0px 4px 8px rgba(94, 93, 93, 0.37), 0px 2px 4px rgba(128, 128, 128, 0.342);
   background-color: surface;
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .floating-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0px 8px 16px rgb(202, 199, 13), 0px 4px 8px rgba(238, 255, 0, 0.356);
+  box-shadow: 0px 8px 16px rgba(224, 228, 16, 0.712), 0px 4px 8px rgba(238, 255, 0, 0.356);
+}
+
+.selected-card {
+  background-color: rgba(216, 202, 12, 0); /* Change background for selected cards */
+  border: 2px solid rgb(238, 255, 0);
+  box-shadow: 0px 8px 16px rgb(196, 216, 12), 0px 4px 8px rgba(238, 255, 0, 0.5);
 }
 
 .text-yellow {
@@ -159,25 +185,19 @@ export default defineComponent({
 .text-grey {
   color: grey;
 }
-/* unvisited link */
-a:link {
-  color: rgb(255, 255, 255);
-  text-decoration: none;
-}
 
-/* visited link */
+a:link,
 a:visited {
   color: rgb(255, 255, 255);
   text-decoration: none;
 }
 
-/* mouse over link */
 a:hover {
   color: hotpink;
 }
 
-/* selected link */
 a:active {
   color: blue;
 }
 </style>
+
