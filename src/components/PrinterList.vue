@@ -161,7 +161,7 @@ export default defineComponent({
 }
 /* unvisited link */
 a:link {
-  color: rgb(0, 89, 255);
+  color: rgb(255, 255, 255);
   text-decoration: none;
 }
 
