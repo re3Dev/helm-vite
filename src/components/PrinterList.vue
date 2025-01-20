@@ -22,7 +22,7 @@
           <v-card-text>
             <v-progress-linear
                 :model-value="printer.print_progress * 100"
-                color="blue"
+                color="cyan"
                 :height="20"
                 class="mt-2"
                 :striped="true"
