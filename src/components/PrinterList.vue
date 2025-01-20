@@ -20,6 +20,8 @@
           </v-divider>
           <v-divider color="cyan" :thickness="6"></v-divider>
           <v-card-text>
+            <div v-if="printer.thumbnail_url">
+              <img :src="printer.thumbnail_url" alt="Thumbnail" class="thumbnail-image"/></div>
             <v-progress-linear
               :model-value="printer.print_progress * 100"
               color="cyan"
@@ -36,7 +38,16 @@
                   </v-text>
                 </strong>
               </bold>
+
             </v-progress-linear>
+            <br>
+            <div>
+            <strong>
+                  <v-text style="color: white;">
+                    {{ formatFileName(printer.file_path) }}
+                  </v-text>
+                </strong>
+            </div>
             <br />
             <div>
               <strong>
@@ -83,8 +94,9 @@ interface Printer {
   mac: string;
   print_progress: number;
   state_message: string;
+  file_path: string;
+  thumbnail_url: string;
 }
-
 export default defineComponent({
   name: 'PrinterGrid',
   setup() {
@@ -137,6 +149,15 @@ export default defineComponent({
       }
     };
 
+    const formatFileName = (filePath: string | null): string => {
+  if (!filePath) {
+    return "Not Printing"; // Default text when filePath is null or undefined
+  }
+  const prefix = "/home/pi/printer_data/gcodes/";
+  return filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath;
+};
+
+
     onMounted(() => {
       fetchPrinters();
       fetchInterval = window.setInterval(fetchPrinters, 5000);
@@ -148,7 +169,7 @@ export default defineComponent({
       }
     });
 
-    return { printers, selectedPrinters, toggleSelection };
+    return { printers, selectedPrinters, toggleSelection, formatFileName };
   },
 });
 </script>
@@ -198,6 +219,13 @@ a:hover {
 
 a:active {
   color: blue;
+}
+.thumbnail-image {
+  width: 100%;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
 }
 </style>
 
