@@ -1,14 +1,15 @@
 <template>
   <v-container>
-    <v-card class="pa-4">
-      <v-card-title class="text-h5">Printer Fleet</v-card-title>
+    <v-card class="pa-4" color="background">
+      
       <v-sheet
-        class="elevation-0 mt-4"
+        class="elevation-0 mt-4" color="background"
         style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
       >
         <v-card
           v-for="printer in printers"
           :key="printer.mac"
+          color="background"
           class="pa-3 floating-card"
           :class="{ 'selected-card': selectedPrinters.includes(printer.mac) }"
           @click="toggleSelection(printer.mac)"
@@ -186,13 +187,13 @@ export default defineComponent({
 
 .floating-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0px 8px 16px rgba(224, 228, 16, 0.712), 0px 4px 8px rgba(238, 255, 0, 0.356);
+  box-shadow: 0px 8px 16px #FFBD00, 0px 4px 8px #F2F2F2;
 }
 
 .selected-card {
-  background-color: rgba(216, 202, 12, 0); /* Change background for selected cards */
-  border: 2px solid rgb(238, 255, 0);
-  box-shadow: 0px 8px 16px rgb(196, 216, 12), 0px 4px 8px rgba(238, 255, 0, 0.5);
+  background-color: #2B2E33; /* Change background for selected cards */
+  border: 2px solid #FFD400;
+  box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
 }
 
 .text-yellow {

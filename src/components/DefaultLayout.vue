@@ -1,7 +1,8 @@
 <!-- App.vue (or DefaultLayout.vue) -->
 <template>
     <v-app>
-        <v-app-bar app color="surface" dark>
+        <v-app-bar app color="#000000" dark>
+          &ensp;&ensp;<img src="/src/assets/re3D Logo White.png" width="40.9px" height="47.5px">
       <v-toolbar-title>HELM</v-toolbar-title>
 
       <!-- Optionally add other elements, e.g. a user menu, buttons, etc. -->

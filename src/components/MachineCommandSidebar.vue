@@ -186,8 +186,8 @@ function runCommand(cmd) {
   width: 2px;
   height: calc(100%);
   cursor: col-resize;
-  background-color: rgba(255, 238, 0, 0.596);
-  box-shadow: 0px 8px 16px rgba(202, 199, 13, 0.404), 0px 4px 8px rgba(238, 255, 0, 0.5);
+  background-color: #BCBEC0;
+  box-shadow: 0px 8px 16px #CCCCCC, 0px 4px 8px #F2F2F2;
   z-index: 9999;
 }
 
