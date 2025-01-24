@@ -21,8 +21,7 @@
           </v-divider>
           <v-divider color="cyan" :thickness="6"></v-divider>
           <v-card-text>
-            <div v-if="printer.thumbnail_url">
-              <img :src="printer.thumbnail_url" alt="Thumbnail" class="thumbnail-image"/></div>
+
             <v-progress-linear
               :model-value="printer.print_progress * 100"
               color="#FFD400"
@@ -31,6 +30,7 @@
               :striped="true"
               bg-color="#BCBEC0"
               bg-opacity="0.8"
+              :stream="false"
             >
               <bold>
                 <strong>
@@ -215,7 +215,7 @@ a:visited {
 }
 
 a:hover {
-  color: hotpink;
+  color: #FFDF00;
 }
 
 a:active {
