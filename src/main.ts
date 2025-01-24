@@ -30,7 +30,7 @@ const vuetify = createVuetify({
       },
       dark: {
         colors: {
-            primary: '#FFD400', // Bright purple for primary actions
+            primary: '#FFDF00', // Bright purple for primary actions
             secondary: '#03DAC6', // Cyan for secondary actions
             background: '#101318', // Dark background
             surface: '#212429', // Slightly lighter dark for surfaces

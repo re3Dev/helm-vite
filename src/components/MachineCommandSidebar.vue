@@ -4,10 +4,9 @@
     :style="{ width: sidebarWidth + 'px' }"
   >
     <!-- 1) A Title Bar / Header at the top of the sidebar -->
-    <div class="sidebar-header">
+    <div class="sidebar-header" style="text-align: center;">Printer Management
       <div class="header-content">
         <!-- Your Sidebar Title -->
-         
         <span class="sidebar-title"></span>
          
         <!-- A button to collapse the sidebar -->
@@ -16,9 +15,9 @@
           icon="mdi-plus"
           class="collapse-btn"
           @click="toggleCollapse"
-          color="surface"
+          color="background"
         >
-          <v-icon color="white">
+          <v-icon color="primary">
             {{ isCollapsed ? 'mdi-plus' : 'mdi-plus' }}
           </v-icon>
         </v-btn>
@@ -175,6 +174,8 @@ function runCommand(cmd) {
 .drawer-content {
   flex: 1;
   overflow-y: auto; 
+  background-color: #393B3E;
+  
 }
 
 /* The resizer handle is placed on the right edge
@@ -187,7 +188,6 @@ function runCommand(cmd) {
   height: calc(100%);
   cursor: col-resize;
   background-color: #BCBEC0;
-  box-shadow: 0px 8px 16px #CCCCCC, 0px 4px 8px #F2F2F2;
   z-index: 9999;
 }
 

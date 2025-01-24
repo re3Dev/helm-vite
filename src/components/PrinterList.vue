@@ -25,16 +25,16 @@
               <img :src="printer.thumbnail_url" alt="Thumbnail" class="thumbnail-image"/></div>
             <v-progress-linear
               :model-value="printer.print_progress * 100"
-              color="cyan"
+              color="#FFD400"
               :height="20"
               class="mt-2"
               :striped="true"
-              bg-color="grey"
-              bg-opacity="0.3"
+              bg-color="#BCBEC0"
+              bg-opacity="0.8"
             >
               <bold>
                 <strong>
-                  <v-text style="color: white;">
+                  <v-text style="color: black;">
                     {{ (printer.print_progress * 100).toFixed(0) }}%
                   </v-text>
                 </strong>

@@ -8,7 +8,7 @@
       <!-- Optionally add other elements, e.g. a user menu, buttons, etc. -->
       <v-spacer />
       <v-btn icon>
-        <v-icon>mdi-account</v-icon>
+        <v-icon color="primary">mdi-account</v-icon>
       </v-btn>
     </v-app-bar>
     <v-main></v-main>
