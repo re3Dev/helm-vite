@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
+import { commandValues } from '../store/commandValues'; // Import command mapping
 
 // Define command groups
 export const commandGroups = ref([
@@ -26,8 +27,8 @@ export const commandGroups = ref([
 export { selectedPrinters };
 
 /**
- * Test function to simulate running a command.
- * Instead of making an API request, it logs output to the console.
+ * Function to simulate running a command with mapped values.
+ * Logs output to the console for each selected printer.
  * @param command - The command to execute.
  */
 export const runCommand = (command: string) => {
@@ -36,11 +37,11 @@ export const runCommand = (command: string) => {
     return;
   }
 
-  console.log("TEST: Running command:", command);
-  console.log("Selected Printers:", selectedPrinters.value);
+  // Get the mapped value for the command
+  const commandValue = commandValues[command] || 'UNKNOWN_COMMAND';
 
-  // Simulate a delay to mimic request behavior
-  setTimeout(() => {
-    console.log(`Command "${command}" simulated successfully for:`, selectedPrinters.value);
-  }, 1000);
+  // Iterate over each selected printer and log the message individually
+  selectedPrinters.value.forEach((printerIp) => {
+    console.log(`This command is being run: ${commandValue} for the device ${printerIp}`);
+  });
 };
