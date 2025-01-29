@@ -6,14 +6,15 @@
         class="elevation-0 mt-4" color="background"
         style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
       >
-        <v-card
-          v-for="printer in printers"
-          :key="printer.mac"
-          color="background"
-          class="pa-3 floating-card"
-          :class="{ 'selected-card': selectedPrinters.includes(printer.mac) }"
-          @click="toggleSelection(printer.mac)"
-        >
+      <v-card
+        v-for="printer in printers"
+        :key="printer.ip"
+        color="background"
+        class="pa-3 floating-card"
+        :class="{ 'selected-card': selectedPrinters.includes(printer.ip) }"
+        @click="toggleSelection(printer.ip)"
+>
+
           <v-divider>
             <v-card-title class="text-h6">
               <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
@@ -142,13 +143,22 @@ export default defineComponent({
       printers.value = uniquePrinters;
     };
 
-    const toggleSelection = (mac: string) => {
-      if (selectedPrinters.value.includes(mac)) {
-        selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== mac);
-      } else {
-        selectedPrinters.value.push(mac);
-      }
-    };
+
+
+    const toggleSelection = (ip: string) => {
+  if (selectedPrinters.value.includes(ip)) {
+    selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== ip);
+    console.log(`Printer with IP ${ip} unselected.`);
+  } else {
+    selectedPrinters.value.push(ip);
+    console.log(`Printer with IP ${ip} selected.`);
+  }
+
+  // Log all currently selected printers
+  console.log("Currently selected printers:", selectedPrinters.value);
+};
+
+
 
     const formatFileName = (filePath: string | null): string => {
   if (!filePath) {

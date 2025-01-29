@@ -127,6 +127,8 @@ function toggleCollapse() {
 function runCommand(cmd) {
   console.log('Running command:', cmd)
 }
+
+
 </script>
 
 <style scoped>
