@@ -32,7 +32,7 @@ const vuetify = createVuetify({
         colors: {
             primary: '#FFDF00', // Bright purple for primary actions
             secondary: '#03DAC6', // Cyan for secondary actions
-            background: '#101318', // Dark background
+            background: '#000000', // Dark background
             surface: '#212429', // Slightly lighter dark for surfaces
             text: '#E0E0E0', // Light gray for text
             accent: '#FF4081', // Pink for highlights or interactive elements

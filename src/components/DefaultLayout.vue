@@ -1,7 +1,7 @@
 <!-- App.vue (or DefaultLayout.vue) -->
 <template>
     <v-app>
-        <v-app-bar app color="#000000" dark>
+        <v-app-bar app dark class="animated-toolbar">
           &ensp;&ensp;<img src="/src/assets/re3D Logo White.png" width="40.9px" height="47.5px">
       <v-toolbar-title>HELM</v-toolbar-title>
 
@@ -36,6 +36,17 @@
   </script>
   
   <style scoped>
+  .animated-toolbar {
+  background: linear-gradient(270deg, #000000, #1a1a1a, #2c2c2c, #1a1a1a, #000000);
+  background-size: 1000% 100%;
+  animation: gradientFlow 30s ease infinite;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
   .layout-container {
     display: flex;
     width: 100%;

@@ -9,7 +9,7 @@
       <v-card
         v-for="printer in printers"
         :key="printer.ip"
-        color="background"
+        color="#181B20"
         class="pa-3 floating-card"
         :class="{ 'selected-card': selectedPrinters.includes(printer.ip) }"
         @click="toggleSelection(printer.ip)"
@@ -190,7 +190,7 @@ export default defineComponent({
 <style scoped>
 .floating-card {
   border-radius: 12px;
-  box-shadow: 0px 4px 8px rgba(94, 93, 93, 0.37), 0px 2px 4px rgba(128, 128, 128, 0.342);
+  box-shadow: 0px 4px 8px rgba(219, 219, 219, 0.788), 0px 2px 4px rgb(221, 221, 221);
   background-color: surface;
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
@@ -202,7 +202,7 @@ export default defineComponent({
 }
 
 .selected-card {
-  background-color: #2B2E33; /* Change background for selected cards */
+  background-color: #393B3E; /* Change background for selected cards */
   border: 2px solid #FFD400;
   box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
 }

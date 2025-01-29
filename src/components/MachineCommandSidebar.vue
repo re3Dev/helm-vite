@@ -123,9 +123,6 @@ function toggleCollapse() {
   }
 }
 
-
-
-
 </script>
 
 <style scoped>
