@@ -86,6 +86,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, onBeforeUnmount } from 'vue';
+import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
 
 interface Printer {
   hostname: string;
@@ -103,7 +104,7 @@ export default defineComponent({
   name: 'PrinterGrid',
   setup() {
     const printers = ref<Printer[]>([]);
-    const selectedPrinters = ref<string[]>([]); // Store selected printer MAC addresses
+    
 
     let fetchInterval: number | null = null;
 

@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
 
 // Define command groups
 export const commandGroups = ref([
@@ -21,3 +22,25 @@ export const commandGroups = ref([
     commands: ['Home All Axes', 'Move X', 'Move Y', 'Move Z']
   }
 ]);
+
+export { selectedPrinters };
+
+/**
+ * Test function to simulate running a command.
+ * Instead of making an API request, it logs output to the console.
+ * @param command - The command to execute.
+ */
+export const runCommand = (command: string) => {
+  if (selectedPrinters.value.length === 0) {
+    console.warn("No printers selected. Cannot execute command.");
+    return;
+  }
+
+  console.log("TEST: Running command:", command);
+  console.log("Selected Printers:", selectedPrinters.value);
+
+  // Simulate a delay to mimic request behavior
+  setTimeout(() => {
+    console.log(`Command "${command}" simulated successfully for:`, selectedPrinters.value);
+  }, 1000);
+};

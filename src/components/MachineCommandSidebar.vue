@@ -63,7 +63,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
-
+import { runCommand } from './commandService.ts'; // Import runCommand
 const props = defineProps({
   groups: {
     type: Array,
@@ -123,10 +123,7 @@ function toggleCollapse() {
   }
 }
 
-// Example command handler
-function runCommand(cmd) {
-  console.log('Running command:', cmd)
-}
+
 
 
 </script>
