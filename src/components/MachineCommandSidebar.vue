@@ -74,7 +74,7 @@ const props = defineProps({
 /** 
  * Sidebar width & collapse logic 
  */
-const sidebarWidth = ref(200)
+const sidebarWidth = ref(300)
 let isResizing = false
 
 // Remember the last expanded width before collapse
@@ -166,12 +166,17 @@ function toggleCollapse() {
   background-color: 'surface';
 }
 
-/* Main area (expansion panels) below the header */
 .drawer-content {
-  flex: 1;
-  overflow-y: auto; 
+  transform: none !important;
+  position: relative !important;
+  width: 100%;
   background-color: #393B3E;
-  
+}
+
+/* Ensure sidebar stays in place */
+.v-navigation-drawer--mobile {
+  transform: none !important;
+  position: relative !important;
 }
 
 /* The resizer handle is placed on the right edge
