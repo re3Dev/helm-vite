@@ -102,10 +102,9 @@
             <div>
               <v-icon 
                 :class="{
-                  'text-blue': printer.extruder_temperature < 30,
-                  'text-green': printer.extruder_temperature >= 30 && printer.extruder_temperature < 100,
-                  'text-yellow': printer.extruder_temperature >= 100 && printer.extruder_temperature < 180,
-                  'text-orange': printer.extruder_temperature >= 180 && printer.extruder_temperature < 220,
+                  'text-blue': printer.extruder_temperature < 50,
+                  'text-yellow': printer.extruder_temperature >= 50 && printer.extruder_temperature < 200,
+                  'text-orange': printer.extruder_temperature >= 200 && printer.extruder_temperature < 220,
                   'text-red': printer.extruder_temperature >= 220
                 }"
                 class="extruder_icon">
@@ -117,9 +116,8 @@
               <v-icon 
                 :class="{
                   'text-blue': printer.extruder1_temperature < 30,
-                  'text-green': printer.extruder1_temperature >= 30 && printer.extruder1_temperature < 100,
-                  'text-yellow': printer.extruder1_temperature >= 100 && printer.extruder1_temperature < 180,
-                  'text-orange': printer.extruder1_temperature >= 180 && printer.extruder1_temperature < 220,
+                  'text-yellow': printer.extruder1_temperature >= 50 && printer.extruder1_temperature < 200,
+                  'text-orange': printer.extruder1_temperature >= 200 && printer.extruder1_temperature < 220,
                   'text-red': printer.extruder1_temperature >= 220
                 }"
                 class="extruder1_icon">
@@ -130,10 +128,9 @@
             <div v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
               <v-icon 
                 :class="{
-                  'text-blue': printer.extruder2_temperature < 30,
-                  'text-green': printer.extruder2_temperature >= 30 && printer.extruder2_temperature < 100,
-                  'text-yellow': printer.extruder2_temperature >= 100 && printer.extruder2_temperature < 180,
-                  'text-orange': printer.extruder2_temperature >= 180 && printer.extruder2_temperature < 220,
+                  'text-blue': printer.extruder2_temperature < 50,
+                  'text-yellow': printer.extruder2_temperature >= 50 && printer.extruder2_temperature < 200,
+                  'text-orange': printer.extruder2_temperature >= 200 && printer.extruder2_temperature < 220,
                   'text-red': printer.extruder2_temperature >= 220
                 }"
                 class="extruder2_icon">
@@ -144,11 +141,10 @@
             <div>
               <v-icon 
                 :class="{
-                  'text-blue': printer.heater_bed_temperature < 30,
-                  'text-green': printer.heater_bed_temperature >= 30 && printer.heater_bed_temperature < 50,
-                  'text-yellow': printer.heater_bed_temperature >= 50 && printer.heater_bed_temperature < 80,
-                  'text-orange': printer.heater_bed_temperature >= 80 && printer.heater_bed_temperature < 100,
-                  'text-red': printer.heater_bed_temperature >= 100
+                  'text-blue': printer.heater_bed_temperature < 40,
+                  'text-yellow': printer.heater_bed_temperature >= 40 && printer.heater_bed_temperature < 60,
+                  'text-orange': printer.heater_bed_temperature >= 60 && printer.heater_bed_temperature < 80,
+                  'text-red': printer.heater_bed_temperature >= 80
                 }"
                 class="heater_bed_icon">
                 mdi-radiator
