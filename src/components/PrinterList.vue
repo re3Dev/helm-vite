@@ -369,6 +369,24 @@ a:active {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  position: relative;
+  transition: transform 0.3s;
+}
+
+.file-path-container:hover {
+  overflow: visible;
+  text-overflow: unset;
+  animation: scrollText 3.5s linear forwards;
+  animation-delay: 0.2s;
+}
+
+@keyframes scrollText {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-150%);  /* Removed pixel offset to scroll full width */
+  }
 }
 </style>
 
