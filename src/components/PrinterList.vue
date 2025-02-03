@@ -109,7 +109,7 @@
                   'text-red': printer.extruder_temperature >= 220
                 }"
                 class="extruder_icon">
-                mdi-thermometer
+                mdi-printer-3d-nozzle-outline
               </v-icon>
               <strong> (E0):</strong> {{ printer.extruder_temperature }}°C
             </div>
@@ -123,7 +123,7 @@
                   'text-red': printer.extruder1_temperature >= 220
                 }"
                 class="extruder1_icon">
-                mdi-thermometer
+                mdi-printer-3d-nozzle-outline
               </v-icon>
               <strong> (E1):</strong> {{ printer.extruder1_temperature }}°C
             </div>
@@ -137,7 +137,7 @@
                   'text-red': printer.extruder2_temperature >= 220
                 }"
                 class="extruder2_icon">
-                mdi-thermometer
+                mdi-printer-3d-nozzle-outline
               </v-icon>
               <strong> (E2):</strong> {{ printer.extruder2_temperature }}°C
             </div>
