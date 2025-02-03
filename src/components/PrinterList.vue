@@ -7,7 +7,7 @@
         style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
       >
       <v-card
-        v-for="printer in printers"
+        v-for="printer in sortedPrinters"
         :key="printer.ip"
         color="#181B20"
         class="pa-3 floating-card"
@@ -164,7 +164,7 @@
 
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, onBeforeUnmount } from 'vue';
+import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
 
 
@@ -182,23 +182,21 @@ interface Printer {
   file_path: string;
   thumbnail_url: string;
 }
-export const getStatusText = (status: string): string => {
-  const statusMap = {
-    'Printing': 'Currently Printing',
-    'Ready': 'Available for Print',
-    'Idle': 'Standing By',
-    'default': 'Status Unknown'
-  };
-  return statusMap[status as keyof typeof statusMap] || statusMap.default;
-};
+
+
 export default defineComponent({
   name: 'PrinterGrid',
   setup() {
     const printers = ref<Printer[]>([]);
-    
 
     let fetchInterval: number | null = null;
-
+    const sortedPrinters = computed(() => {
+      return [...printers.value].sort((a, b) => {
+        if (a.status === 'Printing' && b.status !== 'Printing') return -1;
+        if (a.status !== 'Printing' && b.status === 'Printing') return 1;
+        return 0;
+  });
+});
     const fetchPrinters = async () => {
       try {
         const response = await fetch('/api/devices');
@@ -272,7 +270,7 @@ export default defineComponent({
       }
     });
 
-    return { printers, selectedPrinters, toggleSelection, formatFileName };
+    return { printers, sortedPrinters, selectedPrinters, toggleSelection, formatFileName };
   },
 });
 </script>
