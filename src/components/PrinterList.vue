@@ -89,14 +89,23 @@
                 </div>
               </strong>
             </div>
-            <br />
+            <div class="status-container">
             <span
               :class="{
                 'text-green': printer.state_message === 'Printer is ready',
+                'text-red': printer.state_message !== 'Printer is ready',
               }">
-              {{ printer.state_message }}
+              <template v-if="printer.state_message === 'Printer is ready'">
+                <v-icon>mdi-check-circle</v-icon>
+                No Errors
+              </template>
+              <template v-else>
+                <v-icon>mdi-alert-circle</v-icon>
+                {{ printer.state_message }}
+                </template>
             </span>
-            <br />
+            </div>
+          
             <v-divider color="yellow" :thickness="2"></v-divider>
             <div class="temperature-container">
             <div class="temp-reading">
