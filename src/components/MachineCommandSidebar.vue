@@ -15,7 +15,7 @@
           icon="mdi-plus"
           class="collapse-btn"
           @click="toggleCollapse"
-          color="background"
+          color="#181B20"
         >
           <v-icon color="primary">
             {{ isCollapsed ? 'mdi-plus' : 'mdi-plus' }}
@@ -170,7 +170,7 @@ function toggleCollapse() {
   transform: none !important;
   position: relative !important;
   width: 100%;
-  background-color: #393B3E;
+  background-color: #242527;
 }
 
 /* Ensure sidebar stays in place */

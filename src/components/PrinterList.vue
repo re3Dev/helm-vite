@@ -20,7 +20,7 @@
               <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
             </v-card-title>
           </v-divider>
-          <v-divider color="cyan" :thickness="6"></v-divider>
+          <v-divider color="yellow" :thickness="1"></v-divider>
           <v-card-text>
             <div class="printer-type">
     <v-icon :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
@@ -30,6 +30,7 @@
       {{ printer.extruder2_temperature ? ' Pellet' : ' Filament' }}
     </strong>
   </div>
+  
 
             <v-progress-linear
               v-if="printer.status === 'Printing'"
@@ -89,24 +90,14 @@
                 </div>
               </strong>
             </div>
-            <div class="status-container">
-            <span
-              :class="{
-                'text-green': printer.state_message === 'Printer is ready',
-                'text-red': printer.state_message !== 'Printer is ready',
-              }">
-              <template v-if="printer.state_message === 'Printer is ready'">
-                <v-icon>mdi-check-circle</v-icon>
-                No Errors
-              </template>
-              <template v-else>
-                <v-icon>mdi-alert-circle</v-icon>
-                {{ printer.state_message }}
-                </template>
-            </span>
+            <div class="status-container" v-if="printer.state_message !== 'Printer is ready'">
+              <span class="text-red">
+              <v-icon>mdi-alert-circle</v-icon>
+              {{ printer.state_message }}
+              </span>
             </div>
           
-            <v-divider color="yellow" :thickness="2"></v-divider>
+
             <div class="temperature-container">
             <div class="temp-reading">
               <v-icon 
