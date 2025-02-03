@@ -53,29 +53,51 @@
             <br />
             <div>
               <strong>
-                <span
+              
+                <span  
                   :class="{
                     'text-yellow': printer.status === 'Printing',
                     'text-green': printer.status === 'Ready',
                     'text-grey': printer.status === 'Idle',
                   }"
                 >
-                  {{ printer.status }}
+                <template v-if="printer.status === 'Printing'">
+                  PRINTING
+                </template>
+                <template v-else-if="printer.status === 'Ready'">
+                  HOMED
+                </template>
+                <template v-else-if="printer.status === 'Idle'">
+                  MOTORS DISENGAGED
+                </template>
+                <template v-else>
+                  Status Unknown
+                </template>
                 </span>
               </strong>
             </div>
             <br />
-            <strong>{{ printer.state_message }}</strong>
-            <br /><br />
+            <span
+              :class="{
+                'text-green': printer.state_message === 'Printer is ready',
+              }">
+              {{ printer.state_message }}
+            </span>
+            <br />
             <v-divider color="yellow" :thickness="2"></v-divider>
             <br />
-            <div><strong>Extruder Temp:</strong> {{ printer.extruder_temperature }}°C</div>
-            <div><strong>Extruder1 Temp:</strong> {{ printer.extruder1_temperature }}°C</div>
-            <br />
-            <v-divider color="yellow" :thickness="2"></v-divider>
-            <br />
-            <div><strong>IP Address: </strong> {{ printer.ip }}</div>
-            <div><strong>MAC Address: </strong> {{ printer.mac }}</div>
+            <div>
+              <v-icon color="red" class="extruder_icon">mdi-thermometer</v-icon>
+              <strong> (E0):</strong> {{ printer.extruder_temperature }}°C</div>
+            <div>
+              <v-icon color="red" class="extruder1_icon">mdi-thermometer</v-icon>
+              <strong> (E1):</strong> {{ printer.extruder1_temperature }}°C</div>
+            <div>
+              <v-icon color="red" class="extruder2_icon">mdi-thermometer</v-icon>
+              <strong> (E2):</strong> {{ printer.extruder2_temperature }}°C</div>
+            <div>
+              <v-icon color="yellow" class="heater_bed_icon">mdi-radiator</v-icon>
+              <strong> (BED):</strong> {{ printer.heater_bed_temperature }}°C</div>
           </v-card-text>
         </v-card>
       </v-sheet>
@@ -88,18 +110,30 @@
 import { defineComponent, ref, onMounted, onBeforeUnmount } from 'vue';
 import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
 
+
 interface Printer {
   hostname: string;
   ip: string;
   status: string;
   extruder_temperature: number;
   extruder1_temperature: number;
+  extruder2_temperature: number;
+  heater_bed_temperature: number;
   mac: string;
   print_progress: number;
   state_message: string;
   file_path: string;
   thumbnail_url: string;
 }
+export const getStatusText = (status: string): string => {
+  const statusMap = {
+    'Printing': 'Currently Printing',
+    'Ready': 'Available for Print',
+    'Idle': 'Standing By',
+    'default': 'Status Unknown'
+  };
+  return statusMap[status as keyof typeof statusMap] || statusMap.default;
+};
 export default defineComponent({
   name: 'PrinterGrid',
   setup() {
