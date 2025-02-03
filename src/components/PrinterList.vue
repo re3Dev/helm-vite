@@ -6,6 +6,21 @@
         class="elevation-0 mt-4" color="background"
         style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
       >
+      <template v-if="isLoading">
+  <v-card
+    v-for="n in 12"
+    :key="n"
+    color="#181B20"
+    class="pa-3 floating-card"
+  >
+    <v-skeleton-loader
+      type="table-tbody"
+      :loading="true"
+    >
+    </v-skeleton-loader>
+  </v-card>
+</template>
+      <template v-else>
       <v-card
         v-for="printer in sortedPrinters"
         :key="printer.ip"
@@ -190,6 +205,7 @@
             </div>
           </v-card-text>
         </v-card>
+      </template>
       </v-sheet>
     </v-card>
   </v-container>
@@ -252,6 +268,7 @@ const stopPrint = (ip) => {
         }
         const data = await response.json();
         updatePrinters(data);
+        isLoading.value = false;
       } catch (error) {
         console.error('Failed to fetch devices:', error);
       }
@@ -305,7 +322,7 @@ const stopPrint = (ip) => {
   return filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath;
 };
 
-
+const isLoading = ref(true)
     onMounted(() => {
       fetchPrinters();
       fetchInterval = window.setInterval(fetchPrinters, 5000);
@@ -317,7 +334,7 @@ const stopPrint = (ip) => {
       }
     });
 
-    return { printers, sortedPrinters, selectedPrinters, toggleSelection, formatFileName };
+    return { printers, sortedPrinters, isLoading, selectedPrinters, toggleSelection, formatFileName };
   },
 });
 </script>
@@ -452,6 +469,9 @@ a:active {
 .v-btn .v-icon {
   margin-right: 2px !important;
   font-size: 16px !important;
+}
+.v-skeleton-loader {
+  border-radius: 8px;
 }
 </style>
 
