@@ -14,7 +14,7 @@
     class="pa-3 floating-card"
   >
     <v-skeleton-loader
-      type="table-tbody"
+      type="heading, divider, heading, list-item, subtitle, image"
       :loading="true"
     >
     </v-skeleton-loader>
@@ -149,10 +149,8 @@
             <div class="temp-reading">
               <v-icon 
                 :class="{
-                  'text-blue': printer.extruder_temperature < 50,
-                  'text-yellow': printer.extruder_temperature >= 50 && printer.extruder_temperature < 200,
-                  'text-orange': printer.extruder_temperature >= 200 && printer.extruder_temperature < 220,
-                  'text-red': printer.extruder_temperature >= 220
+                  'text-blue': printer.extruder_temperature < 60,
+                  'text-yellow': printer.extruder_temperature >= 60
                 }"
                 class="temp-icon">
                 mdi-printer-3d-nozzle-outline
@@ -163,10 +161,8 @@
             <div class="temp-reading">
               <v-icon 
                 :class="{
-                  'text-blue': printer.extruder1_temperature < 30,
-                  'text-yellow': printer.extruder1_temperature >= 50 && printer.extruder1_temperature < 200,
-                  'text-orange': printer.extruder1_temperature >= 200 && printer.extruder1_temperature < 220,
-                  'text-red': printer.extruder1_temperature >= 220
+                  'text-blue': printer.extruder1_temperature < 60,
+                  'text-yellow': printer.extruder1_temperature >= 60
                 }"
                 class="temp-icon">
                 mdi-printer-3d-nozzle-outline
@@ -177,10 +173,8 @@
             <div class="temp-reading" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
               <v-icon 
                 :class="{
-                  'text-blue': printer.extruder2_temperature < 50,
-                  'text-yellow': printer.extruder2_temperature >= 50 && printer.extruder2_temperature < 200,
-                  'text-orange': printer.extruder2_temperature >= 200 && printer.extruder2_temperature < 220,
-                  'text-red': printer.extruder2_temperature >= 220
+                  'text-blue': printer.extruder2_temperature < 60,
+                  'text-yellow': printer.extruder2_temperature >= 60
                 }"
                 class="temp-icon">
                 mdi-printer-3d-nozzle-outline
@@ -192,9 +186,7 @@
               <v-icon 
                 :class="{
                   'text-blue': printer.heater_bed_temperature < 40,
-                  'text-yellow': printer.heater_bed_temperature >= 40 && printer.heater_bed_temperature < 60,
-                  'text-orange': printer.heater_bed_temperature >= 60 && printer.heater_bed_temperature < 80,
-                  'text-red': printer.heater_bed_temperature >= 80
+                  'text-yellow': printer.heater_bed_temperature >= 40
                 }"
                 class="temp-icon">
                 mdi-radiator
