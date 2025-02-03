@@ -36,6 +36,12 @@
   </script>
   
   <style scoped>
+  @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+
+/* Apply Lato font to all elements */
+* {
+  font-family: 'Lato', sans-serif !important;
+}
   .animated-toolbar {
   background: linear-gradient(270deg, #000000, #1a1a1a, #2c2c2c, #1a1a1a, #000000);
   background-size: 1000% 100%;

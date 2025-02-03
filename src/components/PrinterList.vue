@@ -50,7 +50,7 @@
             <v-progress-linear
               v-if="printer.status === 'Printing'"
               :model-value="printer.print_progress * 100"
-              color="#FFD400"
+              color="#FFB300"
               :height="20"
               class="mt-2"
               :striped="true"
@@ -333,6 +333,12 @@ const isLoading = ref(true)
 
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+
+/* Apply Lato font to all elements */
+* {
+  font-family: 'Lato', sans-serif !important;
+}
 .floating-card {
   border-radius: 12px;
   box-shadow: 0px 4px 8px rgba(219, 219, 219, 0.788), 0px 2px 4px rgb(221, 221, 221);

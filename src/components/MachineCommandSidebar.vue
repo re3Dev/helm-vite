@@ -131,6 +131,12 @@ function toggleCollapse() {
    - Drawer content below
    - Resizer at the right edge
 */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+
+/* Apply Lato font to all elements */
+* {
+  font-family: 'Lato', sans-serif !important;
+}
 .sidebar-wrapper {
   position: relative;
   display: flex;
