@@ -60,6 +60,38 @@
                   </v-text>
                 </strong>
             </div>
+              <!-- Print Control Buttons -->
+              <div class="print-controls" v-if="selectedPrinters.includes(printer.ip)">
+  <template v-if="printer.status === 'Printing'">
+    <v-btn
+      color="warning"
+      variant="tonal"
+      class="mr-2"
+      @click="pausePrint(printer.ip)"
+    >
+      <v-icon>mdi-pause</v-icon>
+      Pause Print
+    </v-btn>
+    <v-btn
+      color="red"
+      variant="tonal"
+      @click="stopPrint(printer.ip)"
+    >
+      <v-icon>mdi-stop</v-icon>
+      Stop Print
+    </v-btn>
+  </template>
+  <template v-else>
+    <v-btn
+      color="success"
+      variant="tonal"
+      @click="startPrint(printer.ip)"
+    >
+      <v-icon>mdi-play</v-icon>
+      Start Print
+    </v-btn>
+  </template>
+</div>
             <br />
             <div>
               <strong>
@@ -198,6 +230,20 @@ export default defineComponent({
         return 0;
   });
 });
+const startPrint = (ip) => {
+  console.log('Start print:', ip);
+  // Add start print logic
+};
+
+const pausePrint = (ip) => {
+  console.log('Pause print:', ip);
+  // Add pause print logic
+};
+
+const stopPrint = (ip) => {
+  console.log('Stop print:', ip);
+  // Add stop print logic
+};
     const fetchPrinters = async () => {
       try {
         const response = await fetch('/api/devices');
@@ -387,6 +433,25 @@ a:active {
   100% {
     transform: translateX(-150%);  /* Removed pixel offset to scroll full width */
   }
+}
+.print-controls {
+  display: flex;
+  flex-direction: column;  /* Stack buttons vertically */
+  gap: 4px;
+  margin: 4px 0;
+  align-items: center;
+}
+
+.v-btn {
+  padding: 0 4px !important;
+  min-width: 30px !important;
+  font-size: 0.75rem !important;
+  height: 28px !important;
+}
+
+.v-btn .v-icon {
+  margin-right: 2px !important;
+  font-size: 16px !important;
 }
 </style>
 
