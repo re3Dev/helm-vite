@@ -23,7 +23,7 @@
           <v-divider color="cyan" :thickness="6"></v-divider>
           <v-card-text>
             <div class="printer-type">
-    <v-icon :color="printer.extruder2_temperature ? 'green' : 'blue'">
+    <v-icon :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
       {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
     </v-icon>
     <strong>
@@ -52,7 +52,7 @@
 
             </v-progress-linear>
             <br>
-            <div>
+            <div class="file-path-container">
             <strong>
                   <v-text style="color: white;">
                     {{ formatFileName(printer.file_path) }}
@@ -79,7 +79,7 @@
                   HOMED
                 </template>
                 <template v-else-if="printer.status === 'Idle'">
-                  <v-icon>mdi-printer-off</v-icon>
+                  <v-icon>mdi-engine-off</v-icon>
                   MOTORS DISENGAGED
                 </template>
                 <template v-else>
@@ -98,8 +98,8 @@
             </span>
             <br />
             <v-divider color="yellow" :thickness="2"></v-divider>
-            <br />
-            <div>
+            <div class="temperature-container">
+            <div class="temp-reading">
               <v-icon 
                 :class="{
                   'text-blue': printer.extruder_temperature < 50,
@@ -107,12 +107,13 @@
                   'text-orange': printer.extruder_temperature >= 200 && printer.extruder_temperature < 220,
                   'text-red': printer.extruder_temperature >= 220
                 }"
-                class="extruder_icon">
+                class="temp-icon">
                 mdi-printer-3d-nozzle-outline
               </v-icon>
-              <strong> (E0):</strong> {{ printer.extruder_temperature }}°C
+              <span class="temp-label">(E0):</span>
+              <span class="temp-value">{{ printer.extruder_temperature }}°C</span>
             </div>
-            <div>
+            <div class="temp-reading">
               <v-icon 
                 :class="{
                   'text-blue': printer.extruder1_temperature < 30,
@@ -120,12 +121,13 @@
                   'text-orange': printer.extruder1_temperature >= 200 && printer.extruder1_temperature < 220,
                   'text-red': printer.extruder1_temperature >= 220
                 }"
-                class="extruder1_icon">
+                class="temp-icon">
                 mdi-printer-3d-nozzle-outline
               </v-icon>
-              <strong> (E1):</strong> {{ printer.extruder1_temperature }}°C
+              <span class="temp-label">(E1):</span>
+              <span class="temp-value">{{ printer.extruder1_temperature }}°C</span>
             </div>
-            <div v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
+            <div class="temp-reading" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
               <v-icon 
                 :class="{
                   'text-blue': printer.extruder2_temperature < 50,
@@ -133,12 +135,13 @@
                   'text-orange': printer.extruder2_temperature >= 200 && printer.extruder2_temperature < 220,
                   'text-red': printer.extruder2_temperature >= 220
                 }"
-                class="extruder2_icon">
+                class="temp-icon">
                 mdi-printer-3d-nozzle-outline
               </v-icon>
-              <strong> (E2):</strong> {{ printer.extruder2_temperature }}°C
+              <span class="temp-label">(E2):</span>
+              <span class="temp-value">{{ printer.extruder2_temperature }}°C</span>
             </div>
-            <div>
+            <div class="temp-reading">
               <v-icon 
                 :class="{
                   'text-blue': printer.heater_bed_temperature < 40,
@@ -146,10 +149,12 @@
                   'text-orange': printer.heater_bed_temperature >= 60 && printer.heater_bed_temperature < 80,
                   'text-red': printer.heater_bed_temperature >= 80
                 }"
-                class="heater_bed_icon">
+                class="temp-icon">
                 mdi-radiator
               </v-icon>
-              <strong> (BED):</strong> {{ printer.heater_bed_temperature }}°C
+              <span class="temp-label">(BED):</span>
+              <span class="temp-value">{{ printer.heater_bed_temperature }}°C</span>
+            </div>
             </div>
           </v-card-text>
         </v-card>
@@ -330,6 +335,40 @@ a:active {
   padding: 8px 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: inline-block;
+}
+.temperature-container {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.temp-reading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.temp-icon {
+  font-size: 24px;
+}
+
+.temp-label {
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.temp-value {
+  color: #ffffff;
+  font-family: monospace;
+}
+.file-path-container {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 </style>
 
