@@ -53,7 +53,7 @@
             <br />
             <div>
               <strong>
-              
+                <div class="status-container">
                 <span  
                   :class="{
                     'text-yellow': printer.status === 'Printing',
@@ -62,18 +62,22 @@
                   }"
                 >
                 <template v-if="printer.status === 'Printing'">
+                  <v-icon>mdi-printer-3d-nozzle</v-icon>
                   PRINTING
                 </template>
                 <template v-else-if="printer.status === 'Ready'">
+                  <v-icon>mdi-printer-check</v-icon>
                   HOMED
                 </template>
                 <template v-else-if="printer.status === 'Idle'">
+                  <v-icon>mdi-printer-off</v-icon>
                   MOTORS DISENGAGED
                 </template>
                 <template v-else>
                   Status Unknown
                 </template>
                 </span>
+                </div>
               </strong>
             </div>
             <br />
@@ -272,6 +276,13 @@ a:active {
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 10px;
+}
+.status-container {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: inline-block;
 }
 </style>
 
