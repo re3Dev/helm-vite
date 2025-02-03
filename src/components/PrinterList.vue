@@ -50,7 +50,7 @@
             <v-progress-linear
               v-if="printer.status === 'Printing'"
               :model-value="printer.print_progress * 100"
-              color="#FFB300"
+              color="#FFBD00"
               :height="20"
               class="mt-2"
               :striped="true"
