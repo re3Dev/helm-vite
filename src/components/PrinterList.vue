@@ -22,6 +22,14 @@
           </v-divider>
           <v-divider color="cyan" :thickness="6"></v-divider>
           <v-card-text>
+            <div class="printer-type">
+    <v-icon :color="printer.extruder2_temperature ? 'green' : 'blue'">
+      {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
+    </v-icon>
+    <strong>
+      {{ printer.extruder2_temperature ? ' Pellet' : ' Filament' }}
+    </strong>
+  </div>
 
             <v-progress-linear
               :model-value="printer.print_progress * 100"
@@ -66,7 +74,7 @@
                   PRINTING
                 </template>
                 <template v-else-if="printer.status === 'Ready'">
-                  <v-icon>mdi-printer-check</v-icon>
+                  <v-icon>mdi-home</v-icon>
                   HOMED
                 </template>
                 <template v-else-if="printer.status === 'Idle'">
@@ -96,9 +104,10 @@
             <div>
               <v-icon color="red" class="extruder1_icon">mdi-thermometer</v-icon>
               <strong> (E1):</strong> {{ printer.extruder1_temperature }}°C</div>
-            <div>
+            <div v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
               <v-icon color="red" class="extruder2_icon">mdi-thermometer</v-icon>
-              <strong> (E2):</strong> {{ printer.extruder2_temperature }}°C</div>
+              <strong> (E2):</strong> {{ printer.extruder2_temperature }}°C
+            </div>
             <div>
               <v-icon color="yellow" class="heater_bed_icon">mdi-radiator</v-icon>
               <strong> (BED):</strong> {{ printer.heater_bed_temperature }}°C</div>
