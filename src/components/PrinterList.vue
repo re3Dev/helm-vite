@@ -326,7 +326,7 @@ const isLoading = ref(true)
       }
     });
 
-    return { printers, sortedPrinters, isLoading, selectedPrinters, toggleSelection, formatFileName };
+    return { printers, sortedPrinters, isLoading, selectedPrinters, startPrint, stopPrint, pausePrint, toggleSelection, formatFileName };
   },
 });
 </script>

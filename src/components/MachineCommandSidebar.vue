@@ -191,10 +191,10 @@ function toggleCollapse() {
   position: absolute;
   top: 0px; /* The same as .sidebar-header height */
   right: 0;
-  width: 2px;
+  width: 5px;
   height: calc(100%);
   cursor: col-resize;
-  background-color: #BCBEC0;
+  background-color: #1d1d1d;
   z-index: 9999;
 }
 
