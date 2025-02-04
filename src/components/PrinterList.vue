@@ -427,26 +427,19 @@ a:active {
 }
 .file-path-container {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  position: relative;
-  transition: transform 0.3s;
-}
-
-.file-path-container:hover {
   overflow: visible;
   text-overflow: unset;
-  animation: scrollText 3.5s linear forwards;
-  animation-delay: 0.2s;
+  max-width: 100%;
+  position: relative;
+  animation: scrollText 30s linear infinite;
 }
 
 @keyframes scrollText {
-  0% {
-    transform: translateX(0);
+  from {
+    transform: translateX(200%);
   }
-  100% {
-    transform: translateX(-150%);  /* Removed pixel offset to scroll full width */
+  to {
+    transform: translateX(-200%);
   }
 }
 .print-controls {
