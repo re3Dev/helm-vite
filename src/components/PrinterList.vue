@@ -1,10 +1,18 @@
 <template>
-  <v-container>
-    <v-card class="pa-4" color="background">
-      
+  <v-container fluid class="fill-height">
+        <!-- Add View Toggle at top -->
+        <v-btn-toggle v-model="viewType" mandatory class="mb-4">
+      <v-btn value="grid">
+        <v-icon>mdi-grid</v-icon>
+      </v-btn>
+      <v-btn value="list">
+        <v-icon>mdi-format-list-bulleted</v-icon>
+      </v-btn>
+    </v-btn-toggle>
+    <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
       <v-sheet
-        class="elevation-0 mt-4" color="background"
-        style="display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));"
+        class="grid-container"
+        color="background"
       >
       <template v-if="isLoading">
   <v-card
@@ -21,6 +29,7 @@
   </v-card>
 </template>
       <template v-else>
+
       <v-card
         v-for="printer in sortedPrinters"
         :key="printer.ip"
@@ -199,7 +208,53 @@
         </v-card>
       </template>
       </v-sheet>
-    </v-card>
+        </v-card>
+        <v-card v-else class="pa-4" color="background" width="100%">
+          <div class="table-container">
+          <v-table>
+          <thead>
+        <tr>
+          <th>Hostname</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Progress</th>
+          <th>Temperature</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="printer in sortedPrinters" :key="printer.ip"
+            :class="{ 'selected-row': selectedPrinters.includes(printer.ip) }"
+            @click="toggleSelection(printer.ip)">
+          <td>{{ printer.hostname }}</td>
+          <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
+          <td>{{ printer.status }}</td>
+          <td>
+            <v-progress-linear
+              v-if="printer.status === 'Printing'"
+              :model-value="printer.print_progress * 100"
+              color="#FFBD00"
+              height="20"
+              striped
+            ></v-progress-linear>
+          </td>
+          <td>
+            <span>E0: {{ printer.extruder_temperature }}°C</span>
+            <span v-if="printer.extruder2_temperature">E1: {{ printer.extruder2_temperature }}°C</span>
+            <span>Bed: {{ printer.heater_bed_temperature }}°C</span>
+          </td>
+          <td>
+            <v-btn-group v-if="selectedPrinters.includes(printer.ip)">
+              <v-btn icon small><v-icon>mdi-play</v-icon></v-btn>
+              <v-btn icon small><v-icon>mdi-stop</v-icon></v-btn>
+            </v-btn-group>
+          </td>
+        </tr>
+      </tbody>
+    </v-table>
+    </div>
+        </v-card>
+      
   </v-container>
 </template>
 
@@ -238,6 +293,11 @@ export default defineComponent({
         return 0;
   });
 });
+const viewType = ref('grid') // 'grid' or 'list'
+
+const toggleView = () => {
+  viewType.value = viewType.value === 'grid' ? 'list' : 'grid'
+}
 const startPrint = (ip) => {
   console.log('Start print:', ip);
   // Add start print logic
@@ -326,7 +386,7 @@ const isLoading = ref(true)
       }
     });
 
-    return { printers, sortedPrinters, isLoading, selectedPrinters, startPrint, stopPrint, pausePrint, toggleSelection, formatFileName };
+    return { viewType, toggleView, printers, sortedPrinters, isLoading, selectedPrinters, startPrint, stopPrint, pausePrint, toggleSelection, formatFileName };
   },
 });
 </script>
@@ -463,6 +523,32 @@ a:active {
 }
 .v-skeleton-loader {
   border-radius: 8px;
+}
+.selected-row {
+  background-color: #393B3E;
+  border: 2px solid #FFD400;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 24px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.v-table {
+  width: 100%;
+  min-width: 800px; /* Ensure minimum width for content */
+}
+
+.floating-card {
+  height: 100%;
 }
 </style>
 
