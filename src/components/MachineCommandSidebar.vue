@@ -46,7 +46,10 @@
             :key="cIdx"
           >
             <template v-if="cmd.type === 'button'">
-              <v-btn block @click="runCommand(cmd)">
+              <v-btn block @click="runCommand(cmd)"
+                :color="cmd.color"
+                :variant="cmd.variant">
+                <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
                 {{ cmd.label }}
               </v-btn>
             </template>

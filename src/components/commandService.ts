@@ -7,11 +7,14 @@ type CommandType = 'button' | 'number' | 'dropdown';
 interface CommandConfig {
   type: CommandType;
   label: string;
+  icon?: string;       // For buttons
   options?: string[];  // For dropdowns
   min?: number;        // For number inputs
   max?: number;        // For number inputs
   default?: number;    // For number inputs
   unit?: string;       // For number inputs (e.g., '°C', 'mm')
+  color?: string;      // For buttons
+  variant?: string;    // For buttons
 }
 export const commandGroups = ref([
   {
@@ -19,47 +22,10 @@ export const commandGroups = ref([
     icon: 'mdi-file',
     open: false,
     commands: [
-      { type: 'button', label: 'Print' },
-      { type: 'button', label: 'Pause' },
-      { type: 'button', label: 'Cancel' },
+      { type: 'button', label: 'Start Print', color: 'green', variant: 'tonal', icon: 'mdi-play' },
+      { type: 'button', label: 'Pause', color: 'yellow', variant: 'tonal', icon: 'mdi-pause' },
+      { type: 'button', label: 'Cancel', color: 'red', variant: 'outlined', icon: 'mdi-stop' },
       { type: 'dropdown', label: 'Select File' }
-    ]
-  },
-  {
-    title: 'Temperature',
-    icon: 'mdi-thermometer',
-    open: false,
-    commands: [
-      { 
-        type: 'number',
-        label: 'Set Bed Temperature',
-        min: 0,
-        max: 120,
-        default: 60,
-        unit: '°C'
-      },
-      {
-        type: 'number',
-        label: 'Set Extruder Temperature',
-        min: 0,
-        max: 300,
-        default: 200,
-        unit: '°C'
-      }
-    ]
-  },
-  {
-    title: 'Material',
-    icon: 'mdi-flask',
-    open: false,
-    commands: [
-      {
-        type: 'dropdown',
-        label: 'Select Material',
-        options: ['PLA', 'PETG', 'ABS', 'TPU']
-      },
-      { type: 'button', label: 'Load Filament' },
-      { type: 'button', label: 'Unload Filament' }
     ]
   },
   {
@@ -92,6 +58,59 @@ export const commandGroups = ref([
         default: 0,
         unit: 'mm'
       }
+    ]
+  },
+  {
+    title: 'Temperature',
+    icon: 'mdi-thermometer',
+    open: false,
+    commands: [
+      { 
+        type: 'number',
+        label: 'Set E0 Temp',
+        min: 0,
+        max: 120,
+        default: 60,
+        unit: '°C'
+      },
+      {
+        type: 'number',
+        label: 'Set E1 Temp',
+        min: 0,
+        max: 300,
+        default: 200,
+        unit: '°C'
+      },
+      {
+      type: 'number',
+      label: 'Set E2 Temp',
+      min: 0,
+      max: 300,
+      default: 200,
+      unit: '°C'
+      },
+      { 
+        type: 'number',
+        label: 'Set Bed Temp',
+        min: 0,
+        max: 120,
+        default: 60,
+        unit: '°C'
+      },
+    ]
+  },
+  {
+    title: 'Material',
+    icon: 'mdi-flask',
+    open: false,
+    commands: [
+      {
+        type: 'dropdown',
+        label: 'Select Material',
+        options: ['PLA', 'PETG', 'ABS', 'TPU']
+      },
+      { type: 'button', label: 'Load Filament' },
+      { type: 'button', label: 'Unload Filament' }
     ]
   }
 ]);
