@@ -177,6 +177,7 @@ function toggleCollapse() {
   position: relative !important;
   width: 100%;
   background-color: #242527;
+  top: 0 !important;
 }
 
 /* Ensure sidebar stays in place */
