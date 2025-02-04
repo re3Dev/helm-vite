@@ -65,7 +65,16 @@
                 @change="value => runCommand(cmd, value)"
               ></v-text-field>
             </template>
-
+            <template v-else-if="cmd.type === 'file-upload'">
+              <v-file-input
+              :label="cmd.label"
+              :accept="cmd.accept?.join(',')"
+              :color="cmd.color"
+              prepend-icon="mdi-upload"
+              class="file-upload-input"
+              @change="file => runCommand(cmd, file)"
+                ></v-file-input>
+              </template>
             <template v-else-if="cmd.type === 'dropdown'">
               <v-select
                 :label="cmd.label"
@@ -224,4 +233,5 @@ function toggleCollapse() {
   margin-right: -35px;
   opacity: 100;
 }
+
 </style>

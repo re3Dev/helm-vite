@@ -15,6 +15,7 @@ interface CommandConfig {
   unit?: string;       // For number inputs (e.g., '°C', 'mm')
   color?: string;      // For buttons
   variant?: string;    // For buttons
+  accept?: string[];     // For file inputs
 }
 export const commandGroups = ref([
   {
@@ -25,7 +26,15 @@ export const commandGroups = ref([
       { type: 'button', label: 'Start Print', color: 'green', variant: 'tonal', icon: 'mdi-play' },
       { type: 'button', label: 'Pause', color: 'yellow', variant: 'tonal', icon: 'mdi-pause' },
       { type: 'button', label: 'Cancel', color: 'red', variant: 'outlined', icon: 'mdi-stop' },
-      { type: 'dropdown', label: 'Select File' }
+      { type: 'dropdown', label: 'Select File' },
+      { 
+        type: 'file-upload',
+        label: 'Upload File',
+        icon: 'mdi-upload',
+        color: 'red',
+        variant: 'tonal',
+        accept: ['.gcode', '.txt']
+      }
     ]
   },
   {
