@@ -2,25 +2,97 @@ import { ref } from 'vue';
 import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
 import { commandValues } from '../store/commandValues'; // Import command mapping
 
-// Define command groups
+type CommandType = 'button' | 'number' | 'dropdown';
+
+interface CommandConfig {
+  type: CommandType;
+  label: string;
+  options?: string[];  // For dropdowns
+  min?: number;        // For number inputs
+  max?: number;        // For number inputs
+  default?: number;    // For number inputs
+  unit?: string;       // For number inputs (e.g., '°C', 'mm')
+}
 export const commandGroups = ref([
   {
-    title: 'Calibration',
-    icon: 'mdi-tools',
+    title: 'Print',
+    icon: 'mdi-file',
     open: false,
-    commands: ['Bed Level', 'Extruder Calibration']
+    commands: [
+      { type: 'button', label: 'Print' },
+      { type: 'button', label: 'Pause' },
+      { type: 'button', label: 'Cancel' },
+      { type: 'dropdown', label: 'Select File' }
+    ]
+  },
+  {
+    title: 'Temperature',
+    icon: 'mdi-thermometer',
+    open: false,
+    commands: [
+      { 
+        type: 'number',
+        label: 'Set Bed Temperature',
+        min: 0,
+        max: 120,
+        default: 60,
+        unit: '°C'
+      },
+      {
+        type: 'number',
+        label: 'Set Extruder Temperature',
+        min: 0,
+        max: 300,
+        default: 200,
+        unit: '°C'
+      }
+    ]
   },
   {
     title: 'Material',
     icon: 'mdi-flask',
     open: false,
-    commands: ['Load Filament', 'Unload Filament', 'Purge']
+    commands: [
+      {
+        type: 'dropdown',
+        label: 'Select Material',
+        options: ['PLA', 'PETG', 'ABS', 'TPU']
+      },
+      { type: 'button', label: 'Load Filament' },
+      { type: 'button', label: 'Unload Filament' }
+    ]
   },
   {
     title: 'Movement',
-    icon: 'mdi-robot',
+    icon: 'mdi-cursor-move',
     open: false,
-    commands: ['Home All Axes', 'Move X', 'Move Y', 'Move Z']
+    commands: [
+      { type: 'button', label: 'Home All Axes' },
+      {
+        type: 'number',
+        label: 'Move X',
+        min: -200,
+        max: 200,
+        default: 0,
+        unit: 'mm'
+      },
+      {
+        type: 'number',
+        label: 'Move Y',
+        min: -200,
+        max: 200,
+        default: 0,
+        unit: 'mm'
+      },
+      {
+        type: 'number',
+        label: 'Move Z',
+        min: 0,
+        max: 200,
+        default: 0,
+        unit: 'mm'
+      }
+    ]
   }
 ]);
 
@@ -31,7 +103,7 @@ export { selectedPrinters };
  * Logs output to the console for each selected printer.
  * @param command - The command to execute.
  */
-export const runCommand = (command: string) => {
+export const runCommand = (command: CommandConfig, value?: number | string) => {
   if (selectedPrinters.value.length === 0) {
     console.warn("No printers selected. Cannot execute command.");
     return;

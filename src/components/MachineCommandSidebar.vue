@@ -29,29 +29,53 @@
       style="width: 100%; border-right: 1px solid #ccc;"
       class="drawer-content"
     >
-      <v-expansion-panels multiple>
-        <v-expansion-panel
-          v-for="(group, gIdx) in groups"
-          :key="gIdx"
-        >
-          <v-expansion-panel-title>
-            {{ group.title }}
-          </v-expansion-panel-title>
+    <v-expansion-panels multiple>
+    <v-expansion-panel
+      v-for="(group, gIdx) in groups"
+      :key="gIdx"
+    >
+      <v-expansion-panel-title>
+        <v-icon color="yellow">{{ group.icon }}</v-icon>&nbsp;
+        {{ group.title }}
+      </v-expansion-panel-title>
 
-          <v-expansion-panel-text>
-            <v-list>
-              <v-list-item
-                v-for="(cmd, cIdx) in group.commands"
-                :key="cIdx"
-                @click="runCommand(cmd)"
-              >
-                <v-list-item-title>{{ cmd }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
-    </v-navigation-drawer>
+      <v-expansion-panel-text>
+        <v-list>
+          <v-list-item
+            v-for="(cmd, cIdx) in group.commands"
+            :key="cIdx"
+          >
+            <template v-if="cmd.type === 'button'">
+              <v-btn block @click="runCommand(cmd)">
+                {{ cmd.label }}
+              </v-btn>
+            </template>
+
+            <template v-else-if="cmd.type === 'number'">
+              <v-text-field
+                :label="cmd.label"
+                type="number"
+                :min="cmd.min"
+                :max="cmd.max"
+                :suffix="cmd.unit"
+                :value="cmd.default"
+                @change="value => runCommand(cmd, value)"
+              ></v-text-field>
+            </template>
+
+            <template v-else-if="cmd.type === 'dropdown'">
+              <v-select
+                :label="cmd.label"
+                :items="cmd.options"
+                @change="value => runCommand(cmd, value)"
+              ></v-select>
+            </template>
+          </v-list-item>
+        </v-list>
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+  </v-expansion-panels>
+</v-navigation-drawer>
 
     <!-- 3) The draggable resizer handle on the right edge -->
     <div
@@ -74,7 +98,7 @@ const props = defineProps({
 /** 
  * Sidebar width & collapse logic 
  */
-const sidebarWidth = ref(200)
+const sidebarWidth = ref(300)
 let isResizing = false
 
 // Remember the last expanded width before collapse
@@ -155,10 +179,6 @@ function toggleCollapse() {
   z-index: 1; /* so it sits above drawer content if needed */
 }
 
-/* 
-  Align items side by side: a title and a collapse button.
-  You can style these further or use a <v-toolbar> 
-*/
 .header-content {
   display: flex;
   align-items: center;
@@ -186,8 +206,6 @@ function toggleCollapse() {
   position: relative !important;
 }
 
-/* The resizer handle is placed on the right edge
-   below the header (so it doesn't overlap the top bar) */
 .resizer {
   position: absolute;
   top: 0px; /* The same as .sidebar-header height */
@@ -199,9 +217,6 @@ function toggleCollapse() {
   z-index: 9999;
 }
 
-/* Optionally style the collapse button. 
-   For example, you can give it a small margin, or change its color. 
-*/
 .collapse-btn {
   margin-right: -35px;
   opacity: 100;
