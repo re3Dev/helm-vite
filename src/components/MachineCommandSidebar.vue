@@ -1,6 +1,34 @@
 <template>
-  <div class="sidebar-wrapper" :style="{ width: sidebarWidth + 'px' }">
-    <v-navigation-drawer class="drawer-content">
+  <div
+    class="sidebar-wrapper"
+    :style="{ width: sidebarWidth + 'px' }"
+  >
+    <!-- 1) A Title Bar / Header at the top of the sidebar -->
+    <div class="sidebar-header" style="text-align: center;">Printer Management
+      <div class="header-content">
+        <!-- Your Sidebar Title -->
+        <span class="sidebar-title"></span>
+         
+        <!-- A button to collapse the sidebar -->
+        <v-btn
+          size="x-small"
+          icon="mdi-plus"
+          class="collapse-btn"
+          @click="toggleCollapse"
+          color="#181B20"
+        >
+          <v-icon color="primary">
+            {{ isCollapsed ? 'mdi-plus' : 'mdi-plus' }}
+          </v-icon>
+        </v-btn>
+      </div>
+    </div>
+
+    <!-- 2) The main drawer content (below the header) -->
+    <v-navigation-drawer
+      style="width: 100%; border-right: 1px solid #ccc;"
+      class="drawer-content"
+    >
       <v-expansion-panels multiple>
         <v-expansion-panel
           v-for="(group, gIdx) in groups"
@@ -25,7 +53,11 @@
       </v-expansion-panels>
     </v-navigation-drawer>
 
-    <div class="resizer" @mousedown.stop.prevent="startResize"></div>
+    <!-- 3) The draggable resizer handle on the right edge -->
+    <div
+      class="resizer"
+      @mousedown.stop.prevent="startResize"
+    ></div>
   </div>
 </template>
 
@@ -106,14 +138,34 @@ function toggleCollapse() {
   font-family: 'Lato', sans-serif !important;
 }
 .sidebar-wrapper {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  height: 100%;
-  border-right: 1px solid #ccc;
-  top: 0;
+  flex-direction: column; 
+  height: 100%; /* or adapt to your layout needs */
 }
 
+/* 
+  The top bar (title row).
+  We'll keep it at a fixed height (say 40px or 50px).
+*/
+.sidebar-header {
+  height: 30px;
+  background-color: #333131;
+  border-bottom: 1px solid #ccc;
+  z-index: 1; /* so it sits above drawer content if needed */
+}
 
+/* 
+  Align items side by side: a title and a collapse button.
+  You can style these further or use a <v-toolbar> 
+*/
+.header-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 0px; /* some horizontal padding */
+  justify-content: space-between; /* space between title + button */
+}
 
 .sidebar-title {
   font-weight: bold;
@@ -124,9 +176,7 @@ function toggleCollapse() {
   transform: none !important;
   position: relative !important;
   width: 100%;
-  background: rgba(97, 97, 97, 0.3);
-  margin: 8px 0;
-  top: 0 !important;
+  background-color: #242527;
 }
 
 /* Ensure sidebar stays in place */
@@ -151,5 +201,8 @@ function toggleCollapse() {
 /* Optionally style the collapse button. 
    For example, you can give it a small margin, or change its color. 
 */
-
+.collapse-btn {
+  margin-right: -35px;
+  opacity: 100;
+}
 </style>
