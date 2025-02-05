@@ -155,31 +155,33 @@
           
 
             <div class="temperature-container">
-            <div class="temp-reading">
-              <v-icon 
-                :class="{
-                  'text-blue': printer.extruder_temperature < 60,
-                  'text-yellow': printer.extruder_temperature >= 60
-                }"
-                class="temp-icon">
-                mdi-printer-3d-nozzle-outline
-              </v-icon>
-              <span class="temp-label">(E0):</span>
-              <span class="temp-value">{{ printer.extruder_temperature }}°C</span>
-            </div>
-            <div class="temp-reading">
-              <v-icon 
-                :class="{
-                  'text-blue': printer.extruder1_temperature < 60,
-                  'text-yellow': printer.extruder1_temperature >= 60
-                }"
-                class="temp-icon">
-                mdi-printer-3d-nozzle-outline
-              </v-icon>
-              <span class="temp-label">(E1):</span>
-              <span class="temp-value">{{ printer.extruder1_temperature }}°C</span>
-            </div>
-            <div class="temp-reading" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
+  <div class="extruder-temps" :class="{ 'horizontal': !printer.extruder2_temperature }">
+    <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+      <v-icon 
+        :class="{
+          'text-blue': printer.extruder_temperature < 60,
+          'text-yellow': printer.extruder_temperature >= 60
+        }"
+        class="temp-icon">
+        {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
+      </v-icon>
+      <span class="temp-label"></span>
+      <span class="temp-value">{{ printer.extruder_temperature }}°C</span>
+    </div>
+    <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+      <v-icon 
+        :class="{
+          'text-blue': printer.extruder1_temperature < 60,
+          'text-yellow': printer.extruder1_temperature >= 60
+        }"
+        class="temp-icon">
+        {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
+      </v-icon>
+      <span class="temp-label"></span>
+      <span class="temp-value">{{ printer.extruder1_temperature }}°C</span>
+    </div>
+  </div>
+            <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
               <v-icon 
                 :class="{
                   'text-blue': printer.extruder2_temperature < 60,
@@ -188,10 +190,10 @@
                 class="temp-icon">
                 mdi-printer-3d-nozzle-outline
               </v-icon>
-              <span class="temp-label">(E2):</span>
+              <span class="temp-label"></span>
               <span class="temp-value">{{ printer.extruder2_temperature }}°C</span>
             </div>
-            <div class="temp-reading">
+            <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
               <v-icon 
                 :class="{
                   'text-blue': printer.heater_bed_temperature < 40,
@@ -200,7 +202,7 @@
                 class="temp-icon">
                 mdi-radiator
               </v-icon>
-              <span class="temp-label">(BED):</span>
+              <span class="temp-label"></span>
               <span class="temp-value">{{ printer.heater_bed_temperature }}°C</span>
             </div>
             </div>
@@ -467,9 +469,9 @@ a:active {
 
 .temp-reading {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 4px;
 }
 
 .temp-icon {
@@ -480,10 +482,13 @@ a:active {
   font-weight: bold;
   color: #ffffff;
 }
-
+.temp-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .temp-value {
-  color: #ffffff;
-  font-family: monospace;
+  font-weight: bold;
 }
 .file-path-container {
   white-space: nowrap;
@@ -549,6 +554,20 @@ a:active {
 
 .floating-card {
   height: 100%;
+}
+.extruder-temps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extruder-temps.horizontal {
+  flex-direction: row;
+  gap: 16px;
+}
+.temp-reading.pellet {
+  flex-direction: row;
+  gap: 8px;
 }
 </style>
 
