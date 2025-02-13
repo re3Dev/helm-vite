@@ -166,7 +166,7 @@
         {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
       </v-icon>
       <span class="temp-label"></span>
-      <span class="temp-value">{{ printer.extruder_temperature }}°C</span>
+      <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
     </div>
     <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
       <v-icon 
@@ -178,7 +178,7 @@
         {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
       </v-icon>
       <span class="temp-label"></span>
-      <span class="temp-value">{{ printer.extruder1_temperature }}°C</span>
+      <span class="temp-value">{{ Math.round(printer.extruder1_temperature) }}°C</span>
     </div>
   </div>
             <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
@@ -191,7 +191,7 @@
                 mdi-printer-3d-nozzle-outline
               </v-icon>
               <span class="temp-label"></span>
-              <span class="temp-value">{{ printer.extruder2_temperature }}°C</span>
+              <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
             </div>
             <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
               <v-icon 
@@ -203,7 +203,7 @@
                 mdi-radiator
               </v-icon>
               <span class="temp-label"></span>
-              <span class="temp-value">{{ printer.heater_bed_temperature }}°C</span>
+              <span class="temp-value">{{ Math.round(printer.heater_bed_temperature) }}°C</span>
             </div>
             </div>
           </v-card-text>
@@ -462,7 +462,7 @@ a:active {
 .temperature-container {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px;
   margin: 8px 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -471,11 +471,16 @@ a:active {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2px;
+}
+.temp-reading.pellet {
+  flex-direction: row;
   gap: 4px;
+  align-items: center;
 }
 
 .temp-icon {
-  font-size: 24px;
+  font-size: 18px !important;
 }
 
 .temp-label {
@@ -488,8 +493,10 @@ a:active {
   gap: 4px;
 }
 .temp-value {
+  font-size: 0.9rem;
   font-weight: bold;
 }
+
 .file-path-container {
   white-space: nowrap;
   overflow: visible;
@@ -558,16 +565,13 @@ a:active {
 .extruder-temps {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .extruder-temps.horizontal {
   flex-direction: row;
-  gap: 16px;
+  gap: 12px;
 }
-.temp-reading.pellet {
-  flex-direction: row;
-  gap: 8px;
-}
+
 </style>
 
