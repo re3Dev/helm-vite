@@ -465,6 +465,11 @@ a:active {
   padding: 8px;
   margin: 8px 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 0; /* Remove gap between temperature readings */
 }
 
 .temp-reading {
@@ -472,11 +477,16 @@ a:active {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  margin: 0; /* Remove any margin */
+  padding: 2px 0; /* Add small vertical padding instead */
 }
+
 .temp-reading.pellet {
   flex-direction: row;
   gap: 4px;
   align-items: center;
+  justify-content: center;
+  padding: 1px 0; /* Reduce padding for pellet readings */
 }
 
 .temp-icon {
@@ -495,6 +505,20 @@ a:active {
 .temp-value {
   font-size: 0.9rem;
   font-weight: bold;
+}
+.extruder-temps {
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* Remove gap between extruder temps */
+  justify-content: center;
+  width: 100%;
+  align-items: center;
+}
+
+.extruder-temps.horizontal {
+  flex-direction: row;
+  gap: 12px;
+  justify-content: center;
 }
 
 .file-path-container {
@@ -562,16 +586,7 @@ a:active {
 .floating-card {
   height: 100%;
 }
-.extruder-temps {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
-.extruder-temps.horizontal {
-  flex-direction: row;
-  gap: 12px;
-}
 
 </style>
 
