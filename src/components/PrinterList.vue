@@ -57,7 +57,7 @@
   
 
             <v-progress-linear
-              v-if="printer.status === 'Printing'"
+              v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
               :model-value="printer.print_progress * 100"
               color="#FFBD00"
               :height="20"
@@ -77,7 +77,7 @@
 
             </v-progress-linear>
             <br>
-            <div class="file-path-container">
+            <div class="file-path-container" v-if="printer.state_message === 'Printer is ready'">
             <strong>
                   <v-text style="color: white;">
                     {{ formatFileName(printer.file_path) }}
@@ -122,12 +122,17 @@
                 <div class="status-container">
                 <span  
                   :class="{
-                    'text-yellow': printer.status === 'Printing',
+                    'text-yellow': printer.status === 'Printing' && printer.state_message === 'Printer is ready',
                     'text-green': printer.status === 'Ready',
                     'text-grey': printer.status === 'Idle',
+                    'text-red': printer.state_message !== 'Printer is ready',
                   }"
                 >
-                <template v-if="printer.status === 'Printing'">
+                <template v-if="printer.state_message !== 'Printer is ready'">
+                  <v-icon>mdi-alert-circle</v-icon>
+                  ERROR
+                </template>
+                <template v-else-if="printer.status === 'Printing'">
                   <v-icon>mdi-printer-3d-nozzle</v-icon>
                   PRINTING
                 </template>
@@ -233,14 +238,19 @@
     <td>{{ printer.status }}</td>
     <td>
       <v-progress-linear
-        v-if="printer.status === 'Printing'"
+        v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
         :model-value="printer.print_progress * 100"
         color="#FFBD00"
         height="20"
         striped
       ></v-progress-linear>
     </td>
-    <td class="text-truncate">{{ formatFileName(printer.file_path) }}</td>
+    
+      <td class="text-truncate">
+        <span v-if="printer.state_message === 'Printer is ready'">
+          {{ formatFileName(printer.file_path) }}
+        </span>
+      </td>
   </tr>
 </tbody>
     </v-table>
@@ -420,6 +430,9 @@ const isLoading = ref(true)
 
 .text-grey {
   color: grey;
+}
+.text-red {
+  color: red;
 }
 
 a:link,
