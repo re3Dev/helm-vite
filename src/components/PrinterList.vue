@@ -215,44 +215,34 @@
           <div class="table-container">
           <v-table>
           <thead>
-        <tr>
-          <th>Hostname</th>
-          <th>Type</th>
-          <th>Status</th>
-          <th>Progress</th>
-          <th>Temperature</th>
-          <th>Actions</th>
-        </tr>
+            <tr>
+              <th style="width: 20%">Hostname</th>
+              <th style="width: 15%">Type</th>
+              <th style="width: 15%">Status</th>
+              <th style="width: 15%">Progress</th>
+              <th style="width: 35%">Print File</th>
+            </tr>
       </thead>
       <tbody>
-        <tr v-for="printer in sortedPrinters" :key="printer.ip"
-            :class="{ 'selected-row': selectedPrinters.includes(printer.ip) }"
-            @click="toggleSelection(printer.ip)">
-          <td>{{ printer.hostname }}</td>
-          <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
-          <td>{{ printer.status }}</td>
-          <td>
-            <v-progress-linear
-              v-if="printer.status === 'Printing'"
-              :model-value="printer.print_progress * 100"
-              color="#FFBD00"
-              height="20"
-              striped
-            ></v-progress-linear>
-          </td>
-          <td>
-            <span>E0: {{ printer.extruder_temperature }}°C</span>
-            <span v-if="printer.extruder2_temperature">E1: {{ printer.extruder2_temperature }}°C</span>
-            <span>Bed: {{ printer.heater_bed_temperature }}°C</span>
-          </td>
-          <td>
-            <v-btn-group v-if="selectedPrinters.includes(printer.ip)">
-              <v-btn icon small><v-icon>mdi-play</v-icon></v-btn>
-              <v-btn icon small><v-icon>mdi-stop</v-icon></v-btn>
-            </v-btn-group>
-          </td>
-        </tr>
-      </tbody>
+  <tr v-for="printer in sortedPrinters" 
+      :key="printer.ip"
+      :class="{ 'selected-row': selectedPrinters.includes(printer.ip) }"
+      @click="toggleSelection(printer.ip)">
+    <td>{{ printer.hostname }}</td>
+    <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
+    <td>{{ printer.status }}</td>
+    <td>
+      <v-progress-linear
+        v-if="printer.status === 'Printing'"
+        :model-value="printer.print_progress * 100"
+        color="#FFBD00"
+        height="20"
+        striped
+      ></v-progress-linear>
+    </td>
+    <td class="text-truncate">{{ formatFileName(printer.file_path) }}</td>
+  </tr>
+</tbody>
     </v-table>
     </div>
         </v-card>
@@ -576,17 +566,30 @@ a:active {
 .table-container {
   width: 100%;
   overflow-x: auto;
+  margin-top: -16px; /* Reduce space after toggle buttons */
+}
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
 }
 
 .v-table {
   width: 100%;
-  min-width: 800px; /* Ensure minimum width for content */
+  min-width: 800px;
+  margin-top: 0;
 }
 
 .floating-card {
   height: 100%;
 }
-
+.v-container {
+  padding-top: 0; /* Remove top padding */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 </style>
 
