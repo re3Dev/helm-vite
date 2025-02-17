@@ -530,7 +530,7 @@ a:active {
   text-overflow: unset;
   max-width: 100%;
   position: relative;
-  animation: scrollText 30s linear infinite;
+  animation: scrollText 20s linear infinite;
 }
 
 @keyframes scrollText {
