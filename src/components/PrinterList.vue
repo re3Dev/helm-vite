@@ -243,7 +243,16 @@
         color="#FFBD00"
         height="20"
         striped
-      ></v-progress-linear>
+        bg-color="#BCBEC0"
+        bg-opacity="0.8"
+      >
+      <bold>
+                <strong>
+                  <v-text style="color: black;">
+                    {{ (printer.print_progress * 100).toFixed(0) }}%
+                  </v-text>
+                </strong>
+              </bold></v-progress-linear>
     </td>
     
       <td class="text-truncate">
