@@ -60,9 +60,9 @@
     <v-icon :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
       {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
     </v-icon>
-    <strong>
-      {{ printer.extruder2_temperature ? ' Pellet' : ' Filament' }}
-    </strong>
+    <span style="margin-left: 8px;">
+      <strong>{{ printer.modelType || 'Unknown Model' }}</strong>
+    </span>
   </div>
   
 
@@ -298,6 +298,7 @@ interface Printer {
   state_message: string;
   file_path: string;
   thumbnail_url: string;
+  modelType?: string; // Added for dynamic model detection
 }
 
 
@@ -319,17 +320,17 @@ const viewType = ref('grid') // 'grid' or 'list'
 const toggleView = () => {
   viewType.value = viewType.value === 'grid' ? 'list' : 'grid'
 }
-const startPrint = (ip) => {
+const startPrint = (ip: string) => {
   console.log('Start print:', ip);
   // Add start print logic
 };
 
-const pausePrint = (ip) => {
+const pausePrint = (ip: string) => {
   console.log('Pause print:', ip);
   // Add pause print logic
 };
 
-const stopPrint = (ip) => {
+const stopPrint = (ip: string) => {
   console.log('Stop print:', ip);
   // Add stop print logic
 };
@@ -347,17 +348,48 @@ const stopPrint = (ip) => {
       }
     };
 
-    const updatePrinters = (newData: Printer[]) => {
+    const updatePrinters = async (newData: Printer[]) => {
       const updatedPrinters = [...printers.value];
 
-      newData.forEach((device) => {
+      // Helper to fetch and parse model type from .master.cfg
+      async function fetchModelType(ip: string): Promise<string | null> {
+        try {
+          const res = await fetch(`http://${ip}/server/files/config/.master.cfg`);
+          if (!res.ok) return null;
+          const text = await res.text();
+          // Only use the first two lines
+          const lines = text.split(/\r?\n/).slice(0, 2);
+          const firstLine = lines[0]?.trim(); // e.g. [fff] or [fgf]
+          const secondLine = lines[1]?.trim(); // e.g. platform_type=regular
+          const platformMatch = secondLine?.match(/platform_type\s*=\s*(\w+)/i);
+          const platform = platformMatch ? platformMatch[1].toLowerCase() : '';
+          let model = '';
+          if (firstLine === '[fff]') {
+            if (platform === 'regular') model = 'Gigabot 4';
+            else if (platform === 'xlt') model = 'Gigabot 4 XLT';
+            else if (platform === 'terabot') model = 'Terabot 4';
+          } else if (firstLine === '[fgf]') {
+            if (platform === 'regular') model = 'GigabotX 2';
+            else if (platform === 'xlt') model = 'GigabotX 2 XLT';
+            else if (platform === 'terabot') model = 'TerabotX 2';
+          }
+          return model || `${firstLine || ''} ${platform}`.trim() || null;
+        } catch (e) {
+          console.warn(`Failed to fetch model type for ${ip}:`, e);
+          return null;
+        }
+      }
+
+      for (const device of newData) {
         const index = updatedPrinters.findIndex((printer) => printer.mac === device.mac);
         if (index !== -1) {
           updatedPrinters[index] = { ...updatedPrinters[index], ...device };
         } else {
-          updatedPrinters.push(device);
+          // New printer: fetch model type
+          const modelType = await fetchModelType(device.ip);
+          updatedPrinters.push({ ...device, modelType: modelType ?? undefined });
         }
-      });
+      }
 
       const uniquePrinters = updatedPrinters.reduce((acc: Printer[], current) => {
         const isDuplicate = acc.some((printer) => printer.hostname === current.hostname);
