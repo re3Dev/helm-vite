@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
 import { commandValues } from '../store/commandValues'; // Import command mapping
 
-type CommandType = 'button' | 'number' | 'dropdown';
+type CommandType = 'button' | 'number' | 'dropdown' | 'gcode-input';
 
 interface CommandConfig {
   type: CommandType;
@@ -34,6 +34,20 @@ export const commandGroups = ref([
         color: 'red',
         variant: 'tonal',
         accept: ['.gcode', '.txt']
+      },
+      {
+        type: 'button',
+        label: 'Check Endstops',
+        color: 'blue',
+        variant: 'tonal',
+        icon: 'mdi-gesture-tap-button',
+      },
+      {
+        type: 'gcode-input',
+        label: 'G-code Terminal',
+        icon: 'mdi-console',
+        color: 'grey',
+        variant: 'outlined',
       }
     ]
   },
@@ -127,20 +141,57 @@ export const commandGroups = ref([
 export { selectedPrinters };
 
 /**
- * Function to simulate running a command with mapped values.
- * Logs output to the console for each selected printer.
- * @param command - The command to execute.
+ * Command-to-G-code mapping for direct API calls
  */
-export const runCommand = (command: CommandConfig, value?: number | string) => {
+const gcodeCommandMap: Record<string, string> = {
+  'Check Endstops': 'M119',
+  'Home All Axes': 'G28',
+  // Add more mappings as needed
+};
+
+export const runCommand = async (command: CommandConfig, value?: number | string) => {
   if (selectedPrinters.value.length === 0) {
     console.warn("No printers selected. Cannot execute command.");
     return;
   }
 
-  // Get the mapped value for the command
-  const commandValue = commandValues[command] || 'UNKNOWN_COMMAND';
+  // Handle arbitrary G-code input
+  if (command.type === 'gcode-input' && typeof value === 'string' && value.trim() !== '') {
+    await Promise.all(selectedPrinters.value.map(async (ip) => {
+      try {
+        await fetch(`http://${ip}/printer/gcode/script?script=${encodeURIComponent(value)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log(`G-code (${value}) sent to printer ${ip}`);
+      } catch (e) {
+        // Ignore errors (CORS, etc.)
+        console.warn(`Error sending G-code (${value}) to printer ${ip}:`, e);
+      }
+    }));
+    return;
+  }
 
-  // Iterate over each selected printer and log the message individually
+  // If the command is mapped to a G-code, send it to all selected printers
+  const gcode = gcodeCommandMap[command.label];
+  if (gcode) {
+    await Promise.all(selectedPrinters.value.map(async (ip) => {
+      try {
+        await fetch(`http://${ip}/printer/gcode/script?script=${encodeURIComponent(gcode)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log(`${command.label} (${gcode}) sent to printer ${ip}`);
+      } catch (e) {
+        // Ignore errors (CORS, etc.)
+        console.warn(`Error sending ${command.label} to printer ${ip}:`, e);
+      }
+    }));
+    return;
+  }
+
+  // Fallback: log the mapped value if not a G-code command
+  const commandValue = commandValues[command] || 'UNKNOWN_COMMAND';
   selectedPrinters.value.forEach((printerIp) => {
     console.log(`This command is being run: ${commandValue} for the device ${printerIp}`);
   });

@@ -82,6 +82,27 @@
                 @change="value => runCommand(cmd, value)"
               ></v-select>
             </template>
+            <template v-else-if="cmd.type === 'gcode-input'">
+              <v-text-field
+                v-model="gcodeInputs[gIdx]"
+                :label="cmd.label"
+                placeholder="Enter G-code (e.g. M119)"
+                @keyup.enter="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                hide-details
+                dense
+                class="gcode-input-box"
+                style="width: 100%; max-width: 100%; display: block; margin-bottom: 4px;"
+              />
+              <v-btn
+                block
+                size="small"
+                color="grey"
+                variant="outlined"
+                @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+              >
+                Send
+              </v-btn>
+            </template>
           </v-list-item>
         </v-list>
       </v-expansion-panel-text>
@@ -116,6 +137,9 @@ let isResizing = false
 // Remember the last expanded width before collapse
 let lastWidth = sidebarWidth.value
 const isCollapsed = ref(false)
+
+// G-code input tracking per group
+const gcodeInputs = ref({})
 
 // Start drag
 function startResize() {

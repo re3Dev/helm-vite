@@ -9,6 +9,16 @@
         <v-icon>mdi-format-list-bulleted</v-icon>
       </v-btn>
     </v-btn-toggle>
+    <!-- Firmware Restart Button -->
+    <v-btn
+      color="red"
+      class="mb-4"
+      :disabled="selectedPrinters.length === 0"
+      @click="restartFirmware"
+    >
+      <v-icon left>mdi-restart</v-icon>
+      Firmware Restart (Selected)
+    </v-btn>
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
       <v-sheet
         class="grid-container"
@@ -397,7 +407,31 @@ const isLoading = ref(true)
       }
     });
 
-    return { viewType, toggleView, printers, sortedPrinters, isLoading, selectedPrinters, startPrint, stopPrint, pausePrint, toggleSelection, formatFileName };
+    // Firmware Restart function (now sends M119 as a test, direct to printer IP)
+    const restartFirmware = async () => {
+      if (selectedPrinters.value.length === 0) return;
+      const results = await Promise.all(selectedPrinters.value.map(async (ip) => {
+        try {
+          const res = await fetch(`http://${ip}/printer/gcode/script?script=M119`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (!res.ok) throw new Error(`Failed for ${ip}`);
+          return { ip, success: true };
+        } catch (e) {
+          return { ip, success: false };
+        }
+      }));
+      // Optionally show a summary
+      const failed = results.filter(r => !r.success);
+      if (failed.length === 0) {
+        alert('M119 sent to all selected printers!');
+      } else {
+        alert('Some printers failed: ' + failed.map(f => f.ip).join(', '));
+      }
+    };
+
+    return { viewType, toggleView, printers, sortedPrinters, isLoading, selectedPrinters, startPrint, stopPrint, pausePrint, toggleSelection, formatFileName, restartFirmware };
   },
 });
 </script>
