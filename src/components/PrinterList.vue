@@ -87,12 +87,12 @@
 
             </v-progress-linear>
             <br>
-            <div class="file-path-container" v-if="printer.state_message === 'Printer is ready'">
-            <strong>
-                  <v-text style="color: white;">
-                    {{ formatFileName(printer.file_path) }}
-                  </v-text>
-                </strong>
+            <div class="file-path-container">
+              <strong>
+                <v-text style="color: white;">
+                  {{ printer.state_message === 'Printer is ready' ? formatFileName(printer.file_path) : 'Not Printing' }}
+                </v-text>
+              </strong>
             </div>
               <!-- Print Control Buttons -->
               <div class="print-controls" v-if="selectedPrinters.includes(printer.ip)">
@@ -139,8 +139,8 @@
                   }"
                 >
                 <template v-if="printer.state_message !== 'Printer is ready'">
-                  <v-icon>mdi-alert-circle</v-icon>
-                  ERROR
+                  <v-icon class="text-red">mdi-alert-circle</v-icon>
+                  <span class="text-red">ERROR</span>
                 </template>
                 <template v-else-if="printer.status === 'Printing'">
                   <v-icon>mdi-printer-3d-nozzle</v-icon>
@@ -161,7 +161,7 @@
                 </div>
               </strong>
             </div>
-            <div class="status-container" v-if="printer.state_message !== 'Printer is ready'">
+            <div class="status-container" v-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)">
               <span class="text-red">
               <v-icon>mdi-alert-circle</v-icon>
               {{ printer.state_message }}
