@@ -16,6 +16,7 @@ interface CommandConfig {
   color?: string;      // For buttons
   variant?: string;    // For buttons
   accept?: string[];     // For file inputs
+  move?: { axis: 'X' | 'Y' | 'Z', value: number }; // For movement commands
 }
 export const commandGroups = ref([
   {
@@ -54,31 +55,20 @@ export const commandGroups = ref([
     icon: 'mdi-cursor-move',
     open: false,
     commands: [
-      { type: 'button', label: 'Home All Axes' },
-      {
-        type: 'number',
-        label: 'Move X',
-        min: -200,
-        max: 200,
-        default: 0,
-        unit: 'mm'
-      },
-      {
-        type: 'number',
-        label: 'Move Y',
-        min: -200,
-        max: 200,
-        default: 0,
-        unit: 'mm'
-      },
-      {
-        type: 'number',
-        label: 'Move Z',
-        min: 0,
-        max: 200,
-        default: 0,
-        unit: 'mm'
-      }
+      // Step size selector buttons (above the grid)
+      { type: 'button', label: '100mm', color: 'grey', variant: 'tonal', stepSize: 100 },
+      { type: 'button', label: '10mm', color: 'grey', variant: 'tonal', stepSize: 10 },
+      { type: 'button', label: '1mm', color: 'grey', variant: 'tonal', stepSize: 1 },
+      // 3x3 grid: Diagonals included for full movement control
+      { type: 'button', label: '', icon: 'mdi-arrow-top-left', color: 'grey', variant: 'outlined', gridPos: [0,0], move: { axis: 'XY', value: [ -10, 10 ] } },
+      { type: 'button', label: '', icon: 'mdi-arrow-up', color: 'grey', variant: 'outlined', gridPos: [0,1], move: { axis: 'Y', value: 10 } },
+      { type: 'button', label: '', icon: 'mdi-arrow-top-right', color: 'grey', variant: 'outlined', gridPos: [0,2], move: { axis: 'XY', value: [ 10, 10 ] } },
+      { type: 'button', label: '', icon: 'mdi-arrow-left', color: 'grey', variant: 'outlined', gridPos: [1,0], move: { axis: 'X', value: -10 } },
+      { type: 'button', label: 'Home', icon: 'mdi-home', color: 'blue', variant: 'tonal', gridPos: [1,1] },
+      { type: 'button', label: '', icon: 'mdi-arrow-right', color: 'grey', variant: 'outlined', gridPos: [1,2], move: { axis: 'X', value: 10 } },
+      { type: 'button', label: '', icon: 'mdi-arrow-bottom-left', color: 'grey', variant: 'outlined', gridPos: [2,0], move: { axis: 'XY', value: [ -10, -10 ] } },
+      { type: 'button', label: '', icon: 'mdi-arrow-down', color: 'grey', variant: 'outlined', gridPos: [2,1], move: { axis: 'Y', value: -10 } },
+      { type: 'button', label: '', icon: 'mdi-arrow-bottom-right', color: 'grey', variant: 'outlined', gridPos: [2,2], move: { axis: 'XY', value: [ 10, -10 ] } },
     ]
   },
   {
@@ -138,6 +128,10 @@ export const commandGroups = ref([
 
 export { selectedPrinters };
 
+// Step size toggle state
+export const stepSizes = [100, 10, 1];
+export const selectedStepSize = ref(10);
+
 /**
  * Command-to-G-code mapping for direct API calls
  */
@@ -189,7 +183,7 @@ export const runCommand = async (command: CommandConfig, value?: number | string
   }
 
   // Fallback: log the mapped value if not a G-code command
-  const commandValue = commandValues[command] || 'UNKNOWN_COMMAND';
+  const commandValue = commandValues[command.label] || 'UNKNOWN_COMMAND';
   selectedPrinters.value.forEach((printerIp) => {
     console.log(`This command is being run: ${commandValue} for the device ${printerIp}`);
   });

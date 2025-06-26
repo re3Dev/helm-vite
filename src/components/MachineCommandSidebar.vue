@@ -40,71 +40,88 @@
       </v-expansion-panel-title>
 
       <v-expansion-panel-text>
-        <v-list>
-          <v-list-item
-            v-for="(cmd, cIdx) in group.commands"
-            :key="cIdx"
-          >
-            <template v-if="cmd.type === 'button'">
-              <v-btn block @click="runCommand(cmd)"
-                :color="cmd.color"
-                :variant="cmd.variant">
-                <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
-                {{ cmd.label }}
-              </v-btn>
-            </template>
-
-            <template v-else-if="cmd.type === 'number'">
-              <v-text-field
-                :label="cmd.label"
-                type="number"
-                :min="cmd.min"
-                :max="cmd.max"
-                :suffix="cmd.unit"
-                :value="cmd.default"
-                @change="value => runCommand(cmd, value)"
-              ></v-text-field>
-            </template>
-            <template v-else-if="cmd.type === 'file-upload'">
-              <v-file-input
-              :label="cmd.label"
-              :accept="cmd.accept?.join(',')"
+        <template v-if="group.title === 'Movement'">
+          <div class="movement-grid">
+            <v-btn
+              v-for="cmd in group.commands"
+              :key="cmd.label"
               :color="cmd.color"
-              prepend-icon="mdi-upload"
-              class="file-upload-input"
-              @change="file => runCommand(cmd, file)"
-                ></v-file-input>
+              :variant="cmd.variant"
+              class="movement-btn"
+              @click="runCommand(cmd)"
+            >
+              <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+              <span>{{ cmd.label }}</span>
+            </v-btn>
+          </div>
+        </template>
+        <template v-else>
+          <v-list>
+            <v-list-item
+              v-for="(cmd, cIdx) in group.commands"
+              :key="cIdx"
+            >
+              <template v-if="cmd.type === 'button'">
+                <v-btn block @click="runCommand(cmd)"
+                  :color="cmd.color"
+                  :variant="cmd.variant">
+                  <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+                  {{ cmd.label }}
+                </v-btn>
               </template>
-            <template v-else-if="cmd.type === 'dropdown'">
-              <v-select
+
+              <template v-else-if="cmd.type === 'number'">
+                <v-text-field
+                  :label="cmd.label"
+                  type="number"
+                  :min="cmd.min"
+                  :max="cmd.max"
+                  :suffix="cmd.unit"
+                  :value="cmd.default"
+                  @change="value => runCommand(cmd, value)"
+                ></v-text-field>
+              </template>
+              <template v-else-if="cmd.type === 'file-upload'">
+                <v-file-input
                 :label="cmd.label"
-                :items="cmd.options"
-                @change="value => runCommand(cmd, value)"
-              ></v-select>
-            </template>
-            <template v-else-if="cmd.type === 'gcode-input'">
-              <v-text-field
-                v-model="gcodeInputs[gIdx]"
-                :label="cmd.label"
-                placeholder="Enter G-code (e.g. M119)"
-                @keyup.enter="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
-                hide-details
-                dense
-                class="gcode-input-box"
-                style="width: 100%; max-width: 100%; display: block; margin-bottom: 4px;"
-              />
-              <v-btn
-                block
-                size="small"
-                color="grey"
-                variant="outlined"
-                @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
-              >
-                Send
-              </v-btn>
-            </template>
-          </v-list-item>
-        </v-list>
+                :accept="cmd.accept?.join(',')"
+                :color="cmd.color"
+                prepend-icon="mdi-upload"
+                class="file-upload-input"
+                @change="file => runCommand(cmd, file)"
+                  ></v-file-input>
+                </template>
+              <template v-else-if="cmd.type === 'dropdown'">
+                <v-select
+                  :label="cmd.label"
+                  :items="cmd.options"
+                  @change="value => runCommand(cmd, value)"
+                ></v-select>
+              </template>
+              <template v-else-if="cmd.type === 'gcode-input'">
+                <v-text-field
+                  v-model="gcodeInputs[gIdx]"
+                  :label="cmd.label"
+                  placeholder="Enter G-code (e.g. M119)"
+                  @keyup.enter="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                  hide-details
+                  dense
+                  class="gcode-input-box"
+                  style="width: 100%; max-width: 100%; display: block; margin-bottom: 4px;"
+                />
+                <v-btn
+                  block
+                  size="small"
+                  color="grey"
+                  variant="outlined"
+                  @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                >
+                  Send
+                </v-btn>
+              </template>
+            </v-list-item>
+          </v-list>
+        </template>
       </v-expansion-panel-text>
     </v-expansion-panel>
   </v-expansion-panels>
@@ -258,4 +275,20 @@ function toggleCollapse() {
   opacity: 100;
 }
 
+.movement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.movement-btn {
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
+}
 </style>
