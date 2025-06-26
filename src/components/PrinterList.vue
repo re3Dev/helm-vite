@@ -9,16 +9,38 @@
         <v-icon>mdi-format-list-bulleted</v-icon>
       </v-btn>
     </v-btn-toggle>
-    <!-- Firmware Restart Button -->
-    <v-btn
-      color="red"
-      class="mb-4"
-      :disabled="selectedPrinters.length === 0"
-      @click="restartFirmware"
-    >
-      <v-icon left>mdi-restart</v-icon>
-      Firmware Restart (Selected)
-    </v-btn>
+    <!-- Firmware Restart Button and Print Controls Row -->
+    <div class="top-controls-row">
+      <v-btn
+        color="red"
+        class="mb-4"
+        :disabled="selectedPrinters.length === 0"
+        @click="restartFirmware"
+      >
+        <v-icon left>mdi-restart</v-icon>
+        Firmware Restart (Selected)
+      </v-btn>
+      <v-btn
+        icon
+        color="yellow"
+        variant="tonal"
+        class="ml-2"
+        @click="pausePrint(selectedPrinters[0])"
+        :disabled="selectedPrinters.length === 0"
+      >
+        <v-icon>mdi-pause</v-icon>
+      </v-btn>
+      <v-btn
+        icon
+        color="red"
+        variant="outlined"
+        class="ml-1"
+        @click="stopPrint(selectedPrinters[0])"
+        :disabled="selectedPrinters.length === 0"
+      >
+        <v-icon>mdi-stop</v-icon>
+      </v-btn>
+    </div>
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
       <v-sheet
         class="grid-container"
@@ -678,6 +700,10 @@ a:active {
   flex-direction: column;
   gap: 16px;
 }
-
+.top-controls-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
 </style>
 

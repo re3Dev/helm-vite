@@ -24,8 +24,6 @@ export const commandGroups = ref([
     open: false,
     commands: [
       { type: 'button', label: 'Start Print', color: 'green', variant: 'tonal', icon: 'mdi-play' },
-      { type: 'button', label: 'Pause', color: 'yellow', variant: 'tonal', icon: 'mdi-pause' },
-      { type: 'button', label: 'Cancel', color: 'red', variant: 'outlined', icon: 'mdi-stop' },
       { type: 'dropdown', label: 'Select File' },
       { 
         type: 'file-upload',
