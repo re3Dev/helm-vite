@@ -4,9 +4,9 @@
         <v-app-bar app dark class="animated-toolbar">
           &ensp;&ensp;<img src="/src/assets/re3D Logo White.png" width="40.9px" height="47.5px">
       <v-toolbar-title>HELM</v-toolbar-title>
-
-      <!-- Optionally add other elements, e.g. a user menu, buttons, etc. -->
       <v-spacer />
+      <v-btn text to="/" class="nav-btn">Dashboard</v-btn>
+      <v-btn text to="/analytics" class="nav-btn">Analytics</v-btn>
       <v-btn icon>
         <v-icon color="primary">mdi-account</v-icon>
       </v-btn>
@@ -16,7 +16,7 @@
         <!-- Our resizable + expandable sidebar -->
         <MachineCommandSidebar :groups="commandGroups" />
   
-        <!-- Some placeholder main content on the right -->
+        <!-- Main content routed -->
         <div class="main-content">
           <PrinterList />
         </div>
@@ -28,11 +28,9 @@
   <script setup>
   import { ref } from 'vue'
   import MachineCommandSidebar from './MachineCommandSidebar.vue' 
-  import PrinterList from './PrinterList.vue';
   import { commandGroups } from './commandService.ts';
-  // Adjust path if needed
-  
-
+  import PrinterList from './PrinterList.vue' // Import PrinterList component
+  // No need to import PrinterList here
   </script>
   
   <style scoped>
@@ -66,5 +64,10 @@
     display: flex;
     height: 100%;
   }
+  .nav-btn {
+    color: #fff;
+    font-weight: bold;
+    text-transform: none;
+    margin-right: 8px;
+  }
   </style>
-  

@@ -2,6 +2,9 @@
   <v-app-bar app color="secondary" dark>
     <v-toolbar-title>Printer Fleet Manager</v-toolbar-title>
     <v-spacer></v-spacer>
+    <v-btn icon to="/analytics">
+      <v-icon>mdi-chart-bar</v-icon>
+    </v-btn>
     <v-btn icon>
       <v-icon>mdi-cog</v-icon>
     </v-btn>

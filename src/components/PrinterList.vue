@@ -84,6 +84,10 @@
     </v-icon>
     <span style="margin-left: 8px;">
       <strong>{{ printer.modelType || 'Unknown Model' }}</strong>
+      <br />
+      <span class="printer-ip">
+        <v-icon small color="green" style="vertical-align: middle; margin-right: 4px;">mdi-wifi</v-icon>{{ printer.ip }}
+      </span>
     </span>
   </div>
   
