@@ -312,8 +312,19 @@ def get_devices():
     logger.info("Printers found: %d", len(devices_list))
     return jsonify(devices_list)
 
+def pick_port(host="0.0.0.0", preferred=5000):
+    for p in [preferred, 5050, 8000, 8080, 0]:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind((host, p))
+            return s.getsockname()[1]
+        except OSError:
+            continue
+        finally:
+            s.close()
+    return preferred
 
 if __name__ == "__main__":
-    # Note: debug=False to reduce reloader weirdness on Windows.
-    # If you want live reload, set debug=True, but ensure you aren't running duplicate processes.
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    host = "0.0.0.0"
+    port = pick_port(host)
+    app.run(host=host, port=port, debug=False)
