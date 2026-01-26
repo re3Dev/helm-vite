@@ -84,7 +84,7 @@ export const commandGroups = ref<
       { type: 'button', label: '', icon: 'mdi-arrow-top-right', color: 'grey', variant: 'outlined', gridPos: [0, 2], move: { axis: 'XY', dir: [1, 1] } },
 
       { type: 'button', label: '', icon: 'mdi-arrow-left', color: 'grey', variant: 'outlined', gridPos: [1, 0], move: { axis: 'X', dir: -1 } },
-      { type: 'button', label: 'Home', icon: 'mdi-home', color: 'blue', variant: 'tonal', gridPos: [1, 1] },
+      { type: 'button', label: 'Home All Axes', icon: 'mdi-home', color: 'blue', variant: 'tonal', gridPos: [1, 1] },
       { type: 'button', label: '', icon: 'mdi-arrow-right', color: 'grey', variant: 'outlined', gridPos: [1, 2], move: { axis: 'X', dir: 1 } },
 
       { type: 'button', label: '', icon: 'mdi-arrow-bottom-left', color: 'grey', variant: 'outlined', gridPos: [2, 0], move: { axis: 'XY', dir: [-1, -1] } },
