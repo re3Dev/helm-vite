@@ -357,6 +357,7 @@ type Printer = {
   hostname: string;
   ip: string;
   status: string;
+  base_url: string; 
   state_message?: string;
   print_progress?: number;
   file_path?: string;
@@ -558,14 +559,32 @@ const fetchPrinters = async () => {
 const fetchMetrics = async () => {
   loadingMetrics.value = true;
   try {
-    // matches your separate report project
-    const res = await fetch('/cgi-bin/get_print_history_metrics.sh', { cache: 'no-store' });
-    if (!res.ok) throw new Error(`metrics: ${res.status}`);
+    // Ensure printers are loaded first (so we have base_url list)
+    if (!printers.value.length) {
+      await fetchPrinters();
+    }
+
+    const res = await fetch('/api/history/aggregate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({
+        printers: printers.value.map(p => ({
+          hostname: p.hostname,
+          ip: p.ip,
+          base_url: (p as any).base_url, // make sure Printer type includes this
+        })),
+        per_printer_limit: 800, // tune this if needed
+      }),
+    });
+
+    if (!res.ok) throw new Error(`aggregate: ${res.status}`);
     metrics.value = await res.json();
   } finally {
     loadingMetrics.value = false;
   }
 };
+
 
 const fetchProfiles = async () => {
   loadingProfiles.value = true;

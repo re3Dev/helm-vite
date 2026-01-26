@@ -5,17 +5,14 @@
 # - Uses Windows neighbor table (arp -a), optionally warmed by a quick ping sweep
 # - Probes common Moonraker ports (7125, 80, 4408) and picks the one that answers /printer/info
 # - Adds base_url so the frontend can use the right port, and fixes thumbnail_url to include base_url
+# - NEW: /api/history/aggregate to compute fleet print-history totals across all discovered printers
 #
 # Run:
 #   python app.py
 #
-# Endpoint:
-#   GET /devices
-#
-# Optional query params:
-#   /devices?cidr=192.168.1.0/24     (used for ping sweep; default 192.168.1.0/24)
-#   /devices?warm=0                  (disable ping sweep warmup; default warm=1)
-#   /devices?ports=7125,80,4408      (override port probe list)
+# Endpoints:
+#   GET  /api/devices   (or /devices)
+#   POST /api/history/aggregate
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -28,6 +25,8 @@ import re
 import socket
 import ipaddress
 from typing import List, Tuple, Optional
+from collections import defaultdict
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,7 +36,6 @@ CORS(app)
 
 # For thread-safe append to the device list
 device_list_lock = threading.Lock()
-
 
 # ---------------------------
 # Helpers: local IP, ARP table
@@ -214,7 +212,7 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
                 "hostname": hostname,
                 "ip": ip,
                 "mac": mac,
-                "base_url": base,  # <-- new: tells frontend which port was used
+                "base_url": base,  # tells frontend which port was used
                 "software_version": software_version,
                 "state_message": state_message,
                 "status": status,
@@ -237,7 +235,6 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
     """
     Worker: quick port check then Moonraker probe then details fetch.
     """
-    # Skip obvious non-candidates quickly
     open_ports = [p for p in ports if port_open(ip, p)]
     if not open_ports:
         return
@@ -247,6 +244,163 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
         return
 
     fetch_printer_details(base, ip, mac, devices_list, processed_hostnames)
+
+
+# ---------------------------
+# NEW: Fleet history aggregation
+# ---------------------------
+
+def _safe_get_json(url: str, timeout: float = 4.0) -> dict:
+    r = requests.get(url, timeout=timeout)
+    r.raise_for_status()
+    return r.json()
+
+
+def _month_label_from_unix(ts: float) -> str:
+    dt = datetime.fromtimestamp(ts)
+    return dt.strftime("%Y-%m")
+
+
+def _bucket_status(st: Optional[str]) -> str:
+    """
+    Map Moonraker job statuses to our buckets.
+    """
+    s = (st or "").strip().lower()
+    if s == "completed":
+        return "completed"
+    if s in ("cancelled", "interrupted") or s.startswith("klippy_"):
+        return "cancelled"
+    if s == "error":
+        return "error"
+    return "other"
+
+
+@app.route("/api/history/aggregate", methods=["POST"])
+def aggregate_history():
+    """
+    Aggregate Moonraker history across multiple printers.
+
+    Expects JSON body:
+      {
+        "printers": [ { "hostname": "...", "ip": "...", "base_url": "http://x.x.x.x:7125" }, ... ],
+        "per_printer_limit": 800
+      }
+
+    Returns:
+      {
+        "summary": {...},
+        "by_period": [ { "label": "YYYY-MM", "hours": 12.3 }, ... ]
+      }
+    """
+    payload = request.get_json(silent=True) or {}
+    printers = payload.get("printers") or []
+    per_printer_limit = int(payload.get("per_printer_limit") or 800)
+
+    total_jobs = 0
+    total_time_s = 0.0
+    total_print_time_s = 0.0
+    total_filament_mm = 0.0
+
+    status_counts = defaultdict(int)
+    status_time_s = defaultdict(float)
+    by_month_print_s = defaultdict(float)
+
+    longest_print_s = 0.0
+    longest_print_name = None
+    last_finished_end_time = None  # unix seconds
+
+    errors: List[str] = []
+
+    for p in printers:
+        base = (p.get("base_url") or "").rstrip("/")
+        host = p.get("hostname") or p.get("ip") or base
+        if not base.startswith("http"):
+            continue
+
+        # 1) totals (fast)
+        try:
+            totals = _safe_get_json(f"{base}/server/history/totals", timeout=3.0)
+            jt = totals.get("result", {}).get("job_totals") or totals.get("job_totals") or {}
+
+            total_jobs += int(jt.get("total_jobs") or 0)
+            total_time_s += float(jt.get("total_time") or 0.0)
+            total_print_time_s += float(jt.get("total_print_time") or 0.0)
+            total_filament_mm += float(jt.get("total_filament_used") or 0.0)
+
+            lp = float(jt.get("longest_print") or 0.0)
+            if lp > longest_print_s:
+                longest_print_s = lp
+                # filename comes from list below (more useful)
+        except Exception as e:
+            errors.append(f"{host}: totals failed ({e})")
+
+        # 2) list (compute breakdown + month buckets + longest filename)
+        start = 0
+        remaining = per_printer_limit
+        best_local_longest = (0.0, None)  # (seconds, filename)
+
+        while remaining > 0:
+            lim = min(200, remaining)
+            url = f"{base}/server/history/list?limit={lim}&start={start}&order=desc"
+            try:
+                data = _safe_get_json(url, timeout=4.0)
+                jobs = data.get("result", {}).get("jobs") or data.get("jobs") or []
+                if not jobs:
+                    break
+
+                for j in jobs:
+                    bucket = _bucket_status(j.get("status"))
+                    status_counts[bucket] += 1
+
+                    pd = float(j.get("print_duration") or 0.0)  # seconds
+                    status_time_s[bucket] += pd
+
+                    et = j.get("end_time")
+                    if et is not None:
+                        try:
+                            etf = float(et)
+                            by_month_print_s[_month_label_from_unix(etf)] += pd
+                            if last_finished_end_time is None or etf > last_finished_end_time:
+                                last_finished_end_time = etf
+                        except Exception:
+                            pass
+
+                    if pd > best_local_longest[0]:
+                        best_local_longest = (pd, j.get("filename"))
+
+                got = len(jobs)
+                start += got
+                remaining -= got
+                if got < lim:
+                    break
+            except Exception as e:
+                errors.append(f"{host}: list failed ({e})")
+                break
+
+        # update global longest name if this printer had the longest
+        if best_local_longest[0] > 0 and best_local_longest[0] >= longest_print_s:
+            longest_print_s = best_local_longest[0]
+            longest_print_name = best_local_longest[1]
+
+    by_period = [
+        {"label": k, "hours": round(v / 3600.0, 3)}
+        for k, v in sorted(by_month_print_s.items())
+    ]
+
+    summary = {
+        "total_prints": int(total_jobs),
+        "total_print_time_hours": (total_print_time_s / 3600.0) if total_print_time_s else 0.0,
+        "avg_print_time_hours": ((total_print_time_s / max(total_jobs, 1)) / 3600.0) if total_jobs else 0.0,
+        "longest_print_hours": (longest_print_s / 3600.0) if longest_print_s else 0.0,
+        "longest_print_name": longest_print_name or "",
+        "last_print_finished": datetime.fromtimestamp(last_finished_end_time).isoformat() if last_finished_end_time else None,
+        "total_filament_m": (total_filament_mm / 1000.0) if total_filament_mm else 0.0,
+        "status_breakdown": dict(status_counts),
+        "status_time_hours": {k: (v / 3600.0) for k, v in status_time_s.items()},
+        "errors": errors,
+    }
+
+    return jsonify({"summary": summary, "by_period": by_period})
 
 
 # ---------------------------
@@ -263,9 +417,11 @@ def serve_spa(path):
             return send_from_directory(static_dir, path)
     return send_from_directory(static_dir, "index.html")
 
+
 @app.route("/api/devices", methods=["GET"])
 def get_devices_api():
     return get_devices()
+
 
 @app.route("/devices", methods=["GET"])
 def get_devices():
@@ -289,7 +445,6 @@ def get_devices():
     # Warm neighbor cache so arp -a has more entries (helps a lot on Windows)
     if warm:
         logger.info("Warming neighbor table (ping sweep)...")
-        # You can raise/remove the limit if you want full sweep; 254 is fine on most LANs too.
         warm_neighbor_table(cidr, limit=None)
 
     arp_entries = parse_arp_a()
@@ -302,7 +457,11 @@ def get_devices():
     for ip, mac in arp_entries:
         if ip == my_ip:
             continue
-        t = threading.Thread(target=probe_and_collect, args=(ip, mac, ports, devices_list, processed_hostnames))
+        t = threading.Thread(
+            target=probe_and_collect,
+            args=(ip, mac, ports, devices_list, processed_hostnames),
+            daemon=True
+        )
         t.start()
         threads.append(t)
 
@@ -311,6 +470,7 @@ def get_devices():
 
     logger.info("Printers found: %d", len(devices_list))
     return jsonify(devices_list)
+
 
 def pick_port(host="0.0.0.0", preferred=5000):
     for p in [preferred, 5050, 8000, 8080, 0]:
@@ -323,6 +483,7 @@ def pick_port(host="0.0.0.0", preferred=5000):
         finally:
             s.close()
     return preferred
+
 
 if __name__ == "__main__":
     host = "0.0.0.0"
