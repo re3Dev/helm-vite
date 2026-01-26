@@ -5,14 +5,29 @@
 # - Uses Windows neighbor table (arp -a), optionally warmed by a quick ping sweep
 # - Probes common Moonraker ports (7125, 80, 4408) and picks the one that answers /printer/info
 # - Adds base_url so the frontend can use the right port, and fixes thumbnail_url to include base_url
-# - NEW: /api/history/aggregate to compute fleet print-history totals across all discovered printers
+# - Aggregated Moonraker Job History totals across all discovered printers:
+#        GET /api/history/aggregate
+# - NEW (this change): Adds analytics fields used by Analytics.vue:
+#   fleet.status_breakdown, fleet.status_time_hours, fleet.by_period, fleet.last_print_finished
 #
 # Run:
 #   python app.py
 #
 # Endpoints:
-#   GET  /api/devices   (or /devices)
-#   POST /api/history/aggregate
+#   GET /api/devices
+#   GET /api/history/aggregate
+#
+# Optional query params (devices):
+#   /api/devices?cidr=192.168.1.0/24     (used for ping sweep; default 192.168.1.0/24)
+#   /api/devices?warm=0                  (disable ping sweep warmup; default warm=1)
+#   /api/devices?ports=7125,80,4408      (override port probe list)
+#
+# Optional query params (aggregate):
+#   /api/history/aggregate?cidr=...&warm=...&ports=...
+#   /api/history/aggregate?match_longest=1   (default 1) attempt to find the job entry (filename) for longest duration
+#   /api/history/aggregate?max_pages=6       (default 6) pages to scan for longest job match
+#   /api/history/aggregate?page_limit=200    (default 200) jobs per page during scan
+#   /api/history/aggregate?stats_pages=12    (default 12) pages to scan for status/month rollups
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -24,9 +39,8 @@ import subprocess
 import re
 import socket
 import ipaddress
-from typing import List, Tuple, Optional
-from collections import defaultdict
 from datetime import datetime
+from typing import List, Tuple, Optional, Dict, Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,6 +50,7 @@ CORS(app)
 
 # For thread-safe append to the device list
 device_list_lock = threading.Lock()
+
 
 # ---------------------------
 # Helpers: local IP, ARP table
@@ -138,14 +153,12 @@ def pick_moonraker_base(ip: str, ports: List[int]) -> Optional[str]:
         try:
             r = requests.get(info_url, timeout=1.5)
             r.raise_for_status()
-            # Must be JSON and have expected structure
             j = r.json()
             if isinstance(j, dict) and "result" in j:
                 return base
         except requests.RequestException:
             continue
         except ValueError:
-            # Not JSON
             continue
     return None
 
@@ -212,7 +225,7 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
                 "hostname": hostname,
                 "ip": ip,
                 "mac": mac,
-                "base_url": base,  # tells frontend which port was used
+                "base_url": base,
                 "software_version": software_version,
                 "state_message": state_message,
                 "status": status,
@@ -246,161 +259,316 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
     fetch_printer_details(base, ip, mac, devices_list, processed_hostnames)
 
 
+def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, Any]]:
+    my_ip = get_my_ipv4()
+    logger.info("My IP: %s", my_ip)
+    logger.info("Using CIDR: %s", cidr)
+    logger.info("Probe ports: %s", ports)
+
+    if warm:
+        logger.info("Warming neighbor table (ping sweep)...")
+        warm_neighbor_table(cidr, limit=None)
+
+    arp_entries = parse_arp_a()
+    logger.info("arp -a entries: %d", len(arp_entries))
+
+    devices_list: List[Dict[str, Any]] = []
+    processed_hostnames = set()
+    threads = []
+
+    for ip, mac in arp_entries:
+        if ip == my_ip:
+            continue
+        t = threading.Thread(target=probe_and_collect, args=(ip, mac, ports, devices_list, processed_hostnames))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+
+    logger.info("Printers found: %d", len(devices_list))
+    return devices_list
+
+
 # ---------------------------
-# NEW: Fleet history aggregation
+# History aggregation helpers
 # ---------------------------
 
-def _safe_get_json(url: str, timeout: float = 4.0) -> dict:
-    r = requests.get(url, timeout=timeout)
-    r.raise_for_status()
-    return r.json()
+def moonraker_get_json(base: str, path: str, timeout: float = 2.5) -> Optional[Dict[str, Any]]:
+    url = f"{base}{path}"
+    try:
+        r = requests.get(url, timeout=timeout)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
 
 
-def _month_label_from_unix(ts: float) -> str:
-    dt = datetime.fromtimestamp(ts)
-    return dt.strftime("%Y-%m")
-
-
-def _bucket_status(st: Optional[str]) -> str:
+def fetch_history_totals(base: str) -> Optional[Dict[str, Any]]:
     """
-    Map Moonraker job statuses to our buckets.
+    /server/history/totals returns { job_totals: {...}, auxiliary_totals: [...] }
+    Some setups wrap under "result".
     """
-    s = (st or "").strip().lower()
+    j = moonraker_get_json(base, "/server/history/totals", timeout=3.0)
+    if not isinstance(j, dict):
+        return None
+    if "job_totals" in j and isinstance(j["job_totals"], dict):
+        return j
+    if "result" in j and isinstance(j["result"], dict) and "job_totals" in j["result"]:
+        return j["result"]
+    return None
+
+
+def fetch_history_list_page(base: str, limit: int, start: int, order: str = "desc") -> Optional[Dict[str, Any]]:
+    """
+    /server/history/list?limit=...&start=...&order=...
+    Some setups wrap under "result".
+    """
+    j = moonraker_get_json(base, f"/server/history/list?limit={limit}&start={start}&order={order}", timeout=4.0)
+    if not isinstance(j, dict):
+        return None
+    if "jobs" in j and isinstance(j["jobs"], list):
+        return j
+    if "result" in j and isinstance(j["result"], dict) and "jobs" in j["result"]:
+        return j["result"]
+    return None
+
+
+def find_job_matching_duration(
+    base: str,
+    target_seconds: float,
+    duration_key: str,
+    page_limit: int = 200,
+    max_pages: int = 6,
+    eps: float = 0.01
+) -> Optional[Dict[str, Any]]:
+    """
+    Scan the history list looking for a job whose {duration_key} matches target_seconds.
+    duration_key should be "total_duration" or "print_duration".
+    """
+    if not target_seconds or target_seconds <= 0:
+        return None
+
+    start = 0
+    for _ in range(max_pages):
+        page = fetch_history_list_page(base, limit=page_limit, start=start, order="desc")
+        if not page:
+            return None
+        jobs = page.get("jobs") or []
+        if not jobs:
+            return None
+
+        for job in jobs:
+            try:
+                v = float(job.get(duration_key) or 0.0)
+                if abs(v - float(target_seconds)) <= eps:
+                    return job
+            except Exception:
+                continue
+
+        start += page_limit
+
+    return None
+
+
+# ---------------------------
+# NEW: status + monthly rollups
+# ---------------------------
+
+def _bucket_status(raw: Optional[str]) -> str:
+    """
+    Map Moonraker job statuses into the buckets your UI expects.
+    Buckets: completed, cancelled, error, other
+    """
+    s = (raw or "").strip().lower()
     if s == "completed":
         return "completed"
-    if s in ("cancelled", "interrupted") or s.startswith("klippy_"):
-        return "cancelled"
     if s == "error":
         return "error"
+
+    cancelled_like = {
+        "cancelled",
+        "canceled",
+        "interrupted",
+        "server_exit",
+        "klippy_shutdown",
+        "shutdown",
+        "aborted",
+    }
+    if s in cancelled_like:
+        return "cancelled"
+
     return "other"
 
 
-@app.route("/api/history/aggregate", methods=["POST"])
-def aggregate_history():
+def _month_label_from_ts(ts: Optional[float]) -> Optional[str]:
+    if not ts:
+        return None
+    try:
+        d = datetime.fromtimestamp(float(ts))
+        return d.strftime("%b %Y")  # e.g. "Jan 2026"
+    except Exception:
+        return None
+
+
+def _iso_from_ts(ts: Optional[float]) -> Optional[str]:
+    if not ts:
+        return None
+    try:
+        return datetime.fromtimestamp(float(ts)).isoformat()
+    except Exception:
+        return None
+
+
+def scan_history_stats(
+    base: str,
+    page_limit: int = 200,
+    max_pages: int = 12,
+) -> Dict[str, Any]:
     """
-    Aggregate Moonraker history across multiple printers.
-
-    Expects JSON body:
-      {
-        "printers": [ { "hostname": "...", "ip": "...", "base_url": "http://x.x.x.x:7125" }, ... ],
-        "per_printer_limit": 800
-      }
-
-    Returns:
-      {
-        "summary": {...},
-        "by_period": [ { "label": "YYYY-MM", "hours": 12.3 }, ... ]
-      }
+    Scan /server/history/list and compute:
+      - status_breakdown: counts by bucket
+      - status_time_hours: hours by bucket (based on print_duration with fallback)
+      - by_period: monthly print hours (based on print_duration with fallback)
+      - last_print_finished: newest end_time in iso
     """
-    payload = request.get_json(silent=True) or {}
-    printers = payload.get("printers") or []
-    per_printer_limit = int(payload.get("per_printer_limit") or 800)
+    counts = {"completed": 0, "cancelled": 0, "error": 0, "other": 0}
+    time_hours = {"completed": 0.0, "cancelled": 0.0, "error": 0.0, "other": 0.0}
+    by_month: Dict[str, float] = {}
+    last_end_ts: float = 0.0
 
-    total_jobs = 0
-    total_time_s = 0.0
-    total_print_time_s = 0.0
-    total_filament_mm = 0.0
+    start = 0
+    for _ in range(max_pages):
+        page = fetch_history_list_page(base, limit=page_limit, start=start, order="desc")
+        if not page:
+            break
 
-    status_counts = defaultdict(int)
-    status_time_s = defaultdict(float)
-    by_month_print_s = defaultdict(float)
+        jobs = page.get("jobs") or []
+        if not jobs:
+            break
 
-    longest_print_s = 0.0
-    longest_print_name = None
-    last_finished_end_time = None  # unix seconds
-
-    errors: List[str] = []
-
-    for p in printers:
-        base = (p.get("base_url") or "").rstrip("/")
-        host = p.get("hostname") or p.get("ip") or base
-        if not base.startswith("http"):
-            continue
-
-        # 1) totals (fast)
-        try:
-            totals = _safe_get_json(f"{base}/server/history/totals", timeout=3.0)
-            jt = totals.get("result", {}).get("job_totals") or totals.get("job_totals") or {}
-
-            total_jobs += int(jt.get("total_jobs") or 0)
-            total_time_s += float(jt.get("total_time") or 0.0)
-            total_print_time_s += float(jt.get("total_print_time") or 0.0)
-            total_filament_mm += float(jt.get("total_filament_used") or 0.0)
-
-            lp = float(jt.get("longest_print") or 0.0)
-            if lp > longest_print_s:
-                longest_print_s = lp
-                # filename comes from list below (more useful)
-        except Exception as e:
-            errors.append(f"{host}: totals failed ({e})")
-
-        # 2) list (compute breakdown + month buckets + longest filename)
-        start = 0
-        remaining = per_printer_limit
-        best_local_longest = (0.0, None)  # (seconds, filename)
-
-        while remaining > 0:
-            lim = min(200, remaining)
-            url = f"{base}/server/history/list?limit={lim}&start={start}&order=desc"
+        for job in jobs:
             try:
-                data = _safe_get_json(url, timeout=4.0)
-                jobs = data.get("result", {}).get("jobs") or data.get("jobs") or []
-                if not jobs:
-                    break
+                bucket = _bucket_status(job.get("status"))
+                counts[bucket] = int(counts.get(bucket, 0)) + 1
 
-                for j in jobs:
-                    bucket = _bucket_status(j.get("status"))
-                    status_counts[bucket] += 1
+                # Prefer print_duration (actual printing), fallback to total_duration
+                dur_s = job.get("print_duration")
+                if dur_s is None:
+                    dur_s = job.get("total_duration")
+                dur_s = float(dur_s or 0.0)
+                if dur_s < 0:
+                    dur_s = 0.0
 
-                    pd = float(j.get("print_duration") or 0.0)  # seconds
-                    status_time_s[bucket] += pd
+                time_hours[bucket] = float(time_hours.get(bucket, 0.0)) + (dur_s / 3600.0)
 
-                    et = j.get("end_time")
-                    if et is not None:
-                        try:
-                            etf = float(et)
-                            by_month_print_s[_month_label_from_unix(etf)] += pd
-                            if last_finished_end_time is None or etf > last_finished_end_time:
-                                last_finished_end_time = etf
-                        except Exception:
-                            pass
+                # Month bucketing (prefer end_time, fallback start_time)
+                ts = job.get("end_time") or job.get("start_time")
+                lbl = _month_label_from_ts(ts)
+                if lbl:
+                    by_month[lbl] = float(by_month.get(lbl, 0.0)) + (dur_s / 3600.0)
 
-                    if pd > best_local_longest[0]:
-                        best_local_longest = (pd, j.get("filename"))
+                # Last finished print time
+                et = float(job.get("end_time") or 0.0)
+                if et > last_end_ts:
+                    last_end_ts = et
 
-                got = len(jobs)
-                start += got
-                remaining -= got
-                if got < lim:
-                    break
-            except Exception as e:
-                errors.append(f"{host}: list failed ({e})")
-                break
+            except Exception:
+                continue
 
-        # update global longest name if this printer had the longest
-        if best_local_longest[0] > 0 and best_local_longest[0] >= longest_print_s:
-            longest_print_s = best_local_longest[0]
-            longest_print_name = best_local_longest[1]
+        start += page_limit
 
-    by_period = [
-        {"label": k, "hours": round(v / 3600.0, 3)}
-        for k, v in sorted(by_month_print_s.items())
-    ]
+    # Sorted monthly list for frontend
+    def _month_sort_key(label: str) -> float:
+        try:
+            return datetime.strptime(label, "%b %Y").timestamp()
+        except Exception:
+            return 0.0
 
-    summary = {
-        "total_prints": int(total_jobs),
-        "total_print_time_hours": (total_print_time_s / 3600.0) if total_print_time_s else 0.0,
-        "avg_print_time_hours": ((total_print_time_s / max(total_jobs, 1)) / 3600.0) if total_jobs else 0.0,
-        "longest_print_hours": (longest_print_s / 3600.0) if longest_print_s else 0.0,
-        "longest_print_name": longest_print_name or "",
-        "last_print_finished": datetime.fromtimestamp(last_finished_end_time).isoformat() if last_finished_end_time else None,
-        "total_filament_m": (total_filament_mm / 1000.0) if total_filament_mm else 0.0,
-        "status_breakdown": dict(status_counts),
-        "status_time_hours": {k: (v / 3600.0) for k, v in status_time_s.items()},
-        "errors": errors,
+    by_period = [{"label": k, "hours": float(v)} for k, v in by_month.items()]
+    by_period.sort(key=lambda x: _month_sort_key(x["label"]))
+
+    return {
+        "status_breakdown": counts,
+        "status_time_hours": time_hours,
+        "by_period": by_period,
+        "last_print_finished": _iso_from_ts(last_end_ts) if last_end_ts else None,
     }
 
-    return jsonify({"summary": summary, "by_period": by_period})
+
+def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -> Dict[str, Any]:
+    base = device.get("base_url")
+    out: Dict[str, Any] = {
+        "hostname": device.get("hostname"),
+        "ip": device.get("ip"),
+        "base_url": base,
+        "ok": False,
+        "error": None,
+        "job_totals": None,
+        "longest_job": None,
+        "longest_print": None,
+
+        # NEW: per-device breakdowns (for optional debugging / future UI)
+        "status_breakdown": None,
+        "status_time_hours": None,
+        "by_period": None,
+        "last_print_finished": None,
+    }
+
+    if not base:
+        out["error"] = "missing base_url"
+        return out
+
+    totals = fetch_history_totals(base)
+    if not totals:
+        out["error"] = "history totals unavailable"
+        return out
+
+    job_totals = totals.get("job_totals") or {}
+    out["job_totals"] = job_totals
+    out["ok"] = True
+
+    match_longest = opts.get("match_longest", True)
+    page_limit = int(opts.get("page_limit", 200))
+    max_pages = int(opts.get("max_pages", 6))
+
+    # durations in seconds
+    longest_job_s = float(job_totals.get("longest_job") or 0.0)
+    longest_print_s = float(job_totals.get("longest_print") or 0.0)
+
+    if match_longest:
+        lj = find_job_matching_duration(
+            base=base,
+            target_seconds=longest_job_s,
+            duration_key="total_duration",
+            page_limit=page_limit,
+            max_pages=max_pages,
+        )
+        lp = find_job_matching_duration(
+            base=base,
+            target_seconds=longest_print_s,
+            duration_key="print_duration",
+            page_limit=page_limit,
+            max_pages=max_pages,
+        )
+        out["longest_job"] = lj
+        out["longest_print"] = lp
+    else:
+        out["longest_job"] = {"total_duration": longest_job_s}
+        out["longest_print"] = {"print_duration": longest_print_s}
+
+    # NEW: compute breakdowns from /server/history/list
+    try:
+        stats_pages = int(opts.get("stats_pages", 12))
+        stats = scan_history_stats(base, page_limit=page_limit, max_pages=stats_pages)
+        out["status_breakdown"] = stats.get("status_breakdown")
+        out["status_time_hours"] = stats.get("status_time_hours")
+        out["by_period"] = stats.get("by_period")
+        out["last_print_finished"] = stats.get("last_print_finished")
+    except Exception:
+        pass
+
+    return out
 
 
 # ---------------------------
@@ -425,7 +593,6 @@ def get_devices_api():
 
 @app.route("/devices", methods=["GET"])
 def get_devices():
-    # Defaults
     cidr = request.args.get("cidr", "192.168.1.0/24")
     warm = request.args.get("warm", "1") != "0"
     ports_arg = request.args.get("ports", "")
@@ -437,39 +604,190 @@ def get_devices():
         except ValueError:
             return jsonify({"error": "Invalid ports param. Use e.g. ?ports=7125,80,4408"}), 400
 
-    my_ip = get_my_ipv4()
-    logger.info("My IP: %s", my_ip)
-    logger.info("Using CIDR: %s", cidr)
-    logger.info("Probe ports: %s", ports)
+    devices_list = discover_devices(cidr=cidr, warm=warm, ports=ports)
+    return jsonify(devices_list)
 
-    # Warm neighbor cache so arp -a has more entries (helps a lot on Windows)
-    if warm:
-        logger.info("Warming neighbor table (ping sweep)...")
-        warm_neighbor_table(cidr, limit=None)
 
-    arp_entries = parse_arp_a()
-    logger.info("arp -a entries: %d", len(arp_entries))
+@app.route("/api/history/aggregate", methods=["GET"])
+def history_aggregate():
+    """
+    Returns fleet + per-printer job history totals from Moonraker /server/history/totals.
+    Also attempts to locate the job entry (filename, status, times) for the "longest" durations
+    by scanning /server/history/list.
 
-    devices_list = []
-    processed_hostnames = set()
+    NEW: Also returns fleet-level breakdown fields used by Analytics.vue:
+      - fleet.status_breakdown
+      - fleet.status_time_hours
+      - fleet.by_period
+      - fleet.last_print_finished
+    """
+    cidr = request.args.get("cidr", "192.168.1.0/24")
+    warm = request.args.get("warm", "1") != "0"
+    ports_arg = request.args.get("ports", "")
+    ports = [7125, 80, 4408]
+    if ports_arg.strip():
+        try:
+            ports = [int(p.strip()) for p in ports_arg.split(",") if p.strip()]
+        except ValueError:
+            return jsonify({"error": "Invalid ports param. Use e.g. ?ports=7125,80,4408"}), 400
+
+    match_longest = request.args.get("match_longest", "1") != "0"
+    max_pages = int(request.args.get("max_pages", "6"))
+    page_limit = int(request.args.get("page_limit", "200"))
+    stats_pages = int(request.args.get("stats_pages", "12"))
+
+    devices = discover_devices(cidr=cidr, warm=warm, ports=ports)
+
+    opts = {
+        "match_longest": match_longest,
+        "max_pages": max_pages,
+        "page_limit": page_limit,
+        "stats_pages": stats_pages,
+    }
+
+    per_printer: List[Dict[str, Any]] = []
+    per_lock = threading.Lock()
     threads = []
 
-    for ip, mac in arp_entries:
-        if ip == my_ip:
-            continue
-        t = threading.Thread(
-            target=probe_and_collect,
-            args=(ip, mac, ports, devices_list, processed_hostnames),
-            daemon=True
-        )
+    def worker(dev: Dict[str, Any]):
+        row = aggregate_history_for_device(dev, opts)
+        with per_lock:
+            per_printer.append(row)
+
+    for d in devices:
+        t = threading.Thread(target=worker, args=(d,))
         t.start()
         threads.append(t)
 
     for t in threads:
         t.join()
 
-    logger.info("Printers found: %d", len(devices_list))
-    return jsonify(devices_list)
+    # Fleet totals (seconds + mm)
+    fleet = {
+        "printers_seen": len(devices),
+        "printers_ok": sum(1 for r in per_printer if r.get("ok")),
+        "total_jobs": 0,
+        "total_time": 0.0,
+        "total_print_time": 0.0,
+        "total_filament_used": 0.0,
+        "fleet_longest_job": None,   # includes printer + job object (if found)
+        "fleet_longest_print": None, # includes printer + job object (if found)
+
+        # NEW: analytics fields expected by Analytics.vue
+        "status_breakdown": {"completed": 0, "cancelled": 0, "error": 0, "other": 0},
+        "status_time_hours": {"completed": 0.0, "cancelled": 0.0, "error": 0.0, "other": 0.0},
+        "by_period": [],
+        "last_print_finished": None,
+    }
+
+    best_job = {"seconds": 0.0, "printer": None, "job": None}
+    best_print = {"seconds": 0.0, "printer": None, "job": None}
+
+    # NEW: fleet merge state for month rollups + last-finished
+    fleet_by_month: Dict[str, float] = {}
+    fleet_last_end_ts: float = 0.0
+
+    for r in per_printer:
+        jt = r.get("job_totals") or {}
+        try:
+            fleet["total_jobs"] += int(jt.get("total_jobs") or 0)
+            fleet["total_time"] += float(jt.get("total_time") or 0.0)
+            fleet["total_print_time"] += float(jt.get("total_print_time") or 0.0)
+            fleet["total_filament_used"] += float(jt.get("total_filament_used") or 0.0)
+        except Exception:
+            pass
+
+        # NEW: merge per-device status counts / hours
+        sb = r.get("status_breakdown") or {}
+        sth = r.get("status_time_hours") or {}
+        for k in ("completed", "cancelled", "error", "other"):
+            try:
+                fleet["status_breakdown"][k] = int(fleet["status_breakdown"].get(k, 0)) + int(sb.get(k, 0))
+            except Exception:
+                pass
+            try:
+                fleet["status_time_hours"][k] = float(fleet["status_time_hours"].get(k, 0.0)) + float(sth.get(k, 0.0))
+            except Exception:
+                pass
+
+        # NEW: merge monthly periods
+        periods = r.get("by_period") or []
+        for p in periods:
+            try:
+                lbl = str(p.get("label") or "").strip()
+                hrs = float(p.get("hours") or 0.0)
+                if lbl:
+                    fleet_by_month[lbl] = float(fleet_by_month.get(lbl, 0.0)) + hrs
+            except Exception:
+                continue
+
+        # NEW: merge last finished time
+        lpf = r.get("last_print_finished")
+        if lpf:
+            try:
+                ts = datetime.fromisoformat(lpf).timestamp()
+                if ts > fleet_last_end_ts:
+                    fleet_last_end_ts = ts
+            except Exception:
+                pass
+
+        # longest job (total duration)
+        try:
+            lj_s = float(jt.get("longest_job") or 0.0)
+            if lj_s > best_job["seconds"]:
+                best_job = {
+                    "seconds": lj_s,
+                    "printer": r.get("hostname") or r.get("ip"),
+                    "job": r.get("longest_job"),
+                }
+        except Exception:
+            pass
+
+        # longest print (print duration)
+        try:
+            lp_s = float(jt.get("longest_print") or 0.0)
+            if lp_s > best_print["seconds"]:
+                best_print = {
+                    "seconds": lp_s,
+                    "printer": r.get("hostname") or r.get("ip"),
+                    "job": r.get("longest_print"),
+                }
+        except Exception:
+            pass
+
+    if best_job["printer"]:
+        fleet["fleet_longest_job"] = best_job
+    if best_print["printer"]:
+        fleet["fleet_longest_print"] = best_print
+
+    # Build sorted by_period from merged fleet_by_month
+    def _month_sort_key(label: str) -> float:
+        try:
+            return datetime.strptime(label, "%b %Y").timestamp()
+        except Exception:
+            return 0.0
+
+    fleet_periods = [{"label": k, "hours": float(v)} for k, v in fleet_by_month.items()]
+    fleet_periods.sort(key=lambda x: _month_sort_key(x["label"]))
+    fleet["by_period"] = fleet_periods
+
+    if fleet_last_end_ts > 0:
+        fleet["last_print_finished"] = datetime.fromtimestamp(fleet_last_end_ts).isoformat()
+
+    # Sort per_printer by total_print_time desc
+    def sort_key(x: Dict[str, Any]) -> float:
+        jt2 = x.get("job_totals") or {}
+        try:
+            return float(jt2.get("total_print_time") or 0.0)
+        except Exception:
+            return 0.0
+
+    per_printer_sorted = sorted(per_printer, key=sort_key, reverse=True)
+
+    return jsonify({
+        "fleet": fleet,
+        "by_printer": per_printer_sorted,
+    })
 
 
 def pick_port(host="0.0.0.0", preferred=5000):

@@ -46,127 +46,113 @@
       <v-card class="metric-card" color="#181B20">
         <div class="metric-label">Total Prints</div>
         <div class="metric-value">
-          <template v-if="loadingMetrics">—</template>
-          <template v-else>{{ metrics?.summary?.total_prints ?? '—' }}</template>
+          <template v-if="loadingHistory">—</template>
+          <template v-else>{{ historyAgg?.fleet?.total_jobs ?? '—' }}</template>
         </div>
-        <div class="metric-footnote">Jobs recorded</div>
+        <div class="metric-footnote">Across all printers</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
         <div class="metric-label">Total Print Time</div>
         <div class="metric-value">
-          <template v-if="loadingMetrics">—</template>
-          <template v-else>{{ humanHours(metrics?.summary?.total_print_time_hours) }}</template>
+          <template v-if="loadingHistory">—</template>
+          <template v-else>{{ humanDuration(historyAgg?.fleet?.total_print_time) }}</template>
         </div>
-        <div class="metric-footnote">Across all jobs</div>
+        <div class="metric-footnote">Across all printers</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Average Job</div>
+        <div class="metric-label">Total Time (incl paused)</div>
         <div class="metric-value">
-          <template v-if="loadingMetrics">—</template>
-          <template v-else>{{ humanHours(metrics?.summary?.avg_print_time_hours) }}</template>
+          <template v-if="loadingHistory">—</template>
+          <template v-else>{{ humanDuration(historyAgg?.fleet?.total_time) }}</template>
         </div>
-        <div class="metric-footnote">Mean duration</div>
+        <div class="metric-footnote">Work time + paused</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Longest Job</div>
+        <div class="metric-label">Filament Used</div>
         <div class="metric-value">
-          <template v-if="loadingMetrics">—</template>
-          <template v-else>{{ humanHours(metrics?.summary?.longest_print_hours) }}</template>
+          <template v-if="loadingHistory">—</template>
+          <template v-else>{{ fmtMeters(historyAgg?.fleet?.total_filament_used) }}</template>
         </div>
-        <div class="metric-footnote">
-          {{ metrics?.summary?.longest_print_name || 'Longest recorded print' }}
-        </div>
+        <div class="metric-footnote">Total (converted from mm)</div>
       </v-card>
     </div>
 
-    <!-- Time breakdown -->
+    <!-- Time breakdown (Fleet) -->
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Time Breakdown by Status</div>
+          <div class="section-title">Time Breakdown by Status (Fleet)</div>
           <div class="section-sub">
             Share of total print time spent on completed, cancelled/shutdown, and error jobs.
           </div>
         </div>
       </div>
 
-      <template v-if="loadingMetrics">
+      <template v-if="loadingHistory">
         <v-skeleton-loader type="heading, paragraph" :loading="true" />
       </template>
 
-      <template v-else-if="!metrics?.summary">
-        <div class="empty">No metrics available yet.</div>
+      <template v-else-if="!fleetMetrics">
+        <div class="empty">No fleet metrics available yet.</div>
       </template>
 
       <template v-else>
         <div class="status-bar">
-          <div
-            class="status-seg completed"
-            :style="{ width: segPct(timeH.completed) }"
-          />
-          <div
-            class="status-seg error"
-            :style="{ width: segPct(timeH.error) }"
-          />
-          <div
-            class="status-seg cancelled"
-            :style="{ width: segPct(timeH.cancelled) }"
-          />
-          <div
-            class="status-seg other"
-            :style="{ width: segPct(timeH.other) }"
-          />
+          <div class="status-seg completed" :style="{ width: segPct(fleetTimeH.completed) }" />
+          <div class="status-seg error" :style="{ width: segPct(fleetTimeH.error) }" />
+          <div class="status-seg cancelled" :style="{ width: segPct(fleetTimeH.cancelled) }" />
+          <div class="status-seg other" :style="{ width: segPct(fleetTimeH.other) }" />
         </div>
 
         <div class="legend">
           <div class="legend-item">
             <span class="dot completed" /> Completed:
-            <strong>{{ counts.completed ?? 0 }}</strong>
-            · {{ pct(timeH.completed) }} ({{ humanHours(timeH.completed) }})
+            <strong>{{ fleetCounts.completed ?? 0 }}</strong>
+            · {{ pct(fleetTimeH.completed) }} ({{ humanDurationHr(fleetTimeH.completed) }})
           </div>
           <div class="legend-item">
             <span class="dot cancelled" /> Cancelled / Shutdown:
-            <strong>{{ counts.cancelled ?? 0 }}</strong>
-            · {{ pct(timeH.cancelled) }} ({{ humanHours(timeH.cancelled) }})
+            <strong>{{ fleetCounts.cancelled ?? 0 }}</strong>
+            · {{ pct(fleetTimeH.cancelled) }} ({{ humanDurationHr(fleetTimeH.cancelled) }})
           </div>
           <div class="legend-item">
             <span class="dot error" /> Error:
-            <strong>{{ counts.error ?? 0 }}</strong>
-            · {{ pct(timeH.error) }} ({{ humanHours(timeH.error) }})
+            <strong>{{ fleetCounts.error ?? 0 }}</strong>
+            · {{ pct(fleetTimeH.error) }} ({{ humanDurationHr(fleetTimeH.error) }})
           </div>
           <div class="legend-item">
             <span class="dot other" /> Other:
-            <strong>{{ counts.other ?? 0 }}</strong>
-            · {{ pct(timeH.other) }} ({{ humanHours(timeH.other) }})
+            <strong>{{ fleetCounts.other ?? 0 }}</strong>
+            · {{ pct(fleetTimeH.other) }} ({{ humanDurationHr(fleetTimeH.other) }})
           </div>
         </div>
 
         <div class="last-print">
           Last recorded print:
-          <span class="mono">{{ formatDateShort(metrics.summary.last_print_finished) }}</span>
+          <span class="mono">{{ formatDateShort(fleetMetrics.last_print_finished) }}</span>
         </div>
       </template>
     </v-card>
 
-    <!-- Hours by month -->
+    <!-- Hours by month (Fleet) -->
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Print Hours by Month</div>
+          <div class="section-title">Print Hours by Month (Fleet)</div>
           <div class="section-sub">
             Relative print hours in each recorded month (scaled to the busiest period).
           </div>
         </div>
       </div>
 
-      <template v-if="loadingMetrics">
+      <template v-if="loadingHistory">
         <v-skeleton-loader type="heading, image" :loading="true" />
       </template>
 
-      <template v-else-if="!periods.length || maxPeriodHours <= 0">
+      <template v-else-if="!fleetPeriods.length || fleetMaxPeriodHours <= 0">
         <div class="empty">No period breakdown available yet.</div>
       </template>
 
@@ -174,10 +160,10 @@
         <div class="chart-wrap">
           <div class="chart-bars">
             <div
-              v-for="p in periods"
+              v-for="p in fleetPeriods"
               :key="p.label"
               class="chart-bar"
-              :style="{ height: barHeightPct(p.hours) }"
+              :style="{ height: barHeightPct(p.hours, fleetMaxPeriodHours) }"
             >
               <div class="bar-value">{{ (p.hours ?? 0).toFixed(1) }}</div>
             </div>
@@ -185,7 +171,7 @@
 
           <div class="chart-axis">
             <div
-              v-for="p in periods"
+              v-for="p in fleetPeriods"
               :key="p.label + '-axis'"
               class="chart-label"
               :title="p.label"
@@ -198,6 +184,113 @@
             Taller bars indicate months with more accumulated print time.
           </div>
         </div>
+      </template>
+    </v-card>
+
+    <!-- Leaderboards -->
+    <v-card class="section-card" color="#181B20">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Fleet Leaderboards</div>
+          <div class="section-sub">
+            “Biggest” stats across the whole fleet.
+          </div>
+        </div>
+      </div>
+
+      <template v-if="loadingHistory">
+        <v-skeleton-loader type="heading, paragraph" :loading="true" />
+      </template>
+
+      <template v-else-if="!historyAgg?.by_printer?.length">
+        <div class="empty">No printer history totals available yet.</div>
+      </template>
+
+      <template v-else>
+        <div class="metrics-grid" style="margin-top: 4px;">
+          <v-card class="metric-card" color="#181B20">
+            <div class="metric-label">Longest Job</div>
+            <div class="metric-value">{{ humanDuration(fleetLongestJobSeconds) }}</div>
+            <div class="metric-footnote">
+              <strong>{{ fleetLongestJobPrinter || '—' }}</strong>
+              <span v-if="fleetLongestJobFile"> · {{ fleetLongestJobFile }}</span>
+            </div>
+          </v-card>
+
+          <v-card class="metric-card" color="#181B20">
+            <div class="metric-label">Most Print Time</div>
+            <div class="metric-value">{{ humanDuration(topByPrintTimeSeconds) }}</div>
+            <div class="metric-footnote">
+              <strong>{{ topByPrintTimePrinter || '—' }}</strong>
+            </div>
+          </v-card>
+
+          <v-card class="metric-card" color="#181B20">
+            <div class="metric-label">Most Prints</div>
+            <div class="metric-value">{{ topByPrintCount }}</div>
+            <div class="metric-footnote">
+              <strong>{{ topByPrintCountPrinter || '—' }}</strong>
+            </div>
+          </v-card>
+        </div>
+      </template>
+    </v-card>
+
+    <!-- Per-printer totals table -->
+    <v-card class="section-card" color="#181B20">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Per-Printer History Totals</div>
+          <div class="section-sub">
+            From Moonraker job totals on each device.
+          </div>
+        </div>
+      </div>
+
+      <template v-if="loadingHistory">
+        <v-skeleton-loader type="table" :loading="true" />
+      </template>
+
+      <template v-else-if="!historyAgg?.by_printer?.length">
+        <div class="empty">No per-printer totals available yet.</div>
+      </template>
+
+      <template v-else>
+        <v-data-table
+          :items="historyTableRows"
+          :headers="historyHeaders"
+          density="compact"
+          class="history-table"
+          :items-per-page="10"
+        >
+          <template #item.total_print_time="{ item }">
+            <span class="mono">{{ humanDuration(item.total_print_time) }}</span>
+          </template>
+
+          <template #item.total_time="{ item }">
+            <span class="mono">{{ humanDuration(item.total_time) }}</span>
+          </template>
+
+          <template #item.total_filament_used="{ item }">
+            <span class="mono">{{ fmtMeters(item.total_filament_used) }}</span>
+          </template>
+
+          <template #item.longest_job="{ item }">
+            <div class="mono">{{ humanDuration(item.longest_job) }}</div>
+            <div class="tiny" v-if="item.longest_job_file">{{ item.longest_job_file }}</div>
+          </template>
+
+          <template #item.ok="{ item }">
+            <v-chip size="x-small" :color="item.ok ? 'green' : 'red'" variant="tonal">
+              {{ item.ok ? 'OK' : 'ERR' }}
+            </v-chip>
+          </template>
+
+          <template #item.error="{ item }">
+            <span class="tiny" v-if="item.error">{{ item.error }}</span>
+            <span v-else class="tiny">—</span>
+          </template>
+        </v-data-table>
       </template>
     </v-card>
 
@@ -339,12 +432,7 @@
     </v-card>
 
     <!-- Errors -->
-    <v-alert
-      v-if="errorMsg"
-      type="error"
-      variant="tonal"
-      class="mt-4"
-    >
+    <v-alert v-if="errorMsg" type="error" variant="tonal" class="mt-4">
       {{ errorMsg }}
     </v-alert>
   </v-container>
@@ -357,24 +445,9 @@ type Printer = {
   hostname: string;
   ip: string;
   status: string;
-  base_url: string; 
   state_message?: string;
   print_progress?: number;
   file_path?: string;
-};
-
-type PrintMetricsResponse = {
-  summary?: {
-    total_print_time_hours?: number;
-    total_prints?: number;
-    avg_print_time_hours?: number;
-    longest_print_hours?: number;
-    longest_print_name?: string;
-    last_print_finished?: string;
-    status_breakdown?: Record<string, number>;
-    status_time_hours?: Record<string, number>;
-  };
-  by_period?: Array<{ label: string; hours: number }>;
 };
 
 type CalibrationProfile = {
@@ -397,18 +470,66 @@ type CalibrationReportResponse = {
   profiles?: CalibrationProfile[];
 };
 
+type HistoryJobTotals = {
+  total_jobs?: number;
+  total_time?: number; // seconds
+  total_print_time?: number; // seconds
+  total_filament_used?: number; // mm
+  longest_job?: number; // seconds
+  longest_print?: number; // seconds
+};
+
+type HistoryJob = {
+  filename?: string;
+  status?: string;
+  start_time?: number;
+  end_time?: number | null;
+  print_duration?: number;
+  total_duration?: number;
+};
+
+type HistoryAggPrinterRow = {
+  hostname?: string;
+  ip?: string;
+  base_url?: string;
+  ok: boolean;
+  error?: string | null;
+  job_totals?: HistoryJobTotals | null;
+  longest_job?: HistoryJob | null;
+};
+
+type HistoryAggResponse = {
+  fleet?: {
+    printers_seen?: number;
+    printers_ok?: number;
+    total_jobs?: number;
+    total_time?: number;
+    total_print_time?: number;
+    total_filament_used?: number;
+    fleet_longest_job?: { seconds: number; printer: string; job?: HistoryJob | null } | null;
+
+    // These are provided by your Flask aggregator changes
+    status_breakdown?: Record<string, number>;
+    status_time_hours?: Record<string, number>;
+    by_period?: Array<{ label: string; hours: number }>;
+    last_print_finished?: string;
+  };
+  by_printer?: HistoryAggPrinterRow[];
+};
+
 const errorMsg = ref<string>('');
 
 const printers = ref<Printer[]>([]);
-const metrics = ref<PrintMetricsResponse | null>(null);
 const profiles = ref<CalibrationProfile[]>([]);
+const historyAgg = ref<HistoryAggResponse | null>(null);
 
 const loadingPrinters = ref(true);
-const loadingMetrics = ref(true);
 const loadingProfiles = ref(true);
+const loadingHistory = ref(true);
 
-const loadingAny = computed(() => loadingPrinters.value || loadingMetrics.value || loadingProfiles.value);
+const loadingAny = computed(() => loadingPrinters.value || loadingProfiles.value || loadingHistory.value);
 
+// ---- Printer "printing now"
 const normalizeStatus = (s?: string) => (s ?? '').trim().toLowerCase();
 
 const isPrinterPrintingNow = (p: Printer) => {
@@ -421,39 +542,92 @@ const isPrinterPrintingNow = (p: Printer) => {
 
 const printingNowCount = computed(() => printers.value.filter(isPrinterPrintingNow).length);
 
-const counts = computed<Record<string, number>>(() => metrics.value?.summary?.status_breakdown ?? {});
-const timeH = computed<Record<string, number>>(() => metrics.value?.summary?.status_time_hours ?? {});
+// ---- Fleet metrics for graphs (from /api/history/aggregate response)
+const fleetMetrics = computed(() => historyAgg.value?.fleet ?? null);
+const fleetCounts = computed<Record<string, number>>(() => fleetMetrics.value?.status_breakdown ?? {});
+const fleetTimeH = computed<Record<string, number>>(() => fleetMetrics.value?.status_time_hours ?? {});
+const fleetPeriods = computed(() => fleetMetrics.value?.by_period ?? []);
+const fleetMaxPeriodHours = computed(() => Math.max(0, ...fleetPeriods.value.map(p => Number(p.hours ?? 0))));
 
-const totalTimeHours = computed(() => {
-  const t = timeH.value;
+const fleetTotalTimeHours = computed(() => {
+  const t = fleetTimeH.value;
   return (t.completed ?? 0) + (t.cancelled ?? 0) + (t.error ?? 0) + (t.other ?? 0);
 });
 
 const segPct = (h?: number) => {
-  const total = totalTimeHours.value;
+  const total = fleetTotalTimeHours.value;
   if (!total || total <= 0) return '0%';
   const v = Math.max(0, Number(h ?? 0));
   return `${Math.min(100, (v / total) * 100)}%`;
 };
 
 const pct = (h?: number) => {
-  const total = totalTimeHours.value;
+  const total = fleetTotalTimeHours.value;
   if (!total || total <= 0) return '0.0%';
   const v = Math.max(0, Number(h ?? 0));
   return `${((v / total) * 100).toFixed(1)}%`;
 };
 
-const periods = computed(() => metrics.value?.by_period ?? []);
-const maxPeriodHours = computed(() => Math.max(0, ...periods.value.map(p => Number(p.hours ?? 0))));
-
-const barHeightPct = (hours?: number) => {
-  const maxH = maxPeriodHours.value;
+const barHeightPct = (hours?: number, maxH?: number) => {
   const h = Math.max(0, Number(hours ?? 0));
-  if (!maxH || maxH <= 0) return '0%';
-  // min visible bar
-  const pct = Math.max(4, (h / maxH) * 100);
-  return `${pct}%`;
+  const m = Math.max(0, Number(maxH ?? 0));
+  if (!m) return '0%';
+  return `${Math.max(4, (h / m) * 100)}%`;
 };
+
+// ---- Leaderboards computed
+const fleetLongestJobSeconds = computed(() => historyAgg.value?.fleet?.fleet_longest_job?.seconds ?? 0);
+const fleetLongestJobPrinter = computed(() => historyAgg.value?.fleet?.fleet_longest_job?.printer ?? '');
+const fleetLongestJobFile = computed(() => historyAgg.value?.fleet?.fleet_longest_job?.job?.filename ?? '');
+
+// ---- Table rows
+const historyTableRows = computed(() => {
+  const rows = historyAgg.value?.by_printer ?? [];
+  return rows.map(r => {
+    const jt = r.job_totals ?? {};
+    return {
+      hostname: r.hostname ?? r.ip ?? '—',
+      ip: r.ip ?? '—',
+      ok: !!r.ok,
+      error: r.error ?? null,
+
+      total_jobs: Number(jt.total_jobs ?? 0),
+      total_time: Number(jt.total_time ?? 0),
+      total_print_time: Number(jt.total_print_time ?? 0),
+      total_filament_used: Number(jt.total_filament_used ?? 0),
+
+      longest_job: Number(jt.longest_job ?? 0),
+      longest_job_file: r.longest_job?.filename ?? '',
+    };
+  });
+});
+
+const historyHeaders = [
+  { title: 'Printer', key: 'hostname' },
+  { title: 'OK', key: 'ok' },
+  { title: 'Total Prints', key: 'total_jobs' },
+  { title: 'Print Time', key: 'total_print_time' },
+  { title: 'Total Time', key: 'total_time' },
+  { title: 'Filament', key: 'total_filament_used' },
+  { title: 'Longest Job', key: 'longest_job' },
+  { title: 'Error', key: 'error' },
+] as const;
+
+// ---- Top by print time
+const topByPrintTimeRow = computed(() => {
+  const rows = historyTableRows.value.slice().sort((a, b) => (b.total_print_time ?? 0) - (a.total_print_time ?? 0));
+  return rows[0] ?? null;
+});
+const topByPrintTimeSeconds = computed(() => topByPrintTimeRow.value?.total_print_time ?? 0);
+const topByPrintTimePrinter = computed(() => topByPrintTimeRow.value?.hostname ?? '');
+
+// ---- Top by print count (fixed naming to avoid TS redeclare)
+const topByPrintCountRow = computed(() => {
+  const rows = historyTableRows.value.slice().sort((a, b) => (b.total_jobs ?? 0) - (a.total_jobs ?? 0));
+  return rows[0] ?? null;
+});
+const topByPrintCount = computed(() => topByPrintCountRow.value?.total_jobs ?? 0);
+const topByPrintCountPrinter = computed(() => topByPrintCountRow.value?.hostname ?? '');
 
 // ---- Calibration grouping (machine + material, left/right)
 type ProfileGroup = {
@@ -498,9 +672,9 @@ const fmtNum = (v?: number, digits = 3) => {
   return Number(v).toFixed(digits);
 };
 
-const humanHours = (h?: number) => {
-  if (h === null || h === undefined || Number.isNaN(Number(h))) return '—';
-  const totalSec = Math.max(0, Math.round(Number(h) * 3600));
+const humanDuration = (seconds?: number) => {
+  if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '—';
+  const totalSec = Math.max(0, Math.round(Number(seconds)));
   const hours = Math.floor(totalSec / 3600);
   const mins = Math.floor((totalSec % 3600) / 60);
   const secs = totalSec % 60;
@@ -510,6 +684,19 @@ const humanHours = (h?: number) => {
   if (mins > 0) parts.push(`${mins}m`);
   if (hours === 0 && mins === 0) parts.push(`${secs}s`);
   return parts.join(' ');
+};
+
+// for graph legend where we have hours already
+const humanDurationHr = (hours?: number) => {
+  if (hours === null || hours === undefined || Number.isNaN(Number(hours))) return '—';
+  return humanDuration(Number(hours) * 3600);
+};
+
+const fmtMeters = (mm?: number) => {
+  if (mm === null || mm === undefined || Number.isNaN(Number(mm))) return '—';
+  const m = Number(mm) / 1000.0;
+  if (!Number.isFinite(m)) return '—';
+  return `${m.toFixed(1)} m`;
 };
 
 const formatDateShort = (iso?: string) => {
@@ -527,7 +714,9 @@ const formatDateShort = (iso?: string) => {
 
 const unescapeHex = (str?: string) => {
   if (!str) return '';
-  return String(str).replace(/\\x([0-9A-Fa-f]{2})/g, (_, hh) => String.fromCharCode(parseInt(hh, 16)));
+  return String(str).replace(/\\x([0-9A-Fa-f]{2})/g, (_, hh) =>
+    String.fromCharCode(parseInt(hh, 16))
+  );
 };
 
 const notesText = (p: CalibrationProfile) => {
@@ -556,40 +745,20 @@ const fetchPrinters = async () => {
   }
 };
 
-const fetchMetrics = async () => {
-  loadingMetrics.value = true;
+const fetchHistoryAggregate = async () => {
+  loadingHistory.value = true;
   try {
-    // Ensure printers are loaded first (so we have base_url list)
-    if (!printers.value.length) {
-      await fetchPrinters();
-    }
-
-    const res = await fetch('/api/history/aggregate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({
-        printers: printers.value.map(p => ({
-          hostname: p.hostname,
-          ip: p.ip,
-          base_url: (p as any).base_url, // make sure Printer type includes this
-        })),
-        per_printer_limit: 800, // tune this if needed
-      }),
-    });
-
-    if (!res.ok) throw new Error(`aggregate: ${res.status}`);
-    metrics.value = await res.json();
+    const res = await fetch('/api/history/aggregate', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`history aggregate: ${res.status}`);
+    historyAgg.value = await res.json();
   } finally {
-    loadingMetrics.value = false;
+    loadingHistory.value = false;
   }
 };
-
 
 const fetchProfiles = async () => {
   loadingProfiles.value = true;
   try {
-    // matches your separate report project
     const res = await fetch('/cgi-bin/get_calibration_report.sh', { cache: 'no-store' });
     if (!res.ok) throw new Error(`profiles: ${res.status}`);
     const data: CalibrationReportResponse = await res.json();
@@ -602,7 +771,7 @@ const fetchProfiles = async () => {
 const refreshAll = async () => {
   errorMsg.value = '';
   try {
-    await Promise.all([fetchPrinters(), fetchMetrics(), fetchProfiles()]);
+    await Promise.all([fetchPrinters(), fetchHistoryAggregate(), fetchProfiles()]);
   } catch (e: any) {
     errorMsg.value = `Analytics refresh failed: ${e?.message ?? String(e)}`;
   }
@@ -721,39 +890,6 @@ onMounted(() => {
   padding: 6px 2px;
 }
 
-/* Pills (matches your report vibe) */
-.pill-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.25);
-}
-.pill-label {
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
-}
-.pill-value {
-  font-weight: 700;
-}
-.pill-hot { border-color: rgba(255, 189, 0, 0.6); }
-.pill-bed { border-color: rgba(255, 255, 255, 0.22); }
-.pill-material {
-  border-color: rgba(255, 200, 0, 0.7);
-  background: linear-gradient(135deg, rgba(27, 21, 5, 0.85), rgba(0, 0, 0, 0.25));
-}
-
 /* Status bar */
 .status-bar {
   display: flex;
@@ -763,11 +899,21 @@ onMounted(() => {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
-.status-seg { height: 100%; }
-.status-seg.completed { background: linear-gradient(to right, #FFBD00, #FFD400); }
-.status-seg.error { background: linear-gradient(to right, #5b2f35, #7b3b44); }
-.status-seg.cancelled { background: linear-gradient(to right, #343447, #4a4a63); }
-.status-seg.other { background: linear-gradient(to right, #2c3138, #3b414b); }
+.status-seg {
+  height: 100%;
+}
+.status-seg.completed {
+  background: linear-gradient(to right, #FFBD00, #FFD400);
+}
+.status-seg.error {
+  background: linear-gradient(to right, #5b2f35, #7b3b44);
+}
+.status-seg.cancelled {
+  background: linear-gradient(to right, #343447, #4a4a63);
+}
+.status-seg.other {
+  background: linear-gradient(to right, #2c3138, #3b414b);
+}
 
 .legend {
   display: flex;
@@ -777,26 +923,45 @@ onMounted(() => {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
 }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   display: inline-block;
 }
-.dot.completed { background: linear-gradient(to right, #FFBD00, #FFD400); }
-.dot.cancelled { background: linear-gradient(to right, #343447, #4a4a63); }
-.dot.error { background: linear-gradient(to right, #5b2f35, #7b3b44); }
-.dot.other { background: linear-gradient(to right, #2c3138, #3b414b); }
+.dot.completed {
+  background: linear-gradient(to right, #FFBD00, #FFD400);
+}
+.dot.cancelled {
+  background: linear-gradient(to right, #343447, #4a4a63);
+}
+.dot.error {
+  background: linear-gradient(to right, #5b2f35, #7b3b44);
+}
+.dot.other {
+  background: linear-gradient(to right, #2c3138, #3b414b);
+}
 
 .last-print {
   margin-top: 8px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.65);
 }
+
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   color: rgba(255, 255, 255, 0.85);
+}
+
+.tiny {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
 }
 
 /* Simple bar chart */
@@ -850,6 +1015,45 @@ onMounted(() => {
   margin-top: 6px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.55);
+}
+
+.history-table {
+  background: transparent;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* Pills */
+.pill-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.25);
+}
+.pill-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.pill-value {
+  font-weight: 700;
+}
+.pill-hot { border-color: rgba(255, 189, 0, 0.6); }
+.pill-bed { border-color: rgba(255, 255, 255, 0.22); }
+.pill-material {
+  border-color: rgba(255, 200, 0, 0.7);
+  background: linear-gradient(135deg, rgba(27, 21, 5, 0.85), rgba(0, 0, 0, 0.25));
 }
 
 /* Profiles */
