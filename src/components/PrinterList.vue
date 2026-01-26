@@ -1,26 +1,53 @@
 <template>
   <v-container fluid class="fill-height">
-    <!-- Add View Toggle at top -->
-    <v-btn-toggle v-model="viewType" mandatory class="mb-4">
-      <v-btn value="grid">
-        <v-icon>mdi-grid</v-icon>
-      </v-btn>
-      <v-btn value="list">
-        <v-icon>mdi-format-list-bulleted</v-icon>
-      </v-btn>
-    </v-btn-toggle>
+    <!-- Top bar: centered view toggle + utilities on right -->
+    <div class="top-bar">
+      <div class="top-bar-left"></div>
 
-    <!-- Firmware Restart Button Row -->
-    <div class="top-controls-row">
-      <v-btn
-        color="red"
-        class="mb-4"
-        :disabled="selectedPrinters.length === 0"
-        @click="restartFirmware"
-      >
-        <v-icon left>mdi-restart</v-icon>
-        Firmware Restart (Selected)
-      </v-btn>
+      <div class="top-bar-center">
+        <v-btn-toggle v-model="viewType" mandatory>
+          <v-btn value="grid">
+            <v-icon>mdi-grid</v-icon>
+          </v-btn>
+          <v-btn value="list">
+            <v-icon>mdi-format-list-bulleted</v-icon>
+          </v-btn>
+        </v-btn-toggle>
+      </div>
+
+      <div class="top-bar-right">
+        <!-- Utilities dropdown -->
+        <v-menu location="bottom end" offset="8">
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon
+              variant="text"
+              class="utility-btn"
+              :title="'Utilities'"
+            >
+              <v-icon>mdi-dots-vertical</v-icon>
+            </v-btn>
+          </template>
+
+          <v-list density="compact" class="utility-menu">
+            <v-list-item
+              :disabled="selectedPrinters.length === 0"
+              @click="restartFirmware"
+            >
+              <template #prepend>
+                <v-icon color="red">mdi-restart</v-icon>
+              </template>
+              <v-list-item-title>Firmware Restart (Selected)</v-list-item-title>
+              <v-list-item-subtitle v-if="selectedPrinters.length === 0">
+                Select at least one printer
+              </v-list-item-subtitle>
+            </v-list-item>
+
+            <!-- Add more utilities later -->
+          </v-list>
+        </v-menu>
+      </div>
     </div>
 
     <!-- GRID VIEW -->
@@ -265,7 +292,6 @@
               }"
               @click="toggleSelection(printer)"
             >
-              <!-- lock column -->
               <td>
                 <v-btn
                   v-if="isPrinterPrinting(printer)"
@@ -344,7 +370,6 @@ export default defineComponent({
     const printers = ref<Printer[]>([]);
     const isLoading = ref(true);
 
-    // printers that are printing are locked unless user explicitly unlocks them
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
 
     const normalizeStatus = (s?: string) => (s ?? '').trim().toLowerCase();
@@ -354,7 +379,6 @@ export default defineComponent({
       return s === 'busy' || s.includes('busy');
     };
 
-    // Treat "Printing" only as printing when we have some evidence (progress or file)
     const isPrinterPrinting = (p: Printer) => {
       const s = normalizeStatus(p.status);
       if (s !== 'printing') return false;
@@ -451,7 +475,6 @@ export default defineComponent({
 
       printers.value = uniquePrinters;
 
-      // cleanup unlocked overrides if printer stops printing
       const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
       const nextUnlocked = new Set<string>();
       unlockedWhilePrinting.value.forEach(ip => {
@@ -459,7 +482,6 @@ export default defineComponent({
       });
       unlockedWhilePrinting.value = nextUnlocked;
 
-      // if printer becomes locked, ensure it's not selected
       selectedPrinters.value = selectedPrinters.value.filter(ip => {
         const p = printers.value.find(x => x.ip === ip);
         return !p || !isPrinterLocked(p);
@@ -467,10 +489,7 @@ export default defineComponent({
     };
 
     const toggleSelection = (printer: Printer) => {
-      if (isPrinterLocked(printer)) {
-        console.log(`Printer ${printer.ip} is locked (printing). Unlock to select.`);
-        return;
-      }
+      if (isPrinterLocked(printer)) return;
 
       const ip = printer.ip;
       if (selectedPrinters.value.includes(ip)) {
@@ -497,6 +516,7 @@ export default defineComponent({
 
     const restartFirmware = async () => {
       if (selectedPrinters.value.length === 0) return;
+
       const results = await Promise.all(selectedPrinters.value.map(async (ip) => {
         try {
           const res = await fetch(`http://${ip}/printer/gcode/script?script=M119`, {
@@ -537,6 +557,23 @@ export default defineComponent({
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
 * { font-family: 'Lato', sans-serif !important; }
 
+/* ✅ three-column top bar: center toggle stays centered */
+.top-bar {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.top-bar-left { justify-self: start; }
+.top-bar-center { justify-self: center; }
+.top-bar-right { justify-self: end; }
+
+.utility-btn { opacity: 0.9; }
+.utility-menu { min-width: 260px; }
+
+/* Cards */
 .floating-card {
   position: relative;
   border-radius: 12px;
@@ -545,18 +582,15 @@ export default defineComponent({
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
 }
-
 .floating-card:hover {
   transform: translateY(-4px);
   box-shadow: 0px 8px 16px #FFBD00, 0px 4px 8px #F2F2F2;
 }
-
 .selected-card {
   background-color: #393B3E;
   border: 2px solid #FFD400;
   box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
 }
-
 .locked-card { opacity: 0.65; cursor: not-allowed; }
 .unlocked-printing-card { border: 1px dashed rgba(255, 255, 255, 0.25); }
 
@@ -608,7 +642,6 @@ a:active { color: blue; }
   margin: 0;
   padding: 2px 0;
 }
-
 .temp-reading.pellet {
   flex-direction: row;
   gap: 4px;
@@ -616,7 +649,6 @@ a:active { color: blue; }
   justify-content: center;
   padding: 1px 0;
 }
-
 .temp-icon { font-size: 18px !important; }
 .temp-label { font-weight: bold; color: #ffffff; }
 .temp-value { font-size: 0.9rem; font-weight: bold; }
@@ -667,7 +699,7 @@ a:active { color: blue; }
   width: 100%;
 }
 
-.table-container { width: 100%; overflow-x: auto; margin-top: -16px; }
+.table-container { width: 100%; overflow-x: auto; margin-top: -8px; }
 
 .text-truncate {
   white-space: nowrap;
@@ -684,12 +716,6 @@ a:active { color: blue; }
   padding-top: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.top-controls-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
+  gap: 12px;
 }
 </style>
