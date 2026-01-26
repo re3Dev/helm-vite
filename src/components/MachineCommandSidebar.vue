@@ -1,17 +1,17 @@
 <template>
   <div class="pm-shell">
-    <!-- This is the ONLY thing that should reserve space in your layout -->
+    <!-- Reserves layout space -->
     <div class="sidebar-container" :style="{ width: sidebarWidth + 'px' }">
-      <!-- Custom “drawer” (NOT v-navigation-drawer) so nothing can shift itself right/left -->
+      <!-- Custom “drawer” -->
       <div v-show="!isCollapsed" class="pm-drawer">
-        <!-- Header sits ON TOP of the drawer content (like your old behavior) -->
+        <!-- Header -->
         <div class="sidebar-header">
           <div class="header-content">
             <div class="header-title">Printer Management</div>
           </div>
         </div>
 
-        <!-- Scrollable body -->
+        <!-- Body -->
         <div class="drawer-body">
           <v-expansion-panels multiple>
             <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx">
@@ -24,7 +24,6 @@
                 <!-- MOVEMENT -->
                 <template v-if="group.title === 'Movement'">
                   <div class="movement-wrap">
-                    <!-- Step size row -->
                     <div class="step-row">
                       <v-btn
                         v-for="cmd in stepCommands(group.commands)"
@@ -39,9 +38,7 @@
                       </v-btn>
                     </div>
 
-                    <!-- XY grid + Z column -->
                     <div class="move-two-col">
-                      <!-- XY 3x3 -->
                       <div class="movement-grid">
                         <v-btn
                           v-for="cmd in gridCommands(group.commands)"
@@ -56,7 +53,6 @@
                         </v-btn>
                       </div>
 
-                      <!-- Z (two tall buttons) -->
                       <div class="z-col">
                         <div class="z-stack">
                           <v-btn
@@ -167,7 +163,7 @@
         </div>
       </div>
 
-      <!-- Resizer ALWAYS anchors to the actual right edge of sidebar-container -->
+      <!-- Resizer -->
       <div
         v-if="!isCollapsed"
         class="resizer"
@@ -175,10 +171,10 @@
       ></div>
     </div>
 
-    <!-- Floating toggle button pinned to the sidebar boundary -->
+    <!-- Toggle button: top-right outside sidebar, but clamped so it never clips off-screen -->
     <v-btn
-      class="edge-toggle"
-      size="small"
+      class="edge-toggle top-right"
+      size="x-small"
       icon
       :style="{ left: toggleLeft + 'px' }"
       @click="toggleCollapse"
@@ -254,10 +250,15 @@ let lastWidth = sidebarWidth.value
 const gcodeInputs = ref({})
 
 /**
- * Floating button x position:
- * boundary is sidebarWidth (or 0 if collapsed)
+ * Button x anchor (sidebar boundary).
+ * When collapsed, sidebarWidth is 0; we clamp to keep the button visible.
  */
-const toggleLeft = computed(() => (isCollapsed.value ? 0 : sidebarWidth.value))
+const EDGE_BTN_MIN_LEFT = 10 // px from left edge of screen
+
+const toggleLeft = computed(() => {
+  const boundary = isCollapsed.value ? 0 : sidebarWidth.value
+  return Math.max(EDGE_BTN_MIN_LEFT, boundary)
+})
 
 function startResize() {
   isResizing = true
@@ -269,9 +270,6 @@ function startResize() {
 
 function handleMouseMove(e) {
   if (!isResizing) return
-
-  // If your sidebar is left aligned, clientX is correct.
-  // Clamp to something sane.
   const next = Math.max(220, Math.min(e.clientX, 700))
   sidebarWidth.value = next
   lastWidth = next
@@ -310,19 +308,19 @@ function toggleCollapse() {
   font-family: 'Lato', sans-serif !important;
 }
 
-/* Outer shell so we can absolutely position the floating edge button */
 .pm-shell{
   position: relative;
   height: 100%;
+  overflow: visible; /* IMPORTANT: allow the button to sit outside the sidebar */
 }
 
-/* This reserves layout space. Nothing inside should be able to shift itself. */
+/* Reserves layout space */
 .sidebar-container{
   position: relative;
   height: 100%;
 }
 
-/* Custom “drawer” that fills the reserved space */
+/* Custom drawer fills the reserved area */
 .pm-drawer{
   position: absolute;
   inset: 0;
@@ -332,7 +330,6 @@ function toggleCollapse() {
   border-right: 1px solid #ccc;
 }
 
-/* Header on top */
 .sidebar-header{
   height: 30px;
   background-color: #333131;
@@ -359,14 +356,13 @@ function toggleCollapse() {
   line-height: 30px;
 }
 
-/* Scrollable body */
 .drawer-body{
   flex: 1 1 auto;
   overflow: auto;
   padding: 0;
 }
 
-/* Resizer always at the actual right edge of the reserved area */
+/* Resizer */
 .resizer{
   position: absolute;
   top: 0;
@@ -378,13 +374,18 @@ function toggleCollapse() {
   z-index: 50;
 }
 
-/* Floating toggle button sits just outside the sidebar boundary */
+/* Toggle button anchored at the boundary */
 .edge-toggle{
   position: absolute;
-  top: 42px;
-  transform: translateX(50%); /* outside to the right */
   z-index: 9999;
   border-radius: 999px;
+}
+
+/* Top-right outside sidebar.
+   When collapsed, left is clamped to >= 10px, so translateX(50%) won't clip off-screen. */
+.edge-toggle.top-right{
+  top: 6px;
+  transform: translateX(50%);
 }
 
 /* Movement layout + sizing tokens so XY + Z match perfectly */
@@ -396,7 +397,6 @@ function toggleCollapse() {
   gap: 10px;
 }
 
-/* Step row */
 .step-row{
   display:flex;
   gap: 8px;
@@ -406,7 +406,6 @@ function toggleCollapse() {
   min-width: 0;
 }
 
-/* Two-column layout: XY grid + Z column */
 .move-two-col{
   display: grid;
   grid-template-columns: 1fr 0.25fr;
@@ -414,7 +413,6 @@ function toggleCollapse() {
   align-items: start;
 }
 
-/* XY 3x3 grid */
 .movement-grid{
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -433,7 +431,6 @@ function toggleCollapse() {
   font-size: 0.9em;
 }
 
-/* Z column: match total height of XY grid (3 rows + 2 gaps) */
 .z-col{
   height: calc(var(--move-btn-h) * 3 + var(--move-gap) * 2);
 }
@@ -444,7 +441,6 @@ function toggleCollapse() {
   flex-direction: column;
 }
 
-/* Two tall buttons that split the full height */
 .z-tall{
   flex: 1;
   min-height: 0;
@@ -452,7 +448,6 @@ function toggleCollapse() {
   border-radius: 0;
 }
 
-/* rounded ends */
 .z-top{
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
@@ -463,7 +458,6 @@ function toggleCollapse() {
   border-top: 1px solid rgba(255,255,255,0.18);
 }
 
-/* Active ring for selected step size */
 .step-active{
   outline: 2px solid rgba(255, 255, 255, 0.25);
   outline-offset: 2px;
