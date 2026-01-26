@@ -1,7 +1,7 @@
 <template>
   <v-container fluid class="fill-height">
-        <!-- Add View Toggle at top -->
-        <v-btn-toggle v-model="viewType" mandatory class="mb-4">
+    <!-- Add View Toggle at top -->
+    <v-btn-toggle v-model="viewType" mandatory class="mb-4">
       <v-btn value="grid">
         <v-icon>mdi-grid</v-icon>
       </v-btn>
@@ -9,6 +9,7 @@
         <v-icon>mdi-format-list-bulleted</v-icon>
       </v-btn>
     </v-btn-toggle>
+
     <!-- Firmware Restart Button and Print Controls Row -->
     <div class="top-controls-row">
       <v-btn
@@ -20,6 +21,7 @@
         <v-icon left>mdi-restart</v-icon>
         Firmware Restart (Selected)
       </v-btn>
+
       <v-btn
         icon
         color="yellow"
@@ -30,6 +32,7 @@
       >
         <v-icon>mdi-pause</v-icon>
       </v-btn>
+
       <v-btn
         icon
         color="red"
@@ -41,275 +44,329 @@
         <v-icon>mdi-stop</v-icon>
       </v-btn>
     </div>
+
+    <!-- GRID VIEW -->
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
-      <v-sheet
-        class="grid-container"
-        color="background"
-      >
-      <template v-if="isLoading">
-  <v-card
-    v-for="n in 12"
-    :key="n"
-    color="#181B20"
-    class="pa-3 floating-card"
-  >
-    <v-skeleton-loader
-      type="heading, divider, heading, list-item, subtitle, image"
-      :loading="true"
-    >
-    </v-skeleton-loader>
-  </v-card>
-</template>
-      <template v-else>
+      <v-sheet class="grid-container" color="background">
+        <template v-if="isLoading">
+          <v-card
+            v-for="n in 12"
+            :key="n"
+            color="#181B20"
+            class="pa-3 floating-card"
+          >
+            <v-skeleton-loader
+              type="heading, divider, heading, list-item, subtitle, image"
+              :loading="true"
+            />
+          </v-card>
+        </template>
 
-      <v-card
-        v-for="printer in sortedPrinters"
-        :key="printer.ip"
-        color="#181B20"
-        class="pa-3 floating-card"
-        :class="{ 'selected-card': selectedPrinters.includes(printer.ip) }"
-        @click="toggleSelection(printer.ip)"
->
+        <template v-else>
+          <v-card
+            v-for="printer in sortedPrinters"
+            :key="printer.ip"
+            color="#181B20"
+            class="pa-3 floating-card"
+            :class="{
+              'selected-card': selectedPrinters.includes(printer.ip),
+              'locked-card': isPrinterLocked(printer),
+              'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
+            }"
+            @click="toggleSelection(printer)"
+          >
+            <!-- Lock icon (top-right) -->
+            <div class="lock-badge" v-if="isPrinterPrinting(printer)">
+              <v-btn
+                icon
+                size="x-small"
+                variant="tonal"
+                color="grey"
+                class="lock-btn"
+                @click.stop="togglePrinterLock(printer)"
+                :title="isPrinterLocked(printer) ? 'Unlock to allow selection' : 'Lock selection'"
+              >
+                <v-icon :color="isPrinterLocked(printer) ? 'yellow' : 'green'">
+                  {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
+                </v-icon>
+              </v-btn>
+            </div>
 
-          <v-divider>
-            <v-card-title class="text-h6">
-              <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
-            </v-card-title>
-          </v-divider>
-          <v-divider color="yellow" :thickness="1"></v-divider>
-          <v-card-text>
-            <div class="printer-type">
-    <v-icon :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
-      {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
-    </v-icon>
-    <span style="margin-left: 8px;">
-      <strong>{{ printer.modelType || 'Unknown Model' }}</strong>
-      <br />
-      <span class="printer-ip">
-        <v-icon small color="green" style="vertical-align: middle; margin-right: 4px;">mdi-wifi</v-icon>{{ printer.ip }}
-      </span>
-    </span>
-  </div>
-  
+            <v-divider>
+              <v-card-title class="text-h6">
+                <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
+              </v-card-title>
+            </v-divider>
 
-            <v-progress-linear
-              v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
-              :model-value="printer.print_progress * 100"
-              color="#FFBD00"
-              :height="20"
-              class="mt-2"
-              :striped="true"
-              bg-color="#BCBEC0"
-              bg-opacity="0.8"
-              :stream="false"
-            >
-              <bold>
+            <v-divider color="yellow" :thickness="1"></v-divider>
+
+            <v-card-text>
+              <div class="printer-type">
+                <v-icon :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
+                  {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
+                </v-icon>
+                <span style="margin-left: 8px;">
+                  <strong>{{ printer.modelType || 'Unknown Model' }}</strong>
+                  <br />
+                  <span class="printer-ip">
+                    <v-icon small color="green" style="vertical-align: middle; margin-right: 4px;">mdi-wifi</v-icon>{{ printer.ip }}
+                  </span>
+                </span>
+              </div>
+
+              <v-progress-linear
+                v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
+                :model-value="printer.print_progress * 100"
+                color="#FFBD00"
+                :height="20"
+                class="mt-2"
+                :striped="true"
+                bg-color="#BCBEC0"
+                bg-opacity="0.8"
+                :stream="false"
+              >
+                <bold>
+                  <strong>
+                    <v-text style="color: black;">
+                      {{ (printer.print_progress * 100).toFixed(0) }}%
+                    </v-text>
+                  </strong>
+                </bold>
+              </v-progress-linear>
+
+              <br />
+
+              <div class="file-path-container">
                 <strong>
-                  <v-text style="color: black;">
-                    {{ (printer.print_progress * 100).toFixed(0) }}%
+                  <v-text style="color: white;">
+                    {{ printer.state_message === 'Printer is ready' ? formatFileName(printer.file_path) : 'Not Printing' }}
                   </v-text>
                 </strong>
-              </bold>
+              </div>
 
-            </v-progress-linear>
-            <br>
-            <div class="file-path-container">
-              <strong>
-                <v-text style="color: white;">
-                  {{ printer.state_message === 'Printer is ready' ? formatFileName(printer.file_path) : 'Not Printing' }}
-                </v-text>
-              </strong>
-            </div>
               <!-- Print Control Buttons -->
               <div class="print-controls" v-if="selectedPrinters.includes(printer.ip)">
-  <template v-if="printer.status === 'Printing'">
-    <v-btn
-      color="warning"
-      variant="tonal"
-      class="mr-2"
-      @click="pausePrint(printer.ip)"
-    >
-      <v-icon>mdi-pause</v-icon>
-      Pause Print
-    </v-btn>
-    <v-btn
-      color="red"
-      variant="tonal"
-      @click="stopPrint(printer.ip)"
-    >
-      <v-icon>mdi-stop</v-icon>
-      Stop Print
-    </v-btn>
-  </template>
-  <template v-else>
-    <v-btn
-      color="success"
-      variant="tonal"
-      @click="startPrint(printer.ip)"
-    >
-      <v-icon>mdi-play</v-icon>
-      Start Print
-    </v-btn>
-  </template>
-</div>
-            <br />
-            <div>
-              <strong>
-                <div class="status-container">
-                <span  
-                  :class="{
-                    'text-yellow': printer.status === 'Printing' && printer.state_message === 'Printer is ready',
-                    'text-green': printer.status === 'Ready',
-                    'text-grey': printer.status === 'Idle',
-                    'text-red': printer.state_message !== 'Printer is ready',
-                  }"
-                >
-                <template v-if="printer.state_message !== 'Printer is ready'">
-                  <v-icon class="text-red">mdi-alert-circle</v-icon>
-                  <span class="text-red">ERROR</span>
-                </template>
-                <template v-else-if="printer.status === 'Printing'">
-                  <v-icon>mdi-printer-3d-nozzle</v-icon>
-                  PRINTING
-                </template>
-                <template v-else-if="printer.status === 'Ready'">
-                  <v-icon>mdi-home</v-icon>
-                  HOMED
-                </template>
-                <template v-else-if="printer.status === 'Idle'">
-                  <v-icon>mdi-engine-off</v-icon>
-                  MOTORS DISENGAGED
+                <template v-if="printer.status === 'Printing'">
+                  <v-btn
+                    color="warning"
+                    variant="tonal"
+                    class="mr-2"
+                    @click.stop="pausePrint(printer.ip)"
+                  >
+                    <v-icon>mdi-pause</v-icon>
+                    Pause Print
+                  </v-btn>
+                  <v-btn
+                    color="red"
+                    variant="tonal"
+                    @click.stop="stopPrint(printer.ip)"
+                  >
+                    <v-icon>mdi-stop</v-icon>
+                    Stop Print
+                  </v-btn>
                 </template>
                 <template v-else>
-                  Status Unknown
+                  <v-btn
+                    color="success"
+                    variant="tonal"
+                    @click.stop="startPrint(printer.ip)"
+                  >
+                    <v-icon>mdi-play</v-icon>
+                    Start Print
+                  </v-btn>
                 </template>
-                </span>
-                </div>
-              </strong>
-            </div>
-            <div class="status-container" v-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)">
-              <span class="text-red">
-              <v-icon>mdi-alert-circle</v-icon>
-              {{ printer.state_message }}
-              </span>
-            </div>
-          
+              </div>
 
-            <div class="temperature-container">
-  <div class="extruder-temps" :class="{ 'horizontal': !printer.extruder2_temperature }">
-    <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
-      <v-icon 
-        :class="{
-          'text-blue': printer.extruder_temperature < 60,
-          'text-yellow': printer.extruder_temperature >= 60
-        }"
-        class="temp-icon">
-        {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
-      </v-icon>
-      <span class="temp-label"></span>
-      <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
-    </div>
-    <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
-      <v-icon 
-        :class="{
-          'text-blue': printer.extruder1_temperature < 60,
-          'text-yellow': printer.extruder1_temperature >= 60
-        }"
-        class="temp-icon">
-        {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
-      </v-icon>
-      <span class="temp-label"></span>
-      <span class="temp-value">{{ Math.round(printer.extruder1_temperature) }}°C</span>
-    </div>
-  </div>
-            <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
-              <v-icon 
-                :class="{
-                  'text-blue': printer.extruder2_temperature < 60,
-                  'text-yellow': printer.extruder2_temperature >= 60
-                }"
-                class="temp-icon">
-                mdi-printer-3d-nozzle-outline
-              </v-icon>
-              <span class="temp-label"></span>
-              <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
-            </div>
-            <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
-              <v-icon 
-                :class="{
-                  'text-blue': printer.heater_bed_temperature < 40,
-                  'text-yellow': printer.heater_bed_temperature >= 40
-                }"
-                class="temp-icon">
-                mdi-radiator
-              </v-icon>
-              <span class="temp-label"></span>
-              <span class="temp-value">{{ Math.round(printer.heater_bed_temperature) }}°C</span>
-            </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </template>
+              <br />
+
+              <div>
+                <strong>
+                  <div class="status-container">
+                    <span
+                      :class="{
+                        'text-yellow': printer.status === 'Printing' && printer.state_message === 'Printer is ready',
+                        'text-green': printer.status === 'Ready',
+                        'text-grey': printer.status === 'Idle',
+                        'text-red': printer.state_message !== 'Printer is ready',
+                      }"
+                    >
+                      <template v-if="printer.state_message !== 'Printer is ready'">
+                        <v-icon class="text-red">mdi-alert-circle</v-icon>
+                        <span class="text-red">ERROR</span>
+                      </template>
+                      <template v-else-if="printer.status === 'Printing'">
+                        <v-icon>mdi-printer-3d-nozzle</v-icon>
+                        PRINTING
+                      </template>
+                      <template v-else-if="printer.status === 'Ready'">
+                        <v-icon>mdi-home</v-icon>
+                        HOMED
+                      </template>
+                      <template v-else-if="printer.status === 'Idle'">
+                        <v-icon>mdi-engine-off</v-icon>
+                        MOTORS DISENGAGED
+                      </template>
+                      <template v-else>
+                        Status Unknown
+                      </template>
+                    </span>
+                  </div>
+                </strong>
+              </div>
+
+              <div class="status-container" v-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)">
+                <span class="text-red">
+                  <v-icon>mdi-alert-circle</v-icon>
+                  {{ printer.state_message }}
+                </span>
+              </div>
+
+              <div class="temperature-container">
+                <div class="extruder-temps" :class="{ 'horizontal': !printer.extruder2_temperature }">
+                  <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+                    <v-icon
+                      :class="{
+                        'text-blue': printer.extruder_temperature < 60,
+                        'text-yellow': printer.extruder_temperature >= 60
+                      }"
+                      class="temp-icon"
+                    >
+                      {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
+                    </v-icon>
+                    <span class="temp-label"></span>
+                    <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
+                  </div>
+
+                  <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+                    <v-icon
+                      :class="{
+                        'text-blue': printer.extruder1_temperature < 60,
+                        'text-yellow': printer.extruder1_temperature >= 60
+                      }"
+                      class="temp-icon"
+                    >
+                      {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
+                    </v-icon>
+                    <span class="temp-label"></span>
+                    <span class="temp-value">{{ Math.round(printer.extruder1_temperature) }}°C</span>
+                  </div>
+                </div>
+
+                <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
+                  <v-icon
+                    :class="{
+                      'text-blue': printer.extruder2_temperature < 60,
+                      'text-yellow': printer.extruder2_temperature >= 60
+                    }"
+                    class="temp-icon"
+                  >
+                    mdi-printer-3d-nozzle-outline
+                  </v-icon>
+                  <span class="temp-label"></span>
+                  <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
+                </div>
+
+                <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+                  <v-icon
+                    :class="{
+                      'text-blue': printer.heater_bed_temperature < 40,
+                      'text-yellow': printer.heater_bed_temperature >= 40
+                    }"
+                    class="temp-icon"
+                  >
+                    mdi-radiator
+                  </v-icon>
+                  <span class="temp-label"></span>
+                  <span class="temp-value">{{ Math.round(printer.heater_bed_temperature) }}°C</span>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </template>
       </v-sheet>
-        </v-card>
-        <v-card v-else class="pa-4" color="background" width="100%">
-          <div class="table-container">
-          <v-table>
+    </v-card>
+
+    <!-- LIST VIEW -->
+    <v-card v-else class="pa-4" color="background" width="100%">
+      <div class="table-container">
+        <v-table>
           <thead>
             <tr>
+              <th style="width: 4%"></th>
               <th style="width: 20%">Hostname</th>
               <th style="width: 15%">Type</th>
               <th style="width: 15%">Status</th>
               <th style="width: 15%">Progress</th>
-              <th style="width: 35%">Print File</th>
+              <th style="width: 31%">Print File</th>
             </tr>
-      </thead>
-      <tbody>
-  <tr v-for="printer in sortedPrinters" 
-      :key="printer.ip"
-      :class="{ 'selected-row': selectedPrinters.includes(printer.ip) }"
-      @click="toggleSelection(printer.ip)">
-    <td>{{ printer.hostname }}</td>
-    <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
-    <td>{{ printer.status }}</td>
-    <td>
-      <v-progress-linear
-        v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
-        :model-value="printer.print_progress * 100"
-        color="#FFBD00"
-        height="20"
-        striped
-        bg-color="#BCBEC0"
-        bg-opacity="0.8"
-      >
-      <bold>
-                <strong>
-                  <v-text style="color: black;">
-                    {{ (printer.print_progress * 100).toFixed(0) }}%
-                  </v-text>
-                </strong>
-              </bold></v-progress-linear>
-    </td>
-    
-      <td class="text-truncate">
-        <span v-if="printer.state_message === 'Printer is ready'">
-          {{ formatFileName(printer.file_path) }}
-        </span>
-      </td>
-  </tr>
-</tbody>
-    </v-table>
-    </div>
-        </v-card>
-      
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="printer in sortedPrinters"
+              :key="printer.ip"
+              :class="{
+                'selected-row': selectedPrinters.includes(printer.ip),
+                'locked-row': isPrinterLocked(printer)
+              }"
+              @click="toggleSelection(printer)"
+            >
+              <!-- lock column -->
+              <td>
+                <v-btn
+                  v-if="isPrinterPrinting(printer)"
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click.stop="togglePrinterLock(printer)"
+                  :title="isPrinterLocked(printer) ? 'Unlock to allow selection' : 'Lock selection'"
+                >
+                  <v-icon :color="isPrinterLocked(printer) ? 'yellow' : 'green'">
+                    {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
+                  </v-icon>
+                </v-btn>
+              </td>
+
+              <td>{{ printer.hostname }}</td>
+              <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
+              <td>{{ printer.status }}</td>
+
+              <td>
+                <v-progress-linear
+                  v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
+                  :model-value="printer.print_progress * 100"
+                  color="#FFBD00"
+                  height="20"
+                  striped
+                  bg-color="#BCBEC0"
+                  bg-opacity="0.8"
+                >
+                  <bold>
+                    <strong>
+                      <v-text style="color: black;">
+                        {{ (printer.print_progress * 100).toFixed(0) }}%
+                      </v-text>
+                    </strong>
+                  </bold>
+                </v-progress-linear>
+              </td>
+
+              <td class="text-truncate">
+                <span v-if="printer.state_message === 'Printer is ready'">
+                  {{ formatFileName(printer.file_path) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </div>
+    </v-card>
   </v-container>
 </template>
 
-
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { selectedPrinters } from '../store/printerStore'; // Import the shared ref
-
+import { selectedPrinters } from '../store/printerStore'; // shared ref
 
 interface Printer {
   hostname: string;
@@ -324,50 +381,70 @@ interface Printer {
   state_message: string;
   file_path: string;
   thumbnail_url: string;
-  modelType?: string; // Added for dynamic model detection
+  modelType?: string;
 }
-
 
 export default defineComponent({
   name: 'PrinterGrid',
   setup() {
     const printers = ref<Printer[]>([]);
+    const isLoading = ref(true);
+
+    // printers that are printing are locked unless user explicitly unlocks them
+    const unlockedWhilePrinting = ref<Set<string>>(new Set());
+
+    const isPrinterPrinting = (p: Printer) => p.status === 'Printing';
+
+    const isPrinterLocked = (p: Printer) => {
+      // Locked by default while printing, unless explicitly unlocked
+      return isPrinterPrinting(p) && !unlockedWhilePrinting.value.has(p.ip);
+    };
+
+    const togglePrinterLock = (p: Printer) => {
+      if (!isPrinterPrinting(p)) return;
+
+      const s = new Set(unlockedWhilePrinting.value);
+      if (s.has(p.ip)) {
+        s.delete(p.ip); // re-lock
+      } else {
+        s.add(p.ip); // unlock
+      }
+      unlockedWhilePrinting.value = s;
+    };
 
     let fetchInterval: number | null = null;
+
     const sortedPrinters = computed(() => {
       return [...printers.value].sort((a, b) => {
         if (a.status === 'Printing' && b.status !== 'Printing') return -1;
         if (a.status !== 'Printing' && b.status === 'Printing') return 1;
         return 0;
-  });
-});
-const viewType = ref('grid') // 'grid' or 'list'
+      });
+    });
 
-const toggleView = () => {
-  viewType.value = viewType.value === 'grid' ? 'list' : 'grid'
-}
-const startPrint = (ip: string) => {
-  console.log('Start print:', ip);
-  // Add start print logic
-};
+    const viewType = ref('grid'); // 'grid' or 'list'
+    const toggleView = () => {
+      viewType.value = viewType.value === 'grid' ? 'list' : 'grid';
+    };
 
-const pausePrint = (ip: string) => {
-  console.log('Pause print:', ip);
-  // Add pause print logic
-};
+    const startPrint = (ip: string) => {
+      console.log('Start print:', ip);
+    };
 
-const stopPrint = (ip: string) => {
-  console.log('Stop print:', ip);
-  // Add stop print logic
-};
+    const pausePrint = (ip: string) => {
+      console.log('Pause print:', ip);
+    };
+
+    const stopPrint = (ip: string) => {
+      console.log('Stop print:', ip);
+    };
+
     const fetchPrinters = async () => {
       try {
         const response = await fetch('/api/devices');
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Error: ${response.status}`);
         const data = await response.json();
-        updatePrinters(data);
+        await updatePrinters(data);
         isLoading.value = false;
       } catch (error) {
         console.error('Failed to fetch devices:', error);
@@ -377,18 +454,18 @@ const stopPrint = (ip: string) => {
     const updatePrinters = async (newData: Printer[]) => {
       const updatedPrinters = [...printers.value];
 
-      // Helper to fetch and parse model type from .master.cfg
       async function fetchModelType(ip: string): Promise<string | null> {
         try {
           const res = await fetch(`http://${ip}/server/files/config/.master.cfg`);
           if (!res.ok) return null;
           const text = await res.text();
-          // Only use the first two lines
+
           const lines = text.split(/\r?\n/).slice(0, 2);
-          const firstLine = lines[0]?.trim(); // e.g. [fff] or [fgf]
-          const secondLine = lines[1]?.trim(); // e.g. platform_type=regular
+          const firstLine = lines[0]?.trim();
+          const secondLine = lines[1]?.trim();
           const platformMatch = secondLine?.match(/platform_type\s*=\s*(\w+)/i);
           const platform = platformMatch ? platformMatch[1].toLowerCase() : '';
+
           let model = '';
           if (firstLine === '[fff]') {
             if (platform === 'regular') model = 'Gigabot 4';
@@ -411,7 +488,6 @@ const stopPrint = (ip: string) => {
         if (index !== -1) {
           updatedPrinters[index] = { ...updatedPrinters[index], ...device };
         } else {
-          // New printer: fetch model type
           const modelType = await fetchModelType(device.ip);
           updatedPrinters.push({ ...device, modelType: modelType ?? undefined });
         }
@@ -419,53 +495,61 @@ const stopPrint = (ip: string) => {
 
       const uniquePrinters = updatedPrinters.reduce((acc: Printer[], current) => {
         const isDuplicate = acc.some((printer) => printer.hostname === current.hostname);
-        if (!isDuplicate) {
-          acc.push(current);
-        }
+        if (!isDuplicate) acc.push(current);
         return acc;
       }, []);
 
       printers.value = uniquePrinters;
+
+      // ✅ cleanup: if a printer is no longer printing, remove any "unlocked while printing" override
+      const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
+      const nextUnlocked = new Set<string>();
+      unlockedWhilePrinting.value.forEach(ip => {
+        if (printingIps.has(ip)) nextUnlocked.add(ip);
+      });
+      unlockedWhilePrinting.value = nextUnlocked;
+
+      // ✅ also: if a printer is locked (printing and not unlocked), ensure it's not selected
+      selectedPrinters.value = selectedPrinters.value.filter(ip => {
+        const p = printers.value.find(x => x.ip === ip);
+        return !p || !isPrinterLocked(p);
+      });
     };
 
+    const toggleSelection = (printer: Printer) => {
+      // block selection if locked
+      if (isPrinterLocked(printer)) {
+        console.log(`Printer ${printer.ip} is locked (printing). Unlock to select.`);
+        return;
+      }
 
+      const ip = printer.ip;
+      if (selectedPrinters.value.includes(ip)) {
+        selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== ip);
+        console.log(`Printer with IP ${ip} unselected.`);
+      } else {
+        selectedPrinters.value.push(ip);
+        console.log(`Printer with IP ${ip} selected.`);
+      }
 
-    const toggleSelection = (ip: string) => {
-  if (selectedPrinters.value.includes(ip)) {
-    selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== ip);
-    console.log(`Printer with IP ${ip} unselected.`);
-  } else {
-    selectedPrinters.value.push(ip);
-    console.log(`Printer with IP ${ip} selected.`);
-  }
-
-  // Log all currently selected printers
-  console.log("Currently selected printers:", selectedPrinters.value);
-};
-
-
+      console.log("Currently selected printers:", selectedPrinters.value);
+    };
 
     const formatFileName = (filePath: string | null): string => {
-  if (!filePath) {
-    return "Not Printing"; // Default text when filePath is null or undefined
-  }
-  const prefix = "/home/pi/printer_data/gcodes/";
-  return filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath;
-};
+      if (!filePath) return "Not Printing";
+      const prefix = "/home/pi/printer_data/gcodes/";
+      return filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath;
+    };
 
-const isLoading = ref(true)
     onMounted(() => {
       fetchPrinters();
       fetchInterval = window.setInterval(fetchPrinters, 5000);
     });
 
     onBeforeUnmount(() => {
-      if (fetchInterval) {
-        clearInterval(fetchInterval);
-      }
+      if (fetchInterval) clearInterval(fetchInterval);
     });
 
-    // Firmware Restart function (now sends M119 as a test, direct to printer IP)
     const restartFirmware = async () => {
       if (selectedPrinters.value.length === 0) return;
       const results = await Promise.all(selectedPrinters.value.map(async (ip) => {
@@ -480,29 +564,46 @@ const isLoading = ref(true)
           return { ip, success: false };
         }
       }));
-      // Optionally show a summary
+
       const failed = results.filter(r => !r.success);
-      if (failed.length === 0) {
-        alert('M119 sent to all selected printers!');
-      } else {
-        alert('Some printers failed: ' + failed.map(f => f.ip).join(', '));
-      }
+      if (failed.length === 0) alert('M119 sent to all selected printers!');
+      else alert('Some printers failed: ' + failed.map(f => f.ip).join(', '));
     };
 
-    return { viewType, toggleView, printers, sortedPrinters, isLoading, selectedPrinters, startPrint, stopPrint, pausePrint, toggleSelection, formatFileName, restartFirmware };
+    return {
+      viewType,
+      toggleView,
+      printers,
+      sortedPrinters,
+      isLoading,
+      selectedPrinters,
+
+      startPrint,
+      stopPrint,
+      pausePrint,
+
+      toggleSelection,
+      formatFileName,
+      restartFirmware,
+
+      // lock behavior
+      isPrinterPrinting,
+      isPrinterLocked,
+      togglePrinterLock
+    };
   },
 });
 </script>
 
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
 
-/* Apply Lato font to all elements */
 * {
   font-family: 'Lato', sans-serif !important;
 }
+
 .floating-card {
+  position: relative; /* needed for lock badge positioning */
   border-radius: 12px;
   box-shadow: 0px 4px 8px rgba(219, 219, 219, 0.788), 0px 2px 4px rgb(221, 221, 221);
   background-color: surface;
@@ -516,25 +617,44 @@ const isLoading = ref(true)
 }
 
 .selected-card {
-  background-color: #393B3E; /* Change background for selected cards */
+  background-color: #393B3E;
   border: 2px solid #FFD400;
   box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
 }
 
-.text-yellow {
-  color: yellow;
+/* locked look */
+.locked-card {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
-.text-green {
-  color: green;
+/* optional: unlocked but printing look */
+.unlocked-printing-card {
+  border: 1px dashed rgba(255, 255, 255, 0.25);
 }
 
-.text-grey {
-  color: grey;
+.lock-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
 }
-.text-red {
-  color: red;
+
+.lock-btn {
+  height: 28px !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
 }
+
+.locked-row {
+  opacity: 0.7;
+}
+
+.text-yellow { color: yellow; }
+.text-green { color: green; }
+.text-grey { color: grey; }
+.text-red { color: red; }
 
 a:link,
 a:visited {
@@ -542,20 +662,9 @@ a:visited {
   text-decoration: none;
 }
 
-a:hover {
-  color: #FFDF00;
-}
+a:hover { color: #FFDF00; }
+a:active { color: blue; }
 
-a:active {
-  color: blue;
-}
-.thumbnail-image {
-  width: 100%;
-  max-height: 150px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
 .status-container {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
@@ -563,6 +672,7 @@ a:active {
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: inline-block;
 }
+
 .temperature-container {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
@@ -573,7 +683,7 @@ a:active {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 0; /* Remove gap between temperature readings */
+  gap: 0;
 }
 
 .temp-reading {
@@ -581,8 +691,8 @@ a:active {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  margin: 0; /* Remove any margin */
-  padding: 2px 0; /* Add small vertical padding instead */
+  margin: 0;
+  padding: 2px 0;
 }
 
 .temp-reading.pellet {
@@ -590,30 +700,21 @@ a:active {
   gap: 4px;
   align-items: center;
   justify-content: center;
-  padding: 1px 0; /* Reduce padding for pellet readings */
+  padding: 1px 0;
 }
 
-.temp-icon {
-  font-size: 18px !important;
-}
+.temp-icon { font-size: 18px !important; }
+.temp-label { font-weight: bold; color: #ffffff; }
 
-.temp-label {
-  font-weight: bold;
-  color: #ffffff;
-}
-.temp-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 .temp-value {
   font-size: 0.9rem;
   font-weight: bold;
 }
+
 .extruder-temps {
   display: flex;
   flex-direction: column;
-  gap: 0; /* Remove gap between extruder temps */
+  gap: 0;
   justify-content: center;
   width: 100%;
   align-items: center;
@@ -635,16 +736,13 @@ a:active {
 }
 
 @keyframes scrollText {
-  from {
-    transform: translateX(200%);
-  }
-  to {
-    transform: translateX(-200%);
-  }
+  from { transform: translateX(200%); }
+  to { transform: translateX(-200%); }
 }
+
 .print-controls {
   display: flex;
-  flex-direction: column;  /* Stack buttons vertically */
+  flex-direction: column;
   gap: 4px;
   margin: 4px 0;
   align-items: center;
@@ -661,9 +759,9 @@ a:active {
   margin-right: 2px !important;
   font-size: 16px !important;
 }
-.v-skeleton-loader {
-  border-radius: 8px;
-}
+
+.v-skeleton-loader { border-radius: 8px; }
+
 .selected-row {
   background-color: #393B3E;
   border: 2px solid #FFD400;
@@ -680,8 +778,9 @@ a:active {
 .table-container {
   width: 100%;
   overflow-x: auto;
-  margin-top: -16px; /* Reduce space after toggle buttons */
+  margin-top: -16px;
 }
+
 .text-truncate {
   white-space: nowrap;
   overflow: hidden;
@@ -695,19 +794,18 @@ a:active {
   margin-top: 0;
 }
 
-.floating-card {
-  height: 100%;
-}
+.floating-card { height: 100%; }
+
 .v-container {
-  padding-top: 0; /* Remove top padding */
+  padding-top: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
+
 .top-controls-row {
   display: flex;
   align-items: center;
   margin-bottom: 8px;
 }
 </style>
-
