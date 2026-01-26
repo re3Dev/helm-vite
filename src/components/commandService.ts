@@ -8,15 +8,15 @@ type CommandType = 'button' | 'number' | 'dropdown' | 'gcode-input' | 'file-uplo
 interface CommandConfig {
   type: CommandType;
   label: string;
-  icon?: string;       // For buttons
-  options?: string[];  // For dropdowns
-  min?: number;        // For number inputs
-  max?: number;        // For number inputs
-  default?: number;    // For number inputs
-  unit?: string;       // For number inputs (e.g., '°C', 'mm')
-  color?: string;      // For buttons
-  variant?: string;    // For buttons
-  accept?: string[];   // For file inputs
+  icon?: string;
+  options?: string[];
+  min?: number;
+  max?: number;
+  default?: number;
+  unit?: string;
+  color?: string;
+  variant?: string;
+  accept?: string[];
   gridPos?: [number, number];
 
   // Step size selector buttons (100/10/1)
@@ -27,6 +27,9 @@ interface CommandConfig {
     axis: 'X' | 'Y' | 'Z' | 'XY';
     dir: 1 | -1 | [1 | -1, 1 | -1]; // XY uses [xDir, yDir]
   };
+
+  // ✅ Explicit UI-role tags so Z buttons don't get mixed up when you invert directions
+  zRole?: 'up' | 'down';
 }
 
 export const commandGroups = ref<
@@ -91,9 +94,10 @@ export const commandGroups = ref<
       { type: 'button', label: '', icon: 'mdi-arrow-down', color: 'grey', variant: 'outlined', gridPos: [2, 1], move: { axis: 'Y', dir: -1 } },
       { type: 'button', label: '', icon: 'mdi-arrow-bottom-right', color: 'grey', variant: 'outlined', gridPos: [2, 2], move: { axis: 'XY', dir: [1, -1] } },
 
-      // ✅ Z controls (these will be rendered as a 2-button column beside the 3x3 in the sidebar)
-      { type: 'button', label: 'Z+', icon: 'mdi-arrow-up-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: 1 } },
-      { type: 'button', label: 'Z-', icon: 'mdi-arrow-down-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: -1 } },
+      // ✅ Z controls: invert behavior so DOWN arrow moves +Z
+      // (UI role is explicit; motion dir can be anything without breaking rendering)
+      { type: 'button', label: 'Z+', icon: 'mdi-arrow-up-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: -1 }, zRole: 'up' },
+      { type: 'button', label: 'Z-', icon: 'mdi-arrow-down-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: 1 }, zRole: 'down' },
     ],
   },
   {
@@ -158,7 +162,7 @@ const gcodeCommandMap: Record<string, string> = {
 };
 
 export const runCommand = async (command: CommandConfig, value?: number | string) => {
-  // ✅ Step size toggle buttons (global; no printer required)
+  // Step size toggle buttons
   if (typeof command.stepSize === 'number') {
     selectedStepSize.value = command.stepSize;
     console.log(`Selected step size: ${selectedStepSize.value}mm`);
@@ -174,21 +178,16 @@ export const runCommand = async (command: CommandConfig, value?: number | string
   if (command.move) {
     const step = selectedStepSize.value;
 
-    // Recommended: slower Z feedrate
-    const xyFeed = 6000;
-    const zFeed = 600;
-    const feed = command.move.axis === 'Z' ? zFeed : xyFeed;
-
     let script = '';
     if (command.move.axis === 'XY') {
       const [xDir, yDir] = command.move.dir as [1 | -1, 1 | -1];
       const x = xDir * step;
       const y = yDir * step;
-      script = `G91\nG1 X${x} Y${y} F${feed}\nG90`;
+      script = `G91\nG1 X${x} Y${y} F6000\nG90`;
     } else {
       const dir = command.move.dir as 1 | -1;
       const dist = dir * step;
-      script = `G91\nG1 ${command.move.axis}${dist} F${feed}\nG90`;
+      script = `G91\nG1 ${command.move.axis}${dist} F6000\nG90`;
     }
 
     await Promise.all(
@@ -245,7 +244,7 @@ export const runCommand = async (command: CommandConfig, value?: number | string
     return;
   }
 
-  // Fallback: log the mapped value if not a G-code command
+  // Fallback
   const commandValue = commandValues[command.label] || 'UNKNOWN_COMMAND';
   selectedPrinters.value.forEach((printerIp) => {
     console.log(`This command is being run: ${commandValue} for the device ${printerIp}`);

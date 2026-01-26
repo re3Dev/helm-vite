@@ -241,12 +241,12 @@ function gridCommands(commands) {
 }
 
 function zUpCommand(commands) {
-  return (commands || []).find(c => c?.move?.axis === 'Z' && (c?.move?.dir === 1 || c?.label === 'Z+'))
+  return (commands || []).find(c => c?.zRole === 'up')
+}
+function zDownCommand(commands) {
+  return (commands || []).find(c => c?.zRole === 'down')
 }
 
-function zDownCommand(commands) {
-  return (commands || []).find(c => c?.move?.axis === 'Z' && (c?.move?.dir === -1 || c?.label === 'Z-'))
-}
 
 /**
  * Sidebar width & collapse logic
