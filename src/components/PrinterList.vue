@@ -115,7 +115,7 @@
               </div>
 
               <v-progress-linear
-                v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
+                v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
                 :model-value="printer.print_progress * 100"
                 color="#FFBD00"
                 :height="20"
@@ -146,7 +146,7 @@
 
               <!-- Print Control Buttons -->
               <div class="print-controls" v-if="selectedPrinters.includes(printer.ip)">
-                <template v-if="printer.status === 'Printing'">
+                <template v-if="isPrinterPrinting(printer)">
                   <v-btn
                     color="warning"
                     variant="tonal"
@@ -184,7 +184,7 @@
                   <div class="status-container">
                     <span
                       :class="{
-                        'text-yellow': printer.status === 'Printing' && printer.state_message === 'Printer is ready',
+                        'text-yellow': isPrinterPrinting(printer) && printer.state_message === 'Printer is ready',
                         'text-green': printer.status === 'Ready',
                         'text-grey': printer.status === 'Idle',
                         'text-red': printer.state_message !== 'Printer is ready',
@@ -194,18 +194,27 @@
                         <v-icon class="text-red">mdi-alert-circle</v-icon>
                         <span class="text-red">ERROR</span>
                       </template>
-                      <template v-else-if="printer.status === 'Printing'">
+
+                      <template v-else-if="isPrinterBusy(printer)">
+                        <v-icon>mdi-timer-sand</v-icon>
+                        BUSY
+                      </template>
+
+                      <template v-else-if="isPrinterPrinting(printer)">
                         <v-icon>mdi-printer-3d-nozzle</v-icon>
                         PRINTING
                       </template>
+
                       <template v-else-if="printer.status === 'Ready'">
                         <v-icon>mdi-home</v-icon>
                         HOMED
                       </template>
+
                       <template v-else-if="printer.status === 'Idle'">
                         <v-icon>mdi-engine-off</v-icon>
                         MOTORS DISENGAGED
                       </template>
+
                       <template v-else>
                         Status Unknown
                       </template>
@@ -329,11 +338,11 @@
 
               <td>{{ printer.hostname }}</td>
               <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
-              <td>{{ printer.status }}</td>
+              <td>{{ isPrinterBusy(printer) ? 'Busy' : printer.status }}</td>
 
               <td>
                 <v-progress-linear
-                  v-if="printer.status === 'Printing' && printer.state_message === 'Printer is ready'"
+                  v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
                   :model-value="printer.print_progress * 100"
                   color="#FFBD00"
                   height="20"
@@ -393,7 +402,24 @@ export default defineComponent({
     // printers that are printing are locked unless user explicitly unlocks them
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
 
-    const isPrinterPrinting = (p: Printer) => p.status === 'Printing';
+    const normalizeStatus = (s?: string) => (s ?? '').trim().toLowerCase();
+
+    // ✅ BUSY detection (so it doesn't get treated as printing)
+    const isPrinterBusy = (p: Printer) => {
+      const s = normalizeStatus(p.status);
+      return s === 'busy' || s.includes('busy');
+    };
+
+    // ✅ Printing detection: ONLY when status is "Printing" AND it looks like a job (file/progress)
+    const isPrinterPrinting = (p: Printer) => {
+      const s = normalizeStatus(p.status);
+      if (s !== 'printing') return false;
+
+      const hasProgress = typeof p.print_progress === 'number' && p.print_progress > 0;
+      const hasFile = typeof p.file_path === 'string' && p.file_path.trim().length > 0;
+
+      return hasProgress || hasFile;
+    };
 
     const isPrinterLocked = (p: Printer) => {
       // Locked by default while printing, unless explicitly unlocked
@@ -404,11 +430,8 @@ export default defineComponent({
       if (!isPrinterPrinting(p)) return;
 
       const s = new Set(unlockedWhilePrinting.value);
-      if (s.has(p.ip)) {
-        s.delete(p.ip); // re-lock
-      } else {
-        s.add(p.ip); // unlock
-      }
+      if (s.has(p.ip)) s.delete(p.ip);
+      else s.add(p.ip);
       unlockedWhilePrinting.value = s;
     };
 
@@ -416,8 +439,9 @@ export default defineComponent({
 
     const sortedPrinters = computed(() => {
       return [...printers.value].sort((a, b) => {
-        if (a.status === 'Printing' && b.status !== 'Printing') return -1;
-        if (a.status !== 'Printing' && b.status === 'Printing') return 1;
+        // ✅ sort real printing first (not busy)
+        if (isPrinterPrinting(a) && !isPrinterPrinting(b)) return -1;
+        if (!isPrinterPrinting(a) && isPrinterPrinting(b)) return 1;
         return 0;
       });
     });
@@ -501,7 +525,7 @@ export default defineComponent({
 
       printers.value = uniquePrinters;
 
-      // ✅ cleanup: if a printer is no longer printing, remove any "unlocked while printing" override
+      // ✅ cleanup: if a printer is no longer REALLY printing, remove any "unlocked while printing" override
       const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
       const nextUnlocked = new Set<string>();
       unlockedWhilePrinting.value.forEach(ip => {
@@ -517,7 +541,6 @@ export default defineComponent({
     };
 
     const toggleSelection = (printer: Printer) => {
-      // block selection if locked
       if (isPrinterLocked(printer)) {
         console.log(`Printer ${printer.ip} is locked (printing). Unlock to select.`);
         return;
@@ -586,7 +609,8 @@ export default defineComponent({
       formatFileName,
       restartFirmware,
 
-      // lock behavior
+      // lock behavior + new status helpers
+      isPrinterBusy,
       isPrinterPrinting,
       isPrinterLocked,
       togglePrinterLock
@@ -603,7 +627,7 @@ export default defineComponent({
 }
 
 .floating-card {
-  position: relative; /* needed for lock badge positioning */
+  position: relative;
   border-radius: 12px;
   box-shadow: 0px 4px 8px rgba(219, 219, 219, 0.788), 0px 2px 4px rgb(221, 221, 221);
   background-color: surface;
@@ -622,13 +646,11 @@ export default defineComponent({
   box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
 }
 
-/* locked look */
 .locked-card {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
-/* optional: unlocked but printing look */
 .unlocked-printing-card {
   border: 1px dashed rgba(255, 255, 255, 0.25);
 }
