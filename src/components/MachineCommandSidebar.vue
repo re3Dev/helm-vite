@@ -8,7 +8,7 @@
       <div class="header-content">
         <!-- Your Sidebar Title -->
         <span class="sidebar-title"></span>
-         
+
         <!-- A button to collapse the sidebar -->
         <v-btn
           size="x-small"
@@ -29,103 +29,111 @@
       style="width: 100%; border-right: 1px solid #ccc;"
       class="drawer-content"
     >
-    <v-expansion-panels multiple>
-    <v-expansion-panel
-      v-for="(group, gIdx) in groups"
-      :key="gIdx"
-    >
-      <v-expansion-panel-title>
-        <v-icon color="yellow">{{ group.icon }}</v-icon>&nbsp;
-        {{ group.title }}
-      </v-expansion-panel-title>
+      <v-expansion-panels multiple>
+        <v-expansion-panel
+          v-for="(group, gIdx) in groups"
+          :key="gIdx"
+        >
+          <v-expansion-panel-title>
+            <v-icon color="yellow">{{ group.icon }}</v-icon>&nbsp;
+            {{ group.title }}
+          </v-expansion-panel-title>
 
-      <v-expansion-panel-text>
-        <template v-if="group.title === 'Movement'">
-          <div class="movement-grid">
-            <v-btn
-              v-for="cmd in group.commands"
-              :key="cmd.label"
-              :color="cmd.color"
-              :variant="cmd.variant"
-              class="movement-btn"
-              @click="runCommand(cmd)"
-            >
-              <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
-              <span>{{ cmd.label }}</span>
-            </v-btn>
-          </div>
-        </template>
-        <template v-else>
-          <v-list>
-            <v-list-item
-              v-for="(cmd, cIdx) in group.commands"
-              :key="cIdx"
-            >
-              <template v-if="cmd.type === 'button'">
-                <v-btn block @click="runCommand(cmd)"
-                  :color="cmd.color"
-                  :variant="cmd.variant">
-                  <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
-                  {{ cmd.label }}
-                </v-btn>
-              </template>
-
-              <template v-else-if="cmd.type === 'number'">
-                <v-text-field
-                  :label="cmd.label"
-                  type="number"
-                  :min="cmd.min"
-                  :max="cmd.max"
-                  :suffix="cmd.unit"
-                  :value="cmd.default"
-                  @change="value => runCommand(cmd, value)"
-                ></v-text-field>
-              </template>
-              <template v-else-if="cmd.type === 'file-upload'">
-                <v-file-input
-                :label="cmd.label"
-                :accept="cmd.accept?.join(',')"
-                :color="cmd.color"
-                prepend-icon="mdi-upload"
-                class="file-upload-input"
-                @change="file => runCommand(cmd, file)"
-                  ></v-file-input>
-                </template>
-              <template v-else-if="cmd.type === 'dropdown'">
-                <v-select
-                  :label="cmd.label"
-                  :items="cmd.options"
-                  @change="value => runCommand(cmd, value)"
-                ></v-select>
-              </template>
-              <template v-else-if="cmd.type === 'gcode-input'">
-                <v-text-field
-                  v-model="gcodeInputs[gIdx]"
-                  :label="cmd.label"
-                  placeholder="Enter G-code (e.g. M119)"
-                  @keyup.enter="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
-                  hide-details
-                  dense
-                  class="gcode-input-box"
-                  style="width: 100%; max-width: 100%; display: block; margin-bottom: 4px;"
-                />
+          <v-expansion-panel-text>
+            <template v-if="group.title === 'Movement'">
+              <div class="movement-grid">
                 <v-btn
-                  block
-                  size="small"
-                  color="grey"
-                  variant="outlined"
-                  @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                  v-for="cmd in group.commands"
+                  :key="cmd.icon || cmd.label"
+                  :color="movementBtnColor(cmd)"
+                  :variant="movementBtnVariant(cmd)"
+                  class="movement-btn"
+                  :class="{ 'step-active': isStepActive(cmd) }"
+                  @click="runCommand(cmd)"
                 >
-                  Send
+                  <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+                  <span v-else>{{ cmd.label }}</span>
                 </v-btn>
-              </template>
-            </v-list-item>
-          </v-list>
-        </template>
-      </v-expansion-panel-text>
-    </v-expansion-panel>
-  </v-expansion-panels>
-</v-navigation-drawer>
+              </div>
+            </template>
+
+            <template v-else>
+              <v-list>
+                <v-list-item
+                  v-for="(cmd, cIdx) in group.commands"
+                  :key="cIdx"
+                >
+                  <template v-if="cmd.type === 'button'">
+                    <v-btn
+                      block
+                      @click="runCommand(cmd)"
+                      :color="cmd.color"
+                      :variant="cmd.variant"
+                    >
+                      <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+                      {{ cmd.label }}
+                    </v-btn>
+                  </template>
+
+                  <template v-else-if="cmd.type === 'number'">
+                    <v-text-field
+                      :label="cmd.label"
+                      type="number"
+                      :min="cmd.min"
+                      :max="cmd.max"
+                      :suffix="cmd.unit"
+                      :value="cmd.default"
+                      @change="value => runCommand(cmd, value)"
+                    ></v-text-field>
+                  </template>
+
+                  <template v-else-if="cmd.type === 'file-upload'">
+                    <v-file-input
+                      :label="cmd.label"
+                      :accept="cmd.accept?.join(',')"
+                      :color="cmd.color"
+                      prepend-icon="mdi-upload"
+                      class="file-upload-input"
+                      @change="file => runCommand(cmd, file)"
+                    ></v-file-input>
+                  </template>
+
+                  <template v-else-if="cmd.type === 'dropdown'">
+                    <v-select
+                      :label="cmd.label"
+                      :items="cmd.options"
+                      @change="value => runCommand(cmd, value)"
+                    ></v-select>
+                  </template>
+
+                  <template v-else-if="cmd.type === 'gcode-input'">
+                    <v-text-field
+                      v-model="gcodeInputs[gIdx]"
+                      :label="cmd.label"
+                      placeholder="Enter G-code (e.g. M119)"
+                      @keyup.enter="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                      hide-details
+                      dense
+                      class="gcode-input-box"
+                      style="width: 100%; max-width: 100%; display: block; margin-bottom: 4px;"
+                    />
+                    <v-btn
+                      block
+                      size="small"
+                      color="grey"
+                      variant="outlined"
+                      @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                    >
+                      Send
+                    </v-btn>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </template>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+    </v-navigation-drawer>
 
     <!-- 3) The draggable resizer handle on the right edge -->
     <div
@@ -137,7 +145,8 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
-import { runCommand } from './commandService.ts'; // Import runCommand
+import { runCommand, selectedStepSize } from './commandService.ts' // ✅ import selectedStepSize too
+
 const props = defineProps({
   groups: {
     type: Array,
@@ -145,8 +154,28 @@ const props = defineProps({
   }
 })
 
-/** 
- * Sidebar width & collapse logic 
+/**
+ * Step-button highlight helpers (Movement group only)
+ * A step button is any command with stepSize set.
+ */
+function isStepButton(cmd) {
+  return typeof cmd?.stepSize === 'number'
+}
+function isStepActive(cmd) {
+  return isStepButton(cmd) && selectedStepSize.value === cmd.stepSize
+}
+function movementBtnColor(cmd) {
+  // Highlight step buttons as active
+  if (isStepButton(cmd)) return isStepActive(cmd) ? 'primary' : 'grey'
+  return cmd.color ?? 'grey'
+}
+function movementBtnVariant(cmd) {
+  if (isStepButton(cmd)) return isStepActive(cmd) ? 'elevated' : 'tonal'
+  return cmd.variant ?? 'outlined'
+}
+
+/**
+ * Sidebar width & collapse logic
  */
 const sidebarWidth = ref(300)
 let isResizing = false
@@ -199,7 +228,6 @@ function toggleCollapse() {
     isCollapsed.value = true
   }
 }
-
 </script>
 
 <style scoped>
@@ -217,27 +245,26 @@ function toggleCollapse() {
 .sidebar-wrapper {
   position: relative;
   display: flex;
-  flex-direction: column; 
-  height: 100%; /* or adapt to your layout needs */
+  flex-direction: column;
+  height: 100%;
 }
 
-/* 
+/*
   The top bar (title row).
-  We'll keep it at a fixed height (say 40px or 50px).
 */
 .sidebar-header {
   height: 30px;
   background-color: #333131;
   border-bottom: 1px solid #ccc;
-  z-index: 1; /* so it sits above drawer content if needed */
+  z-index: 1;
 }
 
 .header-content {
   display: flex;
   align-items: center;
   height: 100%;
-  padding: 0 0px; /* some horizontal padding */
-  justify-content: space-between; /* space between title + button */
+  padding: 0 0px;
+  justify-content: space-between;
 }
 
 .sidebar-title {
@@ -261,7 +288,7 @@ function toggleCollapse() {
 
 .resizer {
   position: absolute;
-  top: 0px; /* The same as .sidebar-header height */
+  top: 0px;
   right: 0;
   width: 5px;
   height: calc(100%);
@@ -282,6 +309,7 @@ function toggleCollapse() {
   gap: 8px;
   margin-bottom: 12px;
 }
+
 .movement-btn {
   min-width: 0;
   min-height: 48px;
@@ -290,5 +318,11 @@ function toggleCollapse() {
   align-items: center;
   justify-content: center;
   font-size: 0.9em;
+}
+
+/* ✅ Optional: add a subtle ring to the selected step size button */
+.step-active {
+  outline: 2px solid rgba(255, 255, 255, 0.25);
+  outline-offset: 2px;
 }
 </style>
