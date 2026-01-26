@@ -10,7 +10,7 @@
       </v-btn>
     </v-btn-toggle>
 
-    <!-- Firmware Restart Button and Print Controls Row -->
+    <!-- Firmware Restart Button Row -->
     <div class="top-controls-row">
       <v-btn
         color="red"
@@ -20,28 +20,6 @@
       >
         <v-icon left>mdi-restart</v-icon>
         Firmware Restart (Selected)
-      </v-btn>
-
-      <v-btn
-        icon
-        color="yellow"
-        variant="tonal"
-        class="ml-2"
-        @click="pausePrint(selectedPrinters[0])"
-        :disabled="selectedPrinters.length === 0"
-      >
-        <v-icon>mdi-pause</v-icon>
-      </v-btn>
-
-      <v-btn
-        icon
-        color="red"
-        variant="outlined"
-        class="ml-1"
-        @click="stopPrint(selectedPrinters[0])"
-        :disabled="selectedPrinters.length === 0"
-      >
-        <v-icon>mdi-stop</v-icon>
       </v-btn>
     </div>
 
@@ -142,39 +120,6 @@
                     {{ printer.state_message === 'Printer is ready' ? formatFileName(printer.file_path) : 'Not Printing' }}
                   </v-text>
                 </strong>
-              </div>
-
-              <!-- Print Control Buttons -->
-              <div class="print-controls" v-if="selectedPrinters.includes(printer.ip)">
-                <template v-if="isPrinterPrinting(printer)">
-                  <v-btn
-                    color="warning"
-                    variant="tonal"
-                    class="mr-2"
-                    @click.stop="pausePrint(printer.ip)"
-                  >
-                    <v-icon>mdi-pause</v-icon>
-                    Pause Print
-                  </v-btn>
-                  <v-btn
-                    color="red"
-                    variant="tonal"
-                    @click.stop="stopPrint(printer.ip)"
-                  >
-                    <v-icon>mdi-stop</v-icon>
-                    Stop Print
-                  </v-btn>
-                </template>
-                <template v-else>
-                  <v-btn
-                    color="success"
-                    variant="tonal"
-                    @click.stop="startPrint(printer.ip)"
-                  >
-                    <v-icon>mdi-play</v-icon>
-                    Start Print
-                  </v-btn>
-                </template>
               </div>
 
               <br />
@@ -375,7 +320,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { selectedPrinters } from '../store/printerStore'; // shared ref
+import { selectedPrinters } from '../store/printerStore';
 
 interface Printer {
   hostname: string;
@@ -404,13 +349,12 @@ export default defineComponent({
 
     const normalizeStatus = (s?: string) => (s ?? '').trim().toLowerCase();
 
-    // ✅ BUSY detection (so it doesn't get treated as printing)
     const isPrinterBusy = (p: Printer) => {
       const s = normalizeStatus(p.status);
       return s === 'busy' || s.includes('busy');
     };
 
-    // ✅ Printing detection: ONLY when status is "Printing" AND it looks like a job (file/progress)
+    // Treat "Printing" only as printing when we have some evidence (progress or file)
     const isPrinterPrinting = (p: Printer) => {
       const s = normalizeStatus(p.status);
       if (s !== 'printing') return false;
@@ -422,13 +366,11 @@ export default defineComponent({
     };
 
     const isPrinterLocked = (p: Printer) => {
-      // Locked by default while printing, unless explicitly unlocked
       return isPrinterPrinting(p) && !unlockedWhilePrinting.value.has(p.ip);
     };
 
     const togglePrinterLock = (p: Printer) => {
       if (!isPrinterPrinting(p)) return;
-
       const s = new Set(unlockedWhilePrinting.value);
       if (s.has(p.ip)) s.delete(p.ip);
       else s.add(p.ip);
@@ -439,29 +381,13 @@ export default defineComponent({
 
     const sortedPrinters = computed(() => {
       return [...printers.value].sort((a, b) => {
-        // ✅ sort real printing first (not busy)
         if (isPrinterPrinting(a) && !isPrinterPrinting(b)) return -1;
         if (!isPrinterPrinting(a) && isPrinterPrinting(b)) return 1;
         return 0;
       });
     });
 
-    const viewType = ref('grid'); // 'grid' or 'list'
-    const toggleView = () => {
-      viewType.value = viewType.value === 'grid' ? 'list' : 'grid';
-    };
-
-    const startPrint = (ip: string) => {
-      console.log('Start print:', ip);
-    };
-
-    const pausePrint = (ip: string) => {
-      console.log('Pause print:', ip);
-    };
-
-    const stopPrint = (ip: string) => {
-      console.log('Stop print:', ip);
-    };
+    const viewType = ref('grid');
 
     const fetchPrinters = async () => {
       try {
@@ -525,7 +451,7 @@ export default defineComponent({
 
       printers.value = uniquePrinters;
 
-      // ✅ cleanup: if a printer is no longer REALLY printing, remove any "unlocked while printing" override
+      // cleanup unlocked overrides if printer stops printing
       const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
       const nextUnlocked = new Set<string>();
       unlockedWhilePrinting.value.forEach(ip => {
@@ -533,7 +459,7 @@ export default defineComponent({
       });
       unlockedWhilePrinting.value = nextUnlocked;
 
-      // ✅ also: if a printer is locked (printing and not unlocked), ensure it's not selected
+      // if printer becomes locked, ensure it's not selected
       selectedPrinters.value = selectedPrinters.value.filter(ip => {
         const p = printers.value.find(x => x.ip === ip);
         return !p || !isPrinterLocked(p);
@@ -549,13 +475,9 @@ export default defineComponent({
       const ip = printer.ip;
       if (selectedPrinters.value.includes(ip)) {
         selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== ip);
-        console.log(`Printer with IP ${ip} unselected.`);
       } else {
         selectedPrinters.value.push(ip);
-        console.log(`Printer with IP ${ip} selected.`);
       }
-
-      console.log("Currently selected printers:", selectedPrinters.value);
     };
 
     const formatFileName = (filePath: string | null): string => {
@@ -595,25 +517,17 @@ export default defineComponent({
 
     return {
       viewType,
-      toggleView,
       printers,
       sortedPrinters,
       isLoading,
       selectedPrinters,
-
-      startPrint,
-      stopPrint,
-      pausePrint,
-
       toggleSelection,
       formatFileName,
       restartFirmware,
-
-      // lock behavior + new status helpers
       isPrinterBusy,
       isPrinterPrinting,
       isPrinterLocked,
-      togglePrinterLock
+      togglePrinterLock,
     };
   },
 });
@@ -621,10 +535,7 @@ export default defineComponent({
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
-
-* {
-  font-family: 'Lato', sans-serif !important;
-}
+* { font-family: 'Lato', sans-serif !important; }
 
 .floating-card {
   position: relative;
@@ -646,22 +557,10 @@ export default defineComponent({
   box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
 }
 
-.locked-card {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
+.locked-card { opacity: 0.65; cursor: not-allowed; }
+.unlocked-printing-card { border: 1px dashed rgba(255, 255, 255, 0.25); }
 
-.unlocked-printing-card {
-  border: 1px dashed rgba(255, 255, 255, 0.25);
-}
-
-.lock-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 5;
-}
-
+.lock-badge { position: absolute; top: 8px; right: 8px; z-index: 5; }
 .lock-btn {
   height: 28px !important;
   width: 28px !important;
@@ -669,21 +568,14 @@ export default defineComponent({
   padding: 0 !important;
 }
 
-.locked-row {
-  opacity: 0.7;
-}
+.locked-row { opacity: 0.7; }
 
 .text-yellow { color: yellow; }
 .text-green { color: green; }
 .text-grey { color: grey; }
 .text-red { color: red; }
 
-a:link,
-a:visited {
-  color: rgb(255, 255, 255);
-  text-decoration: none;
-}
-
+a:link, a:visited { color: rgb(255, 255, 255); text-decoration: none; }
 a:hover { color: #FFDF00; }
 a:active { color: blue; }
 
@@ -727,11 +619,7 @@ a:active { color: blue; }
 
 .temp-icon { font-size: 18px !important; }
 .temp-label { font-weight: bold; color: #ffffff; }
-
-.temp-value {
-  font-size: 0.9rem;
-  font-weight: bold;
-}
+.temp-value { font-size: 0.9rem; font-weight: bold; }
 
 .extruder-temps {
   display: flex;
@@ -741,12 +629,7 @@ a:active { color: blue; }
   width: 100%;
   align-items: center;
 }
-
-.extruder-temps.horizontal {
-  flex-direction: row;
-  gap: 12px;
-  justify-content: center;
-}
+.extruder-temps.horizontal { flex-direction: row; gap: 12px; justify-content: center; }
 
 .file-path-container {
   white-space: nowrap;
@@ -756,18 +639,9 @@ a:active { color: blue; }
   position: relative;
   animation: scrollText 20s linear infinite;
 }
-
 @keyframes scrollText {
   from { transform: translateX(200%); }
   to { transform: translateX(-200%); }
-}
-
-.print-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 4px 0;
-  align-items: center;
 }
 
 .v-btn {
@@ -776,7 +650,6 @@ a:active { color: blue; }
   font-size: 0.75rem !important;
   height: 28px !important;
 }
-
 .v-btn .v-icon {
   margin-right: 2px !important;
   font-size: 16px !important;
@@ -784,10 +657,7 @@ a:active { color: blue; }
 
 .v-skeleton-loader { border-radius: 8px; }
 
-.selected-row {
-  background-color: #393B3E;
-  border: 2px solid #FFD400;
-}
+.selected-row { background-color: #393B3E; border: 2px solid #FFD400; }
 
 .grid-container {
   display: grid;
@@ -797,11 +667,7 @@ a:active { color: blue; }
   width: 100%;
 }
 
-.table-container {
-  width: 100%;
-  overflow-x: auto;
-  margin-top: -16px;
-}
+.table-container { width: 100%; overflow-x: auto; margin-top: -16px; }
 
 .text-truncate {
   white-space: nowrap;
@@ -810,11 +676,7 @@ a:active { color: blue; }
   max-width: 0;
 }
 
-.v-table {
-  width: 100%;
-  min-width: 800px;
-  margin-top: 0;
-}
+.v-table { width: 100%; min-width: 800px; margin-top: 0; }
 
 .floating-card { height: 100%; }
 
