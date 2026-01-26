@@ -73,7 +73,7 @@ export const commandGroups = ref<
     icon: 'mdi-cursor-move',
     open: false,
     commands: [
-      // Step size selector buttons (highlight handled by helpers below)
+      // Step size selector buttons
       { type: 'button', label: '100mm', color: 'grey', variant: 'tonal', stepSize: 100 },
       { type: 'button', label: '10mm', color: 'grey', variant: 'tonal', stepSize: 10 },
       { type: 'button', label: '1mm', color: 'grey', variant: 'tonal', stepSize: 1 },
@@ -90,6 +90,10 @@ export const commandGroups = ref<
       { type: 'button', label: '', icon: 'mdi-arrow-bottom-left', color: 'grey', variant: 'outlined', gridPos: [2, 0], move: { axis: 'XY', dir: [-1, -1] } },
       { type: 'button', label: '', icon: 'mdi-arrow-down', color: 'grey', variant: 'outlined', gridPos: [2, 1], move: { axis: 'Y', dir: -1 } },
       { type: 'button', label: '', icon: 'mdi-arrow-bottom-right', color: 'grey', variant: 'outlined', gridPos: [2, 2], move: { axis: 'XY', dir: [1, -1] } },
+
+      // ✅ Z controls (these will be rendered as a 2-button column beside the 3x3 in the sidebar)
+      { type: 'button', label: 'Z+', icon: 'mdi-arrow-up-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: 1 } },
+      { type: 'button', label: 'Z-', icon: 'mdi-arrow-down-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: -1 } },
     ],
   },
   {
@@ -123,7 +127,6 @@ export const selectedStepSize = ref<number>(10);
 
 /**
  * Helpers for UI highlighting step-size buttons
- * (Use these when rendering the buttons in your component)
  */
 export const isStepButton = (command: CommandConfig) => typeof command.stepSize === 'number';
 
@@ -136,13 +139,11 @@ export const getCommandButtonColor = (command: CommandConfig) => {
 
 export const getCommandButtonVariant = (command: CommandConfig) => {
   if (isStepButton(command)) {
-    // selected looks more “active”
     return selectedStepSize.value === command.stepSize ? 'elevated' : (command.variant ?? 'tonal');
   }
   return command.variant ?? 'tonal';
 };
 
-// Optional: for an outline/border/active class if you want it
 export const getStepActiveClass = (command: CommandConfig) => {
   if (!isStepButton(command)) return '';
   return selectedStepSize.value === command.stepSize ? 'step-active' : '';
@@ -154,17 +155,16 @@ export const getStepActiveClass = (command: CommandConfig) => {
 const gcodeCommandMap: Record<string, string> = {
   'Check Endstops': 'M119',
   'Home All Axes': 'G28',
-  // Add more mappings as needed
 };
 
 export const runCommand = async (command: CommandConfig, value?: number | string) => {
-    // Step size toggle buttons
+  // ✅ Step size toggle buttons (global; no printer required)
   if (typeof command.stepSize === 'number') {
     selectedStepSize.value = command.stepSize;
     console.log(`Selected step size: ${selectedStepSize.value}mm`);
     return;
   }
-  
+
   if (selectedPrinters.value.length === 0) {
     console.warn('No printers selected. Cannot execute command.');
     return;
@@ -174,16 +174,21 @@ export const runCommand = async (command: CommandConfig, value?: number | string
   if (command.move) {
     const step = selectedStepSize.value;
 
+    // Recommended: slower Z feedrate
+    const xyFeed = 6000;
+    const zFeed = 600;
+    const feed = command.move.axis === 'Z' ? zFeed : xyFeed;
+
     let script = '';
     if (command.move.axis === 'XY') {
       const [xDir, yDir] = command.move.dir as [1 | -1, 1 | -1];
       const x = xDir * step;
       const y = yDir * step;
-      script = `G91\nG1 X${x} Y${y} F6000\nG90`;
+      script = `G91\nG1 X${x} Y${y} F${feed}\nG90`;
     } else {
       const dir = command.move.dir as 1 | -1;
       const dist = dir * step;
-      script = `G91\nG1 ${command.move.axis}${dist} F6000\nG90`;
+      script = `G91\nG1 ${command.move.axis}${dist} F${feed}\nG90`;
     }
 
     await Promise.all(

@@ -4,7 +4,8 @@
     :style="{ width: sidebarWidth + 'px' }"
   >
     <!-- 1) A Title Bar / Header at the top of the sidebar -->
-    <div class="sidebar-header" style="text-align: center;">Printer Management
+    <div class="sidebar-header" style="text-align: center;">
+      Printer Management
       <div class="header-content">
         <!-- Your Sidebar Title -->
         <span class="sidebar-title"></span>
@@ -40,23 +41,72 @@
           </v-expansion-panel-title>
 
           <v-expansion-panel-text>
+            <!-- MOVEMENT -->
             <template v-if="group.title === 'Movement'">
-              <div class="movement-grid">
-                <v-btn
-                  v-for="cmd in group.commands"
-                  :key="cmd.icon || cmd.label"
-                  :color="movementBtnColor(cmd)"
-                  :variant="movementBtnVariant(cmd)"
-                  class="movement-btn"
-                  :class="{ 'step-active': isStepActive(cmd) }"
-                  @click="runCommand(cmd)"
-                >
-                  <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
-                  <span v-else>{{ cmd.label }}</span>
-                </v-btn>
+              <div class="movement-wrap">
+                <!-- Step size row -->
+                <div class="step-row">
+                  <v-btn
+                    v-for="cmd in stepCommands(group.commands)"
+                    :key="cmd.label"
+                    :color="movementBtnColor(cmd)"
+                    :variant="movementBtnVariant(cmd)"
+                    class="step-btn"
+                    :class="{ 'step-active': isStepActive(cmd) }"
+                    @click="runCommand(cmd)"
+                  >
+                    {{ cmd.label }}
+                  </v-btn>
+                </div>
+
+                <!-- XY grid + Z column -->
+                <div class="move-two-col">
+                  <!-- XY 3x3 -->
+                  <div class="movement-grid">
+                    <v-btn
+                      v-for="cmd in gridCommands(group.commands)"
+                      :key="cmd.icon || cmd.label"
+                      :color="movementBtnColor(cmd)"
+                      :variant="movementBtnVariant(cmd)"
+                      class="movement-btn"
+                      @click="runCommand(cmd)"
+                    >
+                      <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+                      <span v-else>{{ cmd.label }}</span>
+                    </v-btn>
+                  </div>
+
+                  <!-- Z (two tall buttons, split full height of XY grid) -->
+                  <div class="z-col">
+                    <div class="z-stack">
+                      <v-btn
+                        v-if="zUpCommand(group.commands)"
+                        :color="movementBtnColor(zUpCommand(group.commands))"
+                        :variant="movementBtnVariant(zUpCommand(group.commands))"
+                        class="z-tall z-top"
+                        @click="runCommand(zUpCommand(group.commands))"
+                      >
+                        <v-icon v-if="zUpCommand(group.commands)?.icon">{{ zUpCommand(group.commands).icon }}</v-icon>
+                        <span v-else>{{ zUpCommand(group.commands)?.label }}</span>
+                      </v-btn>
+
+                      <v-btn
+                        v-if="zDownCommand(group.commands)"
+                        :color="movementBtnColor(zDownCommand(group.commands))"
+                        :variant="movementBtnVariant(zDownCommand(group.commands))"
+                        class="z-tall z-bottom"
+                        @click="runCommand(zDownCommand(group.commands))"
+                      >
+                        <v-icon v-if="zDownCommand(group.commands)?.icon">{{ zDownCommand(group.commands).icon }}</v-icon>
+                        <span v-else>{{ zDownCommand(group.commands)?.label }}</span>
+                      </v-btn>
+                    </div>
+                  </div>
+                </div>
               </div>
             </template>
 
+            <!-- EVERYTHING ELSE -->
             <template v-else>
               <v-list>
                 <v-list-item
@@ -145,7 +195,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
-import { runCommand, selectedStepSize } from './commandService.ts' // ✅ import selectedStepSize too
+import { runCommand, selectedStepSize } from './commandService.ts'
 
 const props = defineProps({
   groups: {
@@ -165,13 +215,37 @@ function isStepActive(cmd) {
   return isStepButton(cmd) && selectedStepSize.value === cmd.stepSize
 }
 function movementBtnColor(cmd) {
-  // Highlight step buttons as active
   if (isStepButton(cmd)) return isStepActive(cmd) ? 'primary' : 'grey'
   return cmd.color ?? 'grey'
 }
 function movementBtnVariant(cmd) {
   if (isStepButton(cmd)) return isStepActive(cmd) ? 'elevated' : 'tonal'
   return cmd.variant ?? 'outlined'
+}
+
+/**
+ * Movement command selectors
+ * - step buttons: have stepSize
+ * - XY grid buttons: have gridPos
+ * - Z buttons: move.axis === 'Z' and dir +/- 1
+ */
+function stepCommands(commands) {
+  return (commands || []).filter(c => typeof c?.stepSize === 'number')
+}
+
+function gridCommands(commands) {
+  return (commands || [])
+    .filter(c => Array.isArray(c?.gridPos))
+    .slice()
+    .sort((a, b) => (a.gridPos[0] - b.gridPos[0]) || (a.gridPos[1] - b.gridPos[1]))
+}
+
+function zUpCommand(commands) {
+  return (commands || []).find(c => c?.move?.axis === 'Z' && (c?.move?.dir === 1 || c?.label === 'Z+'))
+}
+
+function zDownCommand(commands) {
+  return (commands || []).find(c => c?.move?.axis === 'Z' && (c?.move?.dir === -1 || c?.label === 'Z-'))
 }
 
 /**
@@ -242,6 +316,7 @@ function toggleCollapse() {
 * {
   font-family: 'Lato', sans-serif !important;
 }
+
 .sidebar-wrapper {
   position: relative;
   display: flex;
@@ -302,17 +377,45 @@ function toggleCollapse() {
   opacity: 100;
 }
 
+/* Movement layout + sizing tokens so XY + Z match perfectly */
+.movement-wrap{
+  --move-btn-h: 48px;
+  --move-gap: 8px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+/* Step row */
+.step-row{
+  display:flex;
+  gap: 8px;
+}
+.step-btn{
+  flex: 1;
+  min-width: 0;
+}
+
+/* Two-column layout: XY grid + Z column */
+.move-two-col{
+  display: grid;
+  grid-template-columns: 1fr 0.25fr;
+  gap: 10px;
+  align-items: start;
+}
+
+/* XY 3x3 grid */
 .movement-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-rows: repeat(3, var(--move-btn-h));
+  gap: var(--move-gap);
   margin-bottom: 12px;
 }
 
 .movement-btn {
   min-width: 0;
-  min-height: 48px;
+  min-height: var(--move-btn-h);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -320,7 +423,37 @@ function toggleCollapse() {
   font-size: 0.9em;
 }
 
-/* ✅ Optional: add a subtle ring to the selected step size button */
+/* Z column: match total height of XY grid (3 rows + 2 gaps) */
+.z-col{
+  height: calc(var(--move-btn-h) * 3 + var(--move-gap) * 2);
+}
+
+.z-stack{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Two tall buttons that split the full height */
+.z-tall{
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border-radius: 0; /* make them look like a single tall control */
+}
+
+/* rounded ends so it looks intentional */
+.z-top{
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+.z-bottom{
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-top: 1px solid rgba(255,255,255,0.18); /* subtle divider */
+}
+
+/* Active ring for selected step size */
 .step-active {
   outline: 2px solid rgba(255, 255, 255, 0.25);
   outline-offset: 2px;
