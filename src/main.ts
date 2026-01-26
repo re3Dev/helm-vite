@@ -1,14 +1,17 @@
-import { createApp } from 'vue';
+import { createApp } from 'vue'
+
+// Vue Router
+import router from './router'
 
 // Vuetify
-import 'vuetify/styles';
-import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components';
-import * as directives from 'vuetify/directives';
+import 'vuetify/styles'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
 
-// Components
-import App from './App.vue';
+// Root component
+import App from './App.vue'
 
 // Vuetify with theme colors
 const vuetify = createVuetify({
@@ -19,28 +22,31 @@ const vuetify = createVuetify({
     themes: {
       light: {
         colors: {
-            primary: '#6200EE',
-            secondary: '#03DAC6',
-            background: '#FFFFFF',
-            surface: '#F5F5F5',
-            text: '#000000',
-            accent: '#FF4081',
-            error: '#B00020',
+          primary: '#6200EE',
+          secondary: '#03DAC6',
+          background: '#FFFFFF',
+          surface: '#F5F5F5',
+          text: '#000000',
+          accent: '#FF4081',
+          error: '#B00020',
         },
       },
       dark: {
         colors: {
-            primary: '#FFDF00', // Bright purple for primary actions
-            secondary: '#03DAC6', // Cyan for secondary actions
-            background: '#000000', // Dark background
-            surface: '#212429', // Slightly lighter dark for surfaces
-            text: '#E0E0E0', // Light gray for text
-            accent: '#FF4081', // Pink for highlights or interactive elements
-            error: '#CF6679', // Soft red for errors
+          primary: '#FFDF00',
+          secondary: '#03DAC6',
+          background: '#000000',
+          surface: '#212429',
+          text: '#E0E0E0',
+          accent: '#FF4081',
+          error: '#CF6679',
         },
       },
     },
   },
-});
+})
 
-createApp(App).use(vuetify).mount('#app');
+createApp(App)
+  .use(router)     // ✅ THIS WAS MISSING
+  .use(vuetify)
+  .mount('#app')

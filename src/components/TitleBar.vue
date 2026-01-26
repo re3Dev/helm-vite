@@ -1,16 +1,22 @@
 <template>
   <v-app-bar app color="secondary" dark>
     <v-toolbar-title>Printer Fleet Manager</v-toolbar-title>
-    <v-spacer></v-spacer>
-    <v-btn icon to="/analytics">
+
+    <v-spacer />
+
+    <!-- Analytics -->
+    <v-btn icon :to="{ path: '/analytics' }" link>
       <v-icon>mdi-chart-bar</v-icon>
     </v-btn>
+
     <v-btn icon>
       <v-icon>mdi-cog</v-icon>
     </v-btn>
+
     <v-btn icon>
       <v-icon>mdi-refresh</v-icon>
     </v-btn>
+
     <v-btn icon>
       <v-icon>mdi-theme-light-dark</v-icon>
     </v-btn>
@@ -34,7 +40,7 @@ export default defineComponent({
 .app-layout {
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 64px); /* Deduct title bar height */
+  height: calc(100vh - 64px);
 }
 
 .v-main {
