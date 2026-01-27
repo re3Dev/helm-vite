@@ -429,29 +429,27 @@ export default defineComponent({
     // 1: unselected + not printing
     // 2: selected + printing
     // 3: unselected + printing
-    const sortedPrinters = computed(() => {
-      const group = (p: Printer) => {
-        const printing = isPrinterPrinting(p);
-        const selected = selectedPrinters.value.includes(p.ip);
-        if (selected && !printing) return 0;
-        if (!selected && !printing) return 1;
-        if (selected && printing) return 2;
-        return 3;
-      };
+   const sortedPrinters = computed(() => {
+   const printing = (p: Printer) => isPrinterPrinting(p);
 
-      return [...printers.value].sort((a, b) => {
-        const ga = group(a);
-        const gb = group(b);
-        if (ga !== gb) return ga - gb;
+   return [...printers.value].sort((a, b) => {
+    const ap = printing(a);
+    const bp = printing(b);
 
-        // tie-breakers: keep printing progress higher first, otherwise hostname
-        const ap = a.print_progress ?? 0;
-        const bp = b.print_progress ?? 0;
-        if (ga >= 2 && ap !== bp) return bp - ap;
+    // ✅ Not printing first, printing last
+    if (ap !== bp) return ap ? 1 : -1;
 
-        return String(a.hostname || '').localeCompare(String(b.hostname || ''), undefined, { sensitivity: 'base' });
-      });
-    });
+    // ✅ Stable-ish tie breaker so list doesn't jump around when selecting
+    // Prefer hostname, then IP (keeps a consistent order across refreshes)
+    const ah = String(a.hostname || '');
+    const bh = String(b.hostname || '');
+    const hn = ah.localeCompare(bh, undefined, { sensitivity: 'base' });
+    if (hn !== 0) return hn;
+
+    return String(a.ip || '').localeCompare(String(b.ip || ''), undefined, { sensitivity: 'base' });
+  });
+});
+
 
     const viewType = ref('grid');
 
