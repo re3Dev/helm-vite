@@ -1,7 +1,7 @@
 // src/config/commandGroups.ts
 import { ref } from 'vue'
-import { selectedPrinters } from '../store/printerStore' // shared ref
-import { commandValues } from '../store/commandValues' // command mapping
+import { selectedPrinters } from '../store/printerStore'
+import { commandValues } from '../store/commandValues'
 
 type CommandType = 'button' | 'number' | 'dropdown' | 'gcode-input' | 'file-upload'
 
@@ -18,18 +18,15 @@ interface CommandConfig {
   variant?: string
   accept?: string[]
   gridPos?: [number, number]
-
-  // Step size selector buttons (100/10/1)
   stepSize?: number
-
-  // Movement buttons (direction only; distance comes from selectedStepSize)
   move?: {
     axis: 'X' | 'Y' | 'Z' | 'XY'
-    dir: 1 | -1 | [1 | -1, 1 | -1] // XY uses [xDir, yDir]
+    dir: 1 | -1 | [1 | -1, 1 | -1]
   }
-
-  // Explicit UI-role tags so Z buttons don't get mixed up when you invert directions
   zRole?: 'up' | 'down'
+
+  // OPTIONAL hint to render print controls in a row (sidebar uses this)
+  ui?: 'print-controls'
 }
 
 export const commandGroups = ref<
@@ -45,7 +42,12 @@ export const commandGroups = ref<
     icon: 'mdi-file',
     open: false,
     commands: [
-      { type: 'button', label: 'Start Print', color: 'green', variant: 'tonal', icon: 'mdi-play' },
+      // ✅ Print controls row
+      { type: 'button', label: 'Start Print', color: 'green', variant: 'tonal', icon: 'mdi-play', ui: 'print-controls' },
+      { type: 'button', label: 'Pause Print', color: 'yellow', variant: 'tonal', icon: 'mdi-pause', ui: 'print-controls' },
+      { type: 'button', label: 'Stop Print', color: 'red', variant: 'tonal', icon: 'mdi-stop', ui: 'print-controls' },
+
+      // File selection + upload
       { type: 'dropdown', label: 'Select File', options: [] },
       {
         type: 'file-upload',
@@ -56,20 +58,9 @@ export const commandGroups = ref<
         accept: ['.gcode', '.txt']
       },
       { type: 'button', label: 'Refresh File List', color: 'grey', variant: 'outlined', icon: 'mdi-refresh' },
-      {
-        type: 'button',
-        label: 'Check Endstops',
-        color: 'blue',
-        variant: 'tonal',
-        icon: 'mdi-gesture-tap-button'
-      },
-      {
-        type: 'gcode-input',
-        label: 'G-code Terminal',
-        icon: 'mdi-console',
-        color: 'grey',
-        variant: 'outlined'
-      }
+
+      // ✅ Keep terminal
+      { type: 'gcode-input', label: 'G-code Terminal', icon: 'mdi-console', color: 'grey', variant: 'outlined' }
     ]
   },
   {
@@ -77,12 +68,10 @@ export const commandGroups = ref<
     icon: 'mdi-cursor-move',
     open: false,
     commands: [
-      // Step size selector buttons
       { type: 'button', label: '100mm', color: 'grey', variant: 'tonal', stepSize: 100 },
       { type: 'button', label: '10mm', color: 'grey', variant: 'tonal', stepSize: 10 },
       { type: 'button', label: '1mm', color: 'grey', variant: 'tonal', stepSize: 1 },
 
-      // 3x3 grid movement buttons (direction only)
       { type: 'button', label: '', icon: 'mdi-arrow-top-left', color: 'grey', variant: 'outlined', gridPos: [0, 0], move: { axis: 'XY', dir: [-1, 1] } },
       { type: 'button', label: '', icon: 'mdi-arrow-up', color: 'grey', variant: 'outlined', gridPos: [0, 1], move: { axis: 'Y', dir: 1 } },
       { type: 'button', label: '', icon: 'mdi-arrow-top-right', color: 'grey', variant: 'outlined', gridPos: [0, 2], move: { axis: 'XY', dir: [1, 1] } },
@@ -95,7 +84,6 @@ export const commandGroups = ref<
       { type: 'button', label: '', icon: 'mdi-arrow-down', color: 'grey', variant: 'outlined', gridPos: [2, 1], move: { axis: 'Y', dir: -1 } },
       { type: 'button', label: '', icon: 'mdi-arrow-bottom-right', color: 'grey', variant: 'outlined', gridPos: [2, 2], move: { axis: 'XY', dir: [1, -1] } },
 
-      // Z controls (your inverted behavior)
       { type: 'button', label: 'Z+', icon: 'mdi-arrow-up-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: -1 }, zRole: 'up' },
       { type: 'button', label: 'Z-', icon: 'mdi-arrow-down-bold', color: 'grey', variant: 'outlined', move: { axis: 'Z', dir: 1 }, zRole: 'down' }
     ]
@@ -124,8 +112,6 @@ export const commandGroups = ref<
 ])
 
 export { selectedPrinters }
-
-// Step size toggle state
 export const stepSizes = [100, 10, 1] as const
 export const selectedStepSize = ref<number>(10)
 
@@ -133,23 +119,17 @@ export const selectedStepSize = ref<number>(10)
 const selectedPrintFile = ref<string>('') // filename relative to gcodes root
 const lastUploadedFile = ref<string>('')
 
-/**
- * Helpers
- */
+/** Helpers */
 function getFirstSelectedPrinter(): string | null {
   return selectedPrinters.value.length ? selectedPrinters.value[0] : null
 }
 
 function toOneFile(value: unknown): File | null {
-  // Vuetify can deliver File | File[] | null (and sometimes event-ish shapes)
   if (!value) return null
   if (value instanceof File) return value
   if (Array.isArray(value)) return (value[0] instanceof File ? value[0] : null)
-
-  // Some UI libs pass { target: { files: FileList } }
   const maybeFiles = (value as any)?.target?.files
   if (maybeFiles && maybeFiles.length && maybeFiles[0] instanceof File) return maybeFiles[0]
-
   return null
 }
 
@@ -161,35 +141,23 @@ function updatePrintDropdownOptions(options: string[]) {
   dropdown.options = options
 }
 
-/**
- * Fetch file list from Moonraker (gcodes root) and update dropdown.
- * Uses: GET /server/files/list?root=gcodes :contentReference[oaicite:2]{index=2}
- */
 async function refreshFileListFromPrinter(base: string): Promise<string[]> {
   const url = `http://${base}/server/files/list?root=gcodes`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`File list failed (${res.status})`)
   const data = await res.json()
 
-  // Moonraker returns an array of file info objects for this endpoint
   const paths = Array.isArray(data) ? data.map((x: any) => x?.path).filter(Boolean) : []
-  // sort a little nicer
   paths.sort((a: string, b: string) => a.localeCompare(b))
   updatePrintDropdownOptions(paths)
   return paths
 }
 
-/**
- * Upload a file to Moonraker using multipart/form-data:
- * POST /server/files/upload with form fields: file, root=gcodes, optional path, optional print=true :contentReference[oaicite:3]{index=3}
- */
 async function uploadGcodeToPrinter(base: string, file: File, opts?: { path?: string; autoPrint?: boolean }) {
   const fd = new FormData()
   fd.append('file', file, file.name)
   fd.append('root', 'gcodes')
   if (opts?.path) fd.append('path', opts.path)
-  // If you want Moonraker to start immediately after upload:
-  // fd.append('print', opts?.autoPrint ? 'true' : 'false')
   fd.append('print', opts?.autoPrint ? 'true' : 'false')
 
   const res = await fetch(`http://${base}/server/files/upload`, {
@@ -203,7 +171,6 @@ async function uploadGcodeToPrinter(base: string, file: File, opts?: { path?: st
   }
 
   const data = await res.json()
-  // Example response includes: data.item.path :contentReference[oaicite:4]{index=4}
   const uploadedPath = data?.item?.path as string | undefined
   if (uploadedPath) {
     lastUploadedFile.value = uploadedPath
@@ -212,10 +179,6 @@ async function uploadGcodeToPrinter(base: string, file: File, opts?: { path?: st
   return data
 }
 
-/**
- * Start print by filename.
- * Moonraker supports POST /printer/print/start?filename=... (query), recommended body is ok too :contentReference[oaicite:5]{index=5}
- */
 async function startPrintOnPrinter(base: string, filename: string) {
   const url = `http://${base}/printer/print/start?filename=${encodeURIComponent(filename)}`
   const res = await fetch(url, { method: 'POST' })
@@ -226,11 +189,30 @@ async function startPrintOnPrinter(base: string, filename: string) {
   return res.json().catch(() => ({}))
 }
 
+async function pausePrintOnPrinter(base: string) {
+  // Moonraker: /printer/print/pause
+  const res = await fetch(`http://${base}/printer/print/pause`, { method: 'POST' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Pause failed (${res.status}): ${text}`)
+  }
+  return res.json().catch(() => ({}))
+}
+
+async function stopPrintOnPrinter(base: string) {
+  // Moonraker: /printer/print/cancel
+  const res = await fetch(`http://${base}/printer/print/cancel`, { method: 'POST' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Stop failed (${res.status}): ${text}`)
+  }
+  return res.json().catch(() => ({}))
+}
+
 /**
- * Command-to-G-code mapping for direct API calls
+ * G-code mapping (kept minimal now)
  */
 const gcodeCommandMap: Record<string, string> = {
-  'Check Endstops': 'M119',
   'Home All Axes': 'G28'
 }
 
@@ -265,142 +247,121 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
 
     await Promise.all(
       selectedPrinters.value.map(async (base) => {
-        try {
-          await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          console.log(`Move sent to printer ${base}: ${script.replace(/\n/g, ' | ')}`)
-        } catch (e) {
-          console.warn(`Error sending move to printer ${base}:`, e)
-        }
+        await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
       })
     )
     return
   }
 
-  // Handle file upload (real Moonraker upload)
-if (command.type === 'file-upload') {
-  const file = toOneFile(value)
-  if (!file) {
-    console.warn('No file selected.')
-    return { ok: false, total: 0, success: 0, failed: 0 }
-  }
+  // Upload file (returns summary for UI)
+  if (command.type === 'file-upload') {
+    const file = toOneFile(value)
+    if (!file) return { ok: false, total: 0, success: 0, failed: 0 }
 
-  const autoPrint = false
-  const uploadPath = ''
+    const autoPrint = false
+    const uploadPath = ''
 
-  const results = await Promise.allSettled(
-    selectedPrinters.value.map(async (base) => {
-      const resp = await uploadGcodeToPrinter(base, file, {
-        path: uploadPath || undefined,
-        autoPrint
+    const results = await Promise.allSettled(
+      selectedPrinters.value.map(async (base) => {
+        const resp = await uploadGcodeToPrinter(base, file, {
+          path: uploadPath || undefined,
+          autoPrint
+        })
+        return { base, resp }
       })
-      return { base, resp }
-    })
-  )
+    )
 
-  const total = results.length
-  const success = results.filter(r => r.status === 'fulfilled').length
-  const failed = total - success
+    const total = results.length
+    const success = results.filter(r => r.status === 'fulfilled').length
+    const failed = total - success
 
-  // Refresh dropdown from the first selected printer so the new file shows up
-  const first = getFirstSelectedPrinter()
-  if (first) {
-    try {
-      await refreshFileListFromPrinter(first)
-    } catch (e) {
-      console.warn('File list refresh failed:', e)
+    const first = getFirstSelectedPrinter()
+    if (first) {
+      try { await refreshFileListFromPrinter(first) } catch {}
     }
+
+    return { ok: failed === 0, total, success, failed }
   }
 
-  // Let the UI show exact outcome
-  return { ok: failed === 0, total, success, failed }
-}
-
-
-  // Dropdown select (Select File)
+  // Dropdown: select file
   if (command.type === 'dropdown' && command.label === 'Select File') {
     const filename = String(value ?? '').trim()
     selectedPrintFile.value = filename
-    console.log('Selected file:', selectedPrintFile.value)
     return
   }
 
-  // Refresh file list button
+  // Refresh file list
   if (command.type === 'button' && command.label === 'Refresh File List') {
     const first = getFirstSelectedPrinter()
     if (!first) return
-    try {
-      await refreshFileListFromPrinter(first)
-      console.log('File list refreshed')
-    } catch (e) {
-      console.warn('File list refresh failed:', e)
-    }
+    await refreshFileListFromPrinter(first)
     return
   }
 
-  // Start print (uses selected file; falls back to last uploaded file)
+  // Start / Pause / Stop print
   if (command.type === 'button' && command.label === 'Start Print') {
     const filename = (selectedPrintFile.value || lastUploadedFile.value).trim()
     if (!filename) {
-      console.warn('No file selected (and no recent upload). Choose a file first.')
-      return
+      console.warn('No file selected (and no recent upload).')
+      return { ok: false }
     }
 
-    await Promise.all(
-      selectedPrinters.value.map(async (base) => {
-        try {
-          const resp = await startPrintOnPrinter(base, filename)
-          console.log(`Started print on ${base}: ${filename}`, resp)
-        } catch (e) {
-          console.warn(`Start print failed on ${base}:`, e)
-        }
-      })
+    const results = await Promise.allSettled(
+      selectedPrinters.value.map(async (base) => startPrintOnPrinter(base, filename))
     )
-    return
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { ok: failed === 0 }
   }
 
-  // Handle arbitrary G-code input
+  if (command.type === 'button' && command.label === 'Pause Print') {
+    const results = await Promise.allSettled(
+      selectedPrinters.value.map(async (base) => pausePrintOnPrinter(base))
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { ok: failed === 0 }
+  }
+
+  if (command.type === 'button' && command.label === 'Stop Print') {
+    const results = await Promise.allSettled(
+      selectedPrinters.value.map(async (base) => stopPrintOnPrinter(base))
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { ok: failed === 0 }
+  }
+
+  // G-code terminal
   if (command.type === 'gcode-input' && typeof value === 'string' && value.trim() !== '') {
     await Promise.all(
       selectedPrinters.value.map(async (base) => {
-        try {
-          await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(value)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          console.log(`G-code (${value}) sent to printer ${base}`)
-        } catch (e) {
-          console.warn(`Error sending G-code (${value}) to printer ${base}:`, e)
-        }
+        await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(value)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
       })
     )
-    return
+    return { ok: true }
   }
 
-  // If the command is mapped to a G-code, send it to all selected printers
+  // mapped gcode buttons (left for future)
   const gcode = gcodeCommandMap[command.label]
   if (gcode) {
     await Promise.all(
       selectedPrinters.value.map(async (base) => {
-        try {
-          await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(gcode)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          console.log(`${command.label} (${gcode}) sent to printer ${base}`)
-        } catch (e) {
-          console.warn(`Error sending ${command.label} to printer ${base}:`, e)
-        }
+        await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(gcode)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
       })
     )
     return
   }
 
-  // Fallback
+  // fallback
   const commandValue = commandValues[command.label] || 'UNKNOWN_COMMAND'
-  selectedPrinters.value.forEach((printerBase) => {
-    console.log(`This command is being run: ${commandValue} for the device ${printerBase}`)
+  selectedPrinters.value.forEach((printerIp) => {
+    console.log(`This command is being run: ${commandValue} for the device ${printerIp}`)
   })
 }

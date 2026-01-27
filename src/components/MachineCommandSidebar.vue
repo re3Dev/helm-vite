@@ -1,17 +1,13 @@
 <template>
   <div class="pm-shell">
-    <!-- Reserves layout space -->
     <div class="sidebar-container" :style="{ width: sidebarWidth + 'px' }">
-      <!-- Custom “drawer” -->
       <div v-show="!isCollapsed" class="pm-drawer">
-        <!-- Header -->
         <div class="sidebar-header">
           <div class="header-content">
             <div class="header-title">Printer Management</div>
           </div>
         </div>
 
-        <!-- Body -->
         <div class="drawer-body">
           <v-expansion-panels multiple>
             <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx">
@@ -86,24 +82,140 @@
                   </div>
                 </template>
 
+                <!-- PRINT: neat layout -->
+                <template v-else-if="group.title === 'Print'">
+                  <div class="print-wrap">
+                    <!-- Controls row -->
+                    <div class="print-controls">
+                      <v-btn
+                        v-for="cmd in printControlCommands(group.commands)"
+                        :key="cmd.label"
+                        class="print-control-btn"
+                        :color="cmd.color"
+                        :variant="cmd.variant"
+                        @click="runCommand(cmd)"
+                      >
+                        <v-icon start v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+                        {{ shortLabel(cmd.label) }}
+                      </v-btn>
+                    </div>
+
+                    <!-- File select + refresh -->
+                    <div class="print-row">
+                      <div class="grow">
+                        <v-select
+                          v-if="printSelectCommand(group.commands)"
+                          :label="printSelectCommand(group.commands).label"
+                          :items="printSelectCommand(group.commands).options"
+                          density="compact"
+                          hide-details
+                          @update:modelValue="v => runCommand(printSelectCommand(group.commands), v)"
+                        />
+                      </div>
+
+                      <v-btn
+                        v-if="printRefreshCommand(group.commands)"
+                        class="icon-btn"
+                        icon
+                        :color="printRefreshCommand(group.commands).color"
+                        :variant="printRefreshCommand(group.commands).variant"
+                        @click="runCommand(printRefreshCommand(group.commands))"
+                      >
+                        <v-icon>{{ printRefreshCommand(group.commands).icon || 'mdi-refresh' }}</v-icon>
+                      </v-btn>
+                    </div>
+
+                    <!-- Upload picker + upload action + status -->
+                    <div class="print-upload">
+                      <v-file-input
+                        v-if="printUploadCommand(group.commands)"
+                        :label="printUploadCommand(group.commands).label"
+                        :accept="printUploadCommand(group.commands).accept?.join(',')"
+                        :color="printUploadCommand(group.commands).color"
+                        prepend-icon="mdi-upload"
+                        density="compact"
+                        hide-details
+                        class="file-upload-input"
+                        @update:modelValue="val => onFilePicked(gIdx, val)"
+                      />
+
+                      <v-btn
+                        block
+                        size="small"
+                        color="yellow"
+                        variant="tonal"
+                        :disabled="!pendingFiles[gIdx] || uploadState[gIdx]?.loading"
+                        :loading="uploadState[gIdx]?.loading"
+                        @click="uploadPickedFile(printUploadCommand(group.commands), gIdx)"
+                      >
+                        <v-icon start>mdi-cloud-upload</v-icon>
+                        Upload
+                      </v-btn>
+
+                      <div
+                        v-if="uploadState[gIdx]?.msg"
+                        class="upload-status"
+                        :class="{ ok: uploadState[gIdx]?.ok === true, bad: uploadState[gIdx]?.ok === false }"
+                      >
+                        {{ uploadState[gIdx]?.msg }}
+                      </div>
+                    </div>
+
+                    <!-- G-code terminal (clean) -->
+                    <div class="terminal-wrap">
+                      <div class="terminal-title">
+                        <v-icon size="18">mdi-console</v-icon>
+                        <span>G-code Terminal</span>
+                      </div>
+
+                      <v-textarea
+                        v-model="terminalText[gIdx]"
+                        auto-grow
+                        rows="2"
+                        max-rows="6"
+                        density="compact"
+                        placeholder="Enter G-code (examples: M105, M119, G28, PAUSE)"
+                        hide-details
+                        class="terminal-box"
+                      />
+
+                      <div class="terminal-actions">
+                        <v-btn
+                          class="terminal-send"
+                          size="small"
+                          color="grey"
+                          variant="outlined"
+                          :disabled="!terminalText[gIdx] || !terminalText[gIdx].trim()"
+                          @click="sendTerminal(gIdx, group.commands)"
+                        >
+                          Send
+                        </v-btn>
+
+                        <v-btn
+                          class="terminal-clear"
+                          size="small"
+                          color="grey"
+                          variant="text"
+                          @click="terminalText[gIdx] = ''"
+                        >
+                          Clear
+                        </v-btn>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
                 <!-- EVERYTHING ELSE -->
                 <template v-else>
                   <v-list>
                     <v-list-item v-for="(cmd, cIdx) in group.commands" :key="cIdx">
-                      <!-- normal buttons -->
                       <template v-if="cmd.type === 'button'">
-                        <v-btn
-                          block
-                          @click="runCommand(cmd)"
-                          :color="cmd.color"
-                          :variant="cmd.variant"
-                        >
+                        <v-btn block @click="runCommand(cmd)" :color="cmd.color" :variant="cmd.variant">
                           <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
                           {{ cmd.label }}
                         </v-btn>
                       </template>
 
-                      <!-- numbers -->
                       <template v-else-if="cmd.type === 'number'">
                         <v-text-field
                           :label="cmd.label"
@@ -116,54 +228,10 @@
                         />
                       </template>
 
-                      <!-- ✅ file upload: pick file + separate Upload button + status -->
-                      <template v-else-if="cmd.type === 'file-upload'">
-                        <v-file-input
-                          :label="cmd.label"
-                          :accept="cmd.accept?.join(',')"
-                          :color="cmd.color"
-                          prepend-icon="mdi-upload"
-                          class="file-upload-input"
-                          @update:modelValue="val => onFilePicked(gIdx, val)"
-                        />
-
-                        <div class="upload-actions">
-                          <v-btn
-                            block
-                            size="small"
-                            color="yellow"
-                            variant="tonal"
-                            :disabled="!pendingFiles[gIdx] || uploadState[gIdx]?.loading"
-                            :loading="uploadState[gIdx]?.loading"
-                            @click="uploadPickedFile(cmd, gIdx)"
-                          >
-                            <v-icon start>mdi-cloud-upload</v-icon>
-                            Upload
-                          </v-btn>
-
-                          <div
-                            v-if="uploadState[gIdx]?.msg"
-                            class="upload-status"
-                            :class="{
-                              ok: uploadState[gIdx]?.ok === true,
-                              bad: uploadState[gIdx]?.ok === false
-                            }"
-                          >
-                            {{ uploadState[gIdx]?.msg }}
-                          </div>
-                        </div>
-                      </template>
-
-                      <!-- dropdown -->
                       <template v-else-if="cmd.type === 'dropdown'">
-                        <v-select
-                          :label="cmd.label"
-                          :items="cmd.options"
-                          @change="value => runCommand(cmd, value)"
-                        />
+                        <v-select :label="cmd.label" :items="cmd.options" @change="value => runCommand(cmd, value)" />
                       </template>
 
-                      <!-- gcode input -->
                       <template v-else-if="cmd.type === 'gcode-input'">
                         <v-text-field
                           v-model="gcodeInputs[gIdx]"
@@ -194,15 +262,9 @@
         </div>
       </div>
 
-      <!-- Resizer -->
-      <div
-        v-if="!isCollapsed"
-        class="resizer"
-        @mousedown.stop.prevent="startResize"
-      ></div>
+      <div v-if="!isCollapsed" class="resizer" @mousedown.stop.prevent="startResize"></div>
     </div>
 
-    <!-- Toggle button -->
     <v-btn
       class="edge-toggle top-right"
       size="x-small"
@@ -229,15 +291,9 @@ const props = defineProps({
   }
 })
 
-/**
- * Step-button highlight helpers (Movement group only)
- */
-function isStepButton(cmd) {
-  return typeof cmd?.stepSize === 'number'
-}
-function isStepActive(cmd) {
-  return isStepButton(cmd) && selectedStepSize.value === cmd.stepSize
-}
+/** Movement helpers */
+function isStepButton(cmd) { return typeof cmd?.stepSize === 'number' }
+function isStepActive(cmd) { return isStepButton(cmd) && selectedStepSize.value === cmd.stepSize }
 function movementBtnColor(cmd) {
   if (isStepButton(cmd)) return isStepActive(cmd) ? 'primary' : 'grey'
   return cmd.color ?? 'grey'
@@ -246,42 +302,45 @@ function movementBtnVariant(cmd) {
   if (isStepButton(cmd)) return isStepActive(cmd) ? 'elevated' : 'tonal'
   return cmd.variant ?? 'outlined'
 }
-
-/**
- * Movement command selectors
- */
-function stepCommands(commands) {
-  return (commands || []).filter(c => typeof c?.stepSize === 'number')
-}
+function stepCommands(commands) { return (commands || []).filter(c => typeof c?.stepSize === 'number') }
 function gridCommands(commands) {
   return (commands || [])
     .filter(c => Array.isArray(c?.gridPos))
     .slice()
     .sort((a, b) => (a.gridPos[0] - b.gridPos[0]) || (a.gridPos[1] - b.gridPos[1]))
 }
-function zUpCommand(commands) {
-  return (commands || []).find(c => c?.zRole === 'up')
+function zUpCommand(commands) { return (commands || []).find(c => c?.zRole === 'up') }
+function zDownCommand(commands) { return (commands || []).find(c => c?.zRole === 'down') }
+
+/** ✅ Print section helpers */
+function printControlCommands(commands) {
+  return (commands || []).filter(c => c?.ui === 'print-controls' && c.type === 'button')
 }
-function zDownCommand(commands) {
-  return (commands || []).find(c => c?.zRole === 'down')
+function printSelectCommand(commands) {
+  return (commands || []).find(c => c.type === 'dropdown' && c.label === 'Select File')
+}
+function printUploadCommand(commands) {
+  return (commands || []).find(c => c.type === 'file-upload' && c.label === 'Upload File')
+}
+function printRefreshCommand(commands) {
+  return (commands || []).find(c => c.type === 'button' && c.label === 'Refresh File List')
+}
+function shortLabel(label) {
+  if (label === 'Start Print') return 'Start'
+  if (label === 'Pause Print') return 'Pause'
+  if (label === 'Stop Print') return 'Stop'
+  return label
 }
 
-/**
- * Sidebar width & collapse logic
- */
+/** Sidebar width & collapse */
 const sidebarWidth = ref(300)
 const isCollapsed = ref(false)
 let isResizing = false
 let lastWidth = sidebarWidth.value
 
-// G-code input tracking per group
 const gcodeInputs = ref({})
 
-/**
- * ✅ Upload UX state
- * pendingFiles[gIdx] = File picked but not uploaded yet
- * uploadState[gIdx] = { loading, ok, msg }
- */
+/** ✅ Upload UX state */
 const pendingFiles = ref({})
 const uploadState = ref({})
 
@@ -297,12 +356,9 @@ function normalizeFile(val) {
 function onFilePicked(gIdx, val) {
   const file = normalizeFile(val)
   pendingFiles.value[gIdx] = file
-
-  if (file) {
-    uploadState.value[gIdx] = { loading: false, ok: undefined, msg: `Ready: ${file.name}` }
-  } else {
-    uploadState.value[gIdx] = { loading: false, ok: undefined, msg: '' }
-  }
+  uploadState.value[gIdx] = file
+    ? { loading: false, ok: undefined, msg: `Ready: ${file.name}` }
+    : { loading: false, ok: undefined, msg: '' }
 }
 
 async function uploadPickedFile(cmd, gIdx) {
@@ -312,35 +368,32 @@ async function uploadPickedFile(cmd, gIdx) {
   uploadState.value[gIdx] = { loading: true, ok: undefined, msg: 'Uploading…' }
 
   try {
-    // ✅ runCommand should return a summary object (see command file update below)
     const result = await runCommand(cmd, file)
-
-    // Expected shape: { ok: boolean, total: number, success: number, failed: number }
     if (result?.ok) {
-      uploadState.value[gIdx] = {
-        loading: false,
-        ok: true,
-        msg: `Upload successful (${result.success}/${result.total})`
-      }
+      uploadState.value[gIdx] = { loading: false, ok: true, msg: `Upload successful (${result.success}/${result.total})` }
     } else {
-      uploadState.value[gIdx] = {
-        loading: false,
-        ok: false,
-        msg: `Upload incomplete (${result?.success ?? 0}/${result?.total ?? 0})`
-      }
+      uploadState.value[gIdx] = { loading: false, ok: false, msg: `Upload incomplete (${result?.success ?? 0}/${result?.total ?? 0})` }
     }
   } catch (e) {
-    uploadState.value[gIdx] = {
-      loading: false,
-      ok: false,
-      msg: `Upload failed: ${e?.message ?? e}`
-    }
+    uploadState.value[gIdx] = { loading: false, ok: false, msg: `Upload failed: ${e?.message ?? e}` }
   }
 }
 
-/**
- * Button x anchor (sidebar boundary)
- */
+/** ✅ Terminal state (separate from old gcodeInputs) */
+const terminalText = ref({})
+
+function findTerminalCommand(commands) {
+  return (commands || []).find(c => c.type === 'gcode-input' && c.label === 'G-code Terminal')
+}
+async function sendTerminal(gIdx, commands) {
+  const cmd = findTerminalCommand(commands)
+  const text = terminalText.value[gIdx]
+  if (!cmd || !text || !text.trim()) return
+  await runCommand(cmd, text.trim())
+  terminalText.value[gIdx] = ''
+}
+
+/** Toggle button anchor */
 const EDGE_BTN_MIN_LEFT = 10
 const toggleLeft = computed(() => {
   const boundary = isCollapsed.value ? 0 : sidebarWidth.value
@@ -354,28 +407,22 @@ function startResize() {
     sidebarWidth.value = lastWidth || 300
   }
 }
-
 function handleMouseMove(e) {
   if (!isResizing) return
   const next = Math.max(220, Math.min(e.clientX, 700))
   sidebarWidth.value = next
   lastWidth = next
 }
-
-function stopResize() {
-  isResizing = false
-}
+function stopResize() { isResizing = false }
 
 onMounted(() => {
   window.addEventListener('mousemove', handleMouseMove)
   window.addEventListener('mouseup', stopResize)
 })
-
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', handleMouseMove)
   window.removeEventListener('mouseup', stopResize)
 })
-
 function toggleCollapse() {
   if (isCollapsed.value) {
     sidebarWidth.value = lastWidth || 300
@@ -390,19 +437,10 @@ function toggleCollapse() {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
-
 * { font-family: 'Lato', sans-serif !important; }
 
-.pm-shell{
-  position: relative;
-  height: 100%;
-  overflow: visible;
-}
-
-.sidebar-container{
-  position: relative;
-  height: 100%;
-}
+.pm-shell{ position: relative; height: 100%; overflow: visible; }
+.sidebar-container{ position: relative; height: 100%; }
 
 .pm-drawer{
   position: absolute;
@@ -439,11 +477,7 @@ function toggleCollapse() {
   line-height: 30px;
 }
 
-.drawer-body{
-  flex: 1 1 auto;
-  overflow: auto;
-  padding: 0;
-}
+.drawer-body{ flex: 1 1 auto; overflow: auto; padding: 0; }
 
 .resizer{
   position: absolute;
@@ -461,13 +495,9 @@ function toggleCollapse() {
   z-index: 9999;
   border-radius: 999px;
 }
+.edge-toggle.top-right{ top: 6px; transform: translateX(50%); }
 
-.edge-toggle.top-right{
-  top: 6px;
-  transform: translateX(50%);
-}
-
-/* Movement layout */
+/* Movement */
 .movement-wrap{
   --move-btn-h: 48px;
   --move-gap: 8px;
@@ -475,7 +505,6 @@ function toggleCollapse() {
   flex-direction:column;
   gap: 10px;
 }
-
 .step-row{ display:flex; gap: 8px; }
 .step-btn{ flex: 1; min-width: 0; }
 
@@ -504,27 +533,11 @@ function toggleCollapse() {
   font-size: 0.9em;
 }
 
-.z-col{
-  height: calc(var(--move-btn-h) * 3 + var(--move-gap) * 2);
-}
+.z-col{ height: calc(var(--move-btn-h) * 3 + var(--move-gap) * 2); }
+.z-stack{ height: 100%; display: flex; flex-direction: column; }
 
-.z-stack{
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.z-tall{
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  border-radius: 0;
-}
-
-.z-top{
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-}
+.z-tall{ flex: 1; min-height: 0; width: 100%; border-radius: 0; }
+.z-top{ border-top-left-radius: 6px; border-top-right-radius: 6px; }
 .z-bottom{
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
@@ -536,12 +549,41 @@ function toggleCollapse() {
   outline-offset: 2px;
 }
 
-/* ✅ Upload UI */
-.upload-actions{
+/* ✅ Print section layout */
+.print-wrap{
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 12px;
+}
+
+.print-controls{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.print-control-btn{
+  min-width: 0;
+  height: 38px;
+}
+
+.print-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grow{ flex: 1; min-width: 0; }
+
+.icon-btn{
+  width: 40px;
+  height: 40px;
+}
+
+.print-upload{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .upload-status{
@@ -549,7 +591,39 @@ function toggleCollapse() {
   line-height: 1.2;
   opacity: 0.9;
 }
-
 .upload-status.ok{ color: #7CFFB2; }
 .upload-status.bad{ color: #FF8A8A; }
+
+/* ✅ Terminal */
+.terminal-wrap{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.14);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.terminal-title{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.terminal-box :deep(textarea){
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.terminal-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.terminal-send{ min-width: 92px; }
 </style>
