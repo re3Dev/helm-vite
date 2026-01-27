@@ -16,6 +16,21 @@
       </div>
 
       <div class="top-bar-right">
+        <!-- ✅ Refresh button (moved to right) -->
+        <v-btn
+          variant="tonal"
+          color="yellow"
+          size="small"
+          class="refresh-btn"
+          @click="refreshNow"
+          :loading="isRefreshing"
+          :disabled="isLoading || isRefreshing"
+          title="Refresh printer list"
+        >
+          <v-icon start>mdi-refresh</v-icon>
+          Refresh
+        </v-btn>
+
         <!-- Utilities dropdown -->
         <v-menu location="bottom end" offset="8">
           <template #activator="{ props }">
@@ -353,7 +368,7 @@ interface Printer {
   hostname: string;
   ip: string;
   mac: string;
-  base_url: string; // ✅ NEW
+  base_url: string;
   ui_url: string;
   status: string;
   extruder_temperature: number;
@@ -372,6 +387,9 @@ export default defineComponent({
   setup() {
     const printers = ref<Printer[]>([]);
     const isLoading = ref(true);
+
+    // ✅ refresh state
+    const isRefreshing = ref(false);
 
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
 
@@ -406,23 +424,57 @@ export default defineComponent({
 
     let fetchInterval: number | null = null;
 
+    // ✅ NEW sorting:
+    // 0: selected + not printing
+    // 1: unselected + not printing
+    // 2: selected + printing
+    // 3: unselected + printing
     const sortedPrinters = computed(() => {
+      const group = (p: Printer) => {
+        const printing = isPrinterPrinting(p);
+        const selected = selectedPrinters.value.includes(p.ip);
+        if (selected && !printing) return 0;
+        if (!selected && !printing) return 1;
+        if (selected && printing) return 2;
+        return 3;
+      };
+
       return [...printers.value].sort((a, b) => {
-        if (isPrinterPrinting(a) && !isPrinterPrinting(b)) return -1;
-        if (!isPrinterPrinting(a) && isPrinterPrinting(b)) return 1;
-        return 0;
+        const ga = group(a);
+        const gb = group(b);
+        if (ga !== gb) return ga - gb;
+
+        // tie-breakers: keep printing progress higher first, otherwise hostname
+        const ap = a.print_progress ?? 0;
+        const bp = b.print_progress ?? 0;
+        if (ga >= 2 && ap !== bp) return bp - ap;
+
+        return String(a.hostname || '').localeCompare(String(b.hostname || ''), undefined, { sensitivity: 'base' });
       });
     });
 
     const viewType = ref('grid');
 
-    const fetchPrinters = async () => {
+    const fetchPrinters = async (opts?: { force?: boolean }) => {
       try {
-        const data = await apiFetch<Printer[]>('/api/devices'); // ✅ CHANGED
+        const force = !!opts?.force;
+        const path = force ? '/api/devices?force=1' : '/api/devices';
+
+        const data = await apiFetch<Printer[]>(path);
         await updatePrinters(data);
         isLoading.value = false;
       } catch (error) {
         console.error('Failed to fetch devices:', error);
+      }
+    };
+
+    const refreshNow = async () => {
+      if (isRefreshing.value) return;
+      try {
+        isRefreshing.value = true;
+        await fetchPrinters({ force: true });
+      } finally {
+        isRefreshing.value = false;
       }
     };
 
@@ -431,7 +483,7 @@ export default defineComponent({
 
       async function fetchModelType(baseUrl: string): Promise<string | null> {
         try {
-          const res = await fetch(`${baseUrl}/server/files/config/.master.cfg`); // ✅ CHANGED
+          const res = await fetch(`${baseUrl}/server/files/config/.master.cfg`);
           if (!res.ok) return null;
           const text = await res.text();
 
@@ -463,7 +515,7 @@ export default defineComponent({
         if (index !== -1) {
           updatedPrinters[index] = { ...updatedPrinters[index], ...device };
         } else {
-          const modelType = await fetchModelType(device.base_url); // ✅ CHANGED
+          const modelType = await fetchModelType(device.base_url);
           updatedPrinters.push({ ...device, modelType: modelType ?? undefined });
         }
       }
@@ -520,8 +572,6 @@ export default defineComponent({
 
       const results = await Promise.all(selectedPrinters.value.map(async (ip) => {
         try {
-          // NOTE: This still posts directly to Moonraker by IP (same as your original).
-          // For permission enforcement + fewer CORS issues, move this behind your Flask backend later.
           const res = await fetch(`http://${ip}/printer/gcode/script?script=M119`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -543,6 +593,8 @@ export default defineComponent({
       printers,
       sortedPrinters,
       isLoading,
+      isRefreshing,
+      refreshNow,
       selectedPrinters,
       toggleSelection,
       formatFileName,
@@ -571,8 +623,16 @@ export default defineComponent({
 }
 .top-bar-left { justify-self: start; }
 .top-bar-center { justify-self: center; }
-.top-bar-right { justify-self: end; }
 
+/* ✅ right side now has refresh + utilities */
+.top-bar-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.refresh-btn { opacity: 0.95; }
 .utility-btn { opacity: 0.9; }
 .utility-menu { min-width: 260px; }
 
