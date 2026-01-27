@@ -90,6 +90,7 @@
                 <template v-else>
                   <v-list>
                     <v-list-item v-for="(cmd, cIdx) in group.commands" :key="cIdx">
+                      <!-- normal buttons -->
                       <template v-if="cmd.type === 'button'">
                         <v-btn
                           block
@@ -102,6 +103,7 @@
                         </v-btn>
                       </template>
 
+                      <!-- numbers -->
                       <template v-else-if="cmd.type === 'number'">
                         <v-text-field
                           :label="cmd.label"
@@ -114,6 +116,7 @@
                         />
                       </template>
 
+                      <!-- ✅ file upload: pick file + separate Upload button + status -->
                       <template v-else-if="cmd.type === 'file-upload'">
                         <v-file-input
                           :label="cmd.label"
@@ -121,10 +124,37 @@
                           :color="cmd.color"
                           prepend-icon="mdi-upload"
                           class="file-upload-input"
-                          @change="file => runCommand(cmd, file)"
+                          @update:modelValue="val => onFilePicked(gIdx, val)"
                         />
+
+                        <div class="upload-actions">
+                          <v-btn
+                            block
+                            size="small"
+                            color="yellow"
+                            variant="tonal"
+                            :disabled="!pendingFiles[gIdx] || uploadState[gIdx]?.loading"
+                            :loading="uploadState[gIdx]?.loading"
+                            @click="uploadPickedFile(cmd, gIdx)"
+                          >
+                            <v-icon start>mdi-cloud-upload</v-icon>
+                            Upload
+                          </v-btn>
+
+                          <div
+                            v-if="uploadState[gIdx]?.msg"
+                            class="upload-status"
+                            :class="{
+                              ok: uploadState[gIdx]?.ok === true,
+                              bad: uploadState[gIdx]?.ok === false
+                            }"
+                          >
+                            {{ uploadState[gIdx]?.msg }}
+                          </div>
+                        </div>
                       </template>
 
+                      <!-- dropdown -->
                       <template v-else-if="cmd.type === 'dropdown'">
                         <v-select
                           :label="cmd.label"
@@ -133,6 +163,7 @@
                         />
                       </template>
 
+                      <!-- gcode input -->
                       <template v-else-if="cmd.type === 'gcode-input'">
                         <v-text-field
                           v-model="gcodeInputs[gIdx]"
@@ -171,7 +202,7 @@
       ></div>
     </div>
 
-    <!-- Toggle button: top-right outside sidebar, but clamped so it never clips off-screen -->
+    <!-- Toggle button -->
     <v-btn
       class="edge-toggle top-right"
       size="x-small"
@@ -222,14 +253,12 @@ function movementBtnVariant(cmd) {
 function stepCommands(commands) {
   return (commands || []).filter(c => typeof c?.stepSize === 'number')
 }
-
 function gridCommands(commands) {
   return (commands || [])
     .filter(c => Array.isArray(c?.gridPos))
     .slice()
     .sort((a, b) => (a.gridPos[0] - b.gridPos[0]) || (a.gridPos[1] - b.gridPos[1]))
 }
-
 function zUpCommand(commands) {
   return (commands || []).find(c => c?.zRole === 'up')
 }
@@ -242,7 +271,6 @@ function zDownCommand(commands) {
  */
 const sidebarWidth = ref(300)
 const isCollapsed = ref(false)
-
 let isResizing = false
 let lastWidth = sidebarWidth.value
 
@@ -250,11 +278,70 @@ let lastWidth = sidebarWidth.value
 const gcodeInputs = ref({})
 
 /**
- * Button x anchor (sidebar boundary).
- * When collapsed, sidebarWidth is 0; we clamp to keep the button visible.
+ * ✅ Upload UX state
+ * pendingFiles[gIdx] = File picked but not uploaded yet
+ * uploadState[gIdx] = { loading, ok, msg }
  */
-const EDGE_BTN_MIN_LEFT = 10 // px from left edge of screen
+const pendingFiles = ref({})
+const uploadState = ref({})
 
+function normalizeFile(val) {
+  if (!val) return null
+  if (val instanceof File) return val
+  if (Array.isArray(val)) return val[0] instanceof File ? val[0] : null
+  const maybeFiles = val?.target?.files
+  if (maybeFiles && maybeFiles.length && maybeFiles[0] instanceof File) return maybeFiles[0]
+  return null
+}
+
+function onFilePicked(gIdx, val) {
+  const file = normalizeFile(val)
+  pendingFiles.value[gIdx] = file
+
+  if (file) {
+    uploadState.value[gIdx] = { loading: false, ok: undefined, msg: `Ready: ${file.name}` }
+  } else {
+    uploadState.value[gIdx] = { loading: false, ok: undefined, msg: '' }
+  }
+}
+
+async function uploadPickedFile(cmd, gIdx) {
+  const file = pendingFiles.value[gIdx]
+  if (!file) return
+
+  uploadState.value[gIdx] = { loading: true, ok: undefined, msg: 'Uploading…' }
+
+  try {
+    // ✅ runCommand should return a summary object (see command file update below)
+    const result = await runCommand(cmd, file)
+
+    // Expected shape: { ok: boolean, total: number, success: number, failed: number }
+    if (result?.ok) {
+      uploadState.value[gIdx] = {
+        loading: false,
+        ok: true,
+        msg: `Upload successful (${result.success}/${result.total})`
+      }
+    } else {
+      uploadState.value[gIdx] = {
+        loading: false,
+        ok: false,
+        msg: `Upload incomplete (${result?.success ?? 0}/${result?.total ?? 0})`
+      }
+    }
+  } catch (e) {
+    uploadState.value[gIdx] = {
+      loading: false,
+      ok: false,
+      msg: `Upload failed: ${e?.message ?? e}`
+    }
+  }
+}
+
+/**
+ * Button x anchor (sidebar boundary)
+ */
+const EDGE_BTN_MIN_LEFT = 10
 const toggleLeft = computed(() => {
   const boundary = isCollapsed.value ? 0 : sidebarWidth.value
   return Math.max(EDGE_BTN_MIN_LEFT, boundary)
@@ -304,23 +391,19 @@ function toggleCollapse() {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
 
-* {
-  font-family: 'Lato', sans-serif !important;
-}
+* { font-family: 'Lato', sans-serif !important; }
 
 .pm-shell{
   position: relative;
   height: 100%;
-  overflow: visible; /* IMPORTANT: allow the button to sit outside the sidebar */
+  overflow: visible;
 }
 
-/* Reserves layout space */
 .sidebar-container{
   position: relative;
   height: 100%;
 }
 
-/* Custom drawer fills the reserved area */
 .pm-drawer{
   position: absolute;
   inset: 0;
@@ -362,7 +445,6 @@ function toggleCollapse() {
   padding: 0;
 }
 
-/* Resizer */
 .resizer{
   position: absolute;
   top: 0;
@@ -374,21 +456,18 @@ function toggleCollapse() {
   z-index: 50;
 }
 
-/* Toggle button anchored at the boundary */
 .edge-toggle{
   position: absolute;
   z-index: 9999;
   border-radius: 999px;
 }
 
-/* Top-right outside sidebar.
-   When collapsed, left is clamped to >= 10px, so translateX(50%) won't clip off-screen. */
 .edge-toggle.top-right{
   top: 6px;
   transform: translateX(50%);
 }
 
-/* Movement layout + sizing tokens so XY + Z match perfectly */
+/* Movement layout */
 .movement-wrap{
   --move-btn-h: 48px;
   --move-gap: 8px;
@@ -397,14 +476,8 @@ function toggleCollapse() {
   gap: 10px;
 }
 
-.step-row{
-  display:flex;
-  gap: 8px;
-}
-.step-btn{
-  flex: 1;
-  min-width: 0;
-}
+.step-row{ display:flex; gap: 8px; }
+.step-btn{ flex: 1; min-width: 0; }
 
 .move-two-col{
   display: grid;
@@ -462,4 +535,21 @@ function toggleCollapse() {
   outline: 2px solid rgba(255, 255, 255, 0.25);
   outline-offset: 2px;
 }
+
+/* ✅ Upload UI */
+.upload-actions{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.upload-status{
+  font-size: 12px;
+  line-height: 1.2;
+  opacity: 0.9;
+}
+
+.upload-status.ok{ color: #7CFFB2; }
+.upload-status.bad{ color: #FF8A8A; }
 </style>

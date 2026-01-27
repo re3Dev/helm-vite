@@ -99,7 +99,7 @@
 
             <v-divider>
               <v-card-title class="text-h6">
-                <a :href="printer.base_url" target="_blank">{{ printer.hostname }}</a>
+                <a :href="printer.ui_url" target="_blank">{{ printer.hostname }}</a>
               </v-card-title>
             </v-divider>
 
@@ -354,6 +354,7 @@ interface Printer {
   ip: string;
   mac: string;
   base_url: string; // ✅ NEW
+  ui_url: string;
   status: string;
   extruder_temperature: number;
   extruder1_temperature: number;

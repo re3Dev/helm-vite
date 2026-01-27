@@ -404,6 +404,7 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
                 "ip": ip,
                 "mac": mac,
                 "base_url": base,
+                "ui_url": f"http://{ip}",
                 "software_version": software_version,
                 "state_message": state_message,
                 "status": status,
