@@ -10,9 +10,41 @@
     <v-btn variant="text" to="/" class="nav-btn">Dashboard</v-btn>
     <v-btn variant="text" to="/analytics" class="nav-btn">Analytics</v-btn>
 
-    <v-btn icon>
-      <v-icon color="primary">mdi-account</v-icon>
-    </v-btn>
+    <!-- ✅ Account menu -->
+    <v-menu location="bottom end" offset="8">
+      <template #activator="{ props }">
+        <v-btn v-bind="props" icon>
+          <v-icon color="primary">mdi-account</v-icon>
+        </v-btn>
+      </template>
+
+      <v-list density="compact" min-width="220">
+        <v-list-item>
+          <v-list-item-title class="text-subtitle-2">
+            {{ auth.userName || 'User' }}
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            {{ auth.role || 'unknown' }}
+          </v-list-item-subtitle>
+        </v-list-item>
+
+        <v-divider />
+
+        <v-list-item v-if="auth.role === 'admin'" @click="goUsers">
+          <template #prepend>
+            <v-icon>mdi-account-multiple</v-icon>
+          </template>
+          <v-list-item-title>User Management</v-list-item-title>
+        </v-list-item>
+
+        <v-list-item @click="logout">
+          <template #prepend>
+            <v-icon color="red">mdi-logout</v-icon>
+          </template>
+          <v-list-item-title>Logout</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
   </v-app-bar>
 
   <!-- v-main should contain your app content -->
@@ -32,6 +64,18 @@
 <script setup lang="ts">
 import MachineCommandSidebar from './MachineCommandSidebar.vue'
 import { commandGroups } from './commandService.ts'
+
+import router from '../router'
+import { auth, clearSession } from '../auth'
+
+const logout = () => {
+  clearSession()
+  router.push('/login')
+}
+
+const goUsers = () => {
+  router.push('/admin/users')
+}
 </script>
 
 <style scoped>

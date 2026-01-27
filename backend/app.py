@@ -1,37 +1,32 @@
 # app.py — Windows-friendly Helm discovery (no Scapy L2 ARP sweep)
 #
-# Key changes vs your original:
-# - Stops relying on scapy.srp() ARP broadcast (flaky on some Windows setups)
-# - Uses Windows neighbor table (arp -a), optionally warmed by a quick ping sweep
-# - Probes common Moonraker ports (7125, 80, 4408) and picks the one that answers /printer/info
-# - Adds base_url so the frontend can use the right port, and fixes thumbnail_url to include base_url
-# - Aggregated Moonraker Job History totals across all discovered printers:
-#        GET /api/history/aggregate
-# - NEW (this change): Adds analytics fields used by Analytics.vue:
-#   fleet.status_breakdown, fleet.status_time_hours, fleet.by_period, fleet.last_print_finished
+# + SIMPLE USER MANAGEMENT (NOT SECURE BY DESIGN)
+#   - First-run setup creates admin
+#   - Admin creates PIN users and assigns printers (by hostname)
+#   - Non-admin users only see/control assigned printers
+#   - Sessions are in-memory tokens (re-login after backend restart)
+#   - Users/assignments persisted in data/users.json
 #
-# Run:
-#   python app.py
+# Endpoints (new):
+#   GET  /api/auth/status
+#   POST /api/auth/setup
+#   POST /api/auth/login
+#   POST /api/auth/logout
+#   GET  /api/me
+#   GET  /api/users                (admin)
+#   POST /api/users                (admin)
+#   PATCH/DELETE /api/users/<id>    (admin)
+#   PUT  /api/users/<id>/printers   (admin)
 #
-# Endpoints:
+# Existing endpoints (now filtered by user permissions):
 #   GET /api/devices
 #   GET /api/history/aggregate
-#
-# Optional query params (devices):
-#   /api/devices?cidr=192.168.1.0/24     (used for ping sweep; default 192.168.1.0/24)
-#   /api/devices?warm=0                  (disable ping sweep warmup; default warm=1)
-#   /api/devices?ports=7125,80,4408      (override port probe list)
-#
-# Optional query params (aggregate):
-#   /api/history/aggregate?cidr=...&warm=...&ports=...
-#   /api/history/aggregate?match_longest=1   (default 1) attempt to find the job entry (filename) for longest duration
-#   /api/history/aggregate?max_pages=6       (default 6) pages to scan for longest job match
-#   /api/history/aggregate?page_limit=200    (default 200) jobs per page during scan
-#   /api/history/aggregate?stats_pages=12    (default 12) pages to scan for status/month rollups
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, make_response, abort
 from flask_cors import CORS
 import os
+import json
+import secrets
 import requests
 import threading
 import logging
@@ -40,16 +35,199 @@ import re
 import socket
 import ipaddress
 from datetime import datetime
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional, Dict, Any, Callable
+from functools import wraps
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder="static", static_url_path="")
-CORS(app)
+# If you want cookie-based auth from a different origin, keep supports_credentials True
+CORS(app, supports_credentials=True)
 
 # For thread-safe append to the device list
 device_list_lock = threading.Lock()
+
+# ---------------------------
+# Simple auth + user storage
+# ---------------------------
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+USERS_FILE = os.path.join(DATA_DIR, "users.json")
+
+users_file_lock = threading.Lock()
+
+# In-memory session store: token -> user_id
+# (Not persisted; restart requires re-login)
+sessions_lock = threading.Lock()
+sessions: Dict[str, str] = {}
+
+
+def ensure_data_dir() -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def _default_users_doc() -> Dict[str, Any]:
+    return {"users": []}
+
+
+def load_users_doc() -> Dict[str, Any]:
+    ensure_data_dir()
+    with users_file_lock:
+        if not os.path.isfile(USERS_FILE):
+            return _default_users_doc()
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                doc = json.load(f)
+            if not isinstance(doc, dict) or "users" not in doc or not isinstance(doc["users"], list):
+                return _default_users_doc()
+            return doc
+        except Exception:
+            return _default_users_doc()
+
+
+def save_users_doc(doc: Dict[str, Any]) -> None:
+    ensure_data_dir()
+    with users_file_lock:
+        tmp = USERS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=2)
+        os.replace(tmp, USERS_FILE)
+
+
+def is_configured() -> bool:
+    doc = load_users_doc()
+    for u in doc.get("users", []):
+        if u.get("role") == "admin":
+            return True
+    return False
+
+
+def find_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    doc = load_users_doc()
+    for u in doc.get("users", []):
+        if u.get("id") == user_id:
+            return u
+    return None
+
+
+def find_admin() -> Optional[Dict[str, Any]]:
+    doc = load_users_doc()
+    for u in doc.get("users", []):
+        if u.get("role") == "admin":
+            return u
+    return None
+
+
+def find_user_by_pin(pin: str) -> Optional[Dict[str, Any]]:
+    doc = load_users_doc()
+    for u in doc.get("users", []):
+        if u.get("role") == "user" and str(u.get("pin", "")) == str(pin):
+            return u
+    return None
+
+
+def find_admin_by_username(username: str) -> Optional[Dict[str, Any]]:
+    doc = load_users_doc()
+    for u in doc.get("users", []):
+        if u.get("role") == "admin" and str(u.get("username", "")).lower() == str(username).lower():
+            return u
+    return None
+
+
+def create_session(user_id: str) -> str:
+    token = secrets.token_urlsafe(24)
+    with sessions_lock:
+        sessions[token] = user_id
+    return token
+
+
+def clear_session(token: str) -> None:
+    with sessions_lock:
+        sessions.pop(token, None)
+
+
+def get_token_from_request() -> Optional[str]:
+    # Prefer Authorization header
+    auth = request.headers.get("Authorization", "")
+    if auth.lower().startswith("bearer "):
+        return auth.split(" ", 1)[1].strip() or None
+    # Fallback to cookie
+    tok = request.cookies.get("helm_session")
+    return tok or None
+
+
+def current_user() -> Optional[Dict[str, Any]]:
+    tok = get_token_from_request()
+    if not tok:
+        return None
+    with sessions_lock:
+        uid = sessions.get(tok)
+    if not uid:
+        return None
+    return find_user_by_id(uid)
+
+
+def require_configured(fn: Callable):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not is_configured():
+            return jsonify({"error": "not_configured"}), 409
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def require_auth(fn: Callable):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        u = current_user()
+        if not u:
+            return jsonify({"error": "unauthorized"}), 401
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def require_admin(fn: Callable):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        u = current_user()
+        if not u:
+            return jsonify({"error": "unauthorized"}), 401
+        if u.get("role") != "admin":
+            return jsonify({"error": "forbidden"}), 403
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def allowed_printer_hostnames_for_user(u: Dict[str, Any]) -> Optional[set]:
+    """
+    Returns:
+      - None for admin / wildcard (means all)
+      - set of allowed hostnames for regular users
+    """
+    if not u:
+        return set()
+    if u.get("role") == "admin":
+        return None
+    printers = u.get("printers") or []
+    if "*" in printers:
+        return None
+    return set(str(x) for x in printers if x)
+
+
+def filter_devices_for_user(devices: List[Dict[str, Any]], u: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    # If not logged in, show nothing (your UI will route to login anyway)
+    if not u:
+        return []
+    allowed = allowed_printer_hostnames_for_user(u)
+    if allowed is None:
+        return devices
+    out = []
+    for d in devices:
+        hn = str(d.get("hostname") or "")
+        if hn in allowed:
+            out.append(d)
+    return out
 
 
 # ---------------------------
@@ -508,7 +686,7 @@ def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -
         "longest_job": None,
         "longest_print": None,
 
-        # NEW: per-device breakdowns (for optional debugging / future UI)
+        # per-device breakdowns
         "status_breakdown": None,
         "status_time_hours": None,
         "by_period": None,
@@ -557,7 +735,7 @@ def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -
         out["longest_job"] = {"total_duration": longest_job_s}
         out["longest_print"] = {"print_duration": longest_print_s}
 
-    # NEW: compute breakdowns from /server/history/list
+    # breakdowns
     try:
         stats_pages = int(opts.get("stats_pages", 12))
         stats = scan_history_stats(base, page_limit=page_limit, max_pages=stats_pages)
@@ -571,28 +749,278 @@ def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -
     return out
 
 
+
+
+
 # ---------------------------
-# Routes
+# Routes: Auth
 # ---------------------------
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve_spa(path):
-    static_dir = app.static_folder  # backend/static
-    if path:
-        full_path = os.path.join(static_dir, path)
-        if os.path.isfile(full_path):
-            return send_from_directory(static_dir, path)
-    return send_from_directory(static_dir, "index.html")
+@app.route("/api/auth/status", methods=["GET"])
+def auth_status():
+    return jsonify({"configured": is_configured()})
 
+
+@app.route("/api/auth/setup", methods=["POST"])
+def auth_setup():
+    """
+    First-run setup. Creates the admin user if not configured.
+    Body: { "username": "...", "password": "..." }
+    """
+    if is_configured():
+        return jsonify({"error": "already_configured"}), 409
+
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username") or "").strip()
+    password = str(data.get("password") or "").strip()
+    if not username or not password:
+        return jsonify({"error": "username_and_password_required"}), 400
+
+    doc = load_users_doc()
+    doc["users"] = [
+        {
+            "id": "admin",
+            "role": "admin",
+            "username": username,
+            "password": password,   # plain-text by design
+            "printers": ["*"],
+            "created_at": datetime.now().isoformat(),
+        }
+    ]
+    save_users_doc(doc)
+
+    token = create_session("admin")
+    resp = make_response(jsonify({"ok": True, "token": token, "role": "admin"}))
+    # Optional cookie (works nicely for kiosk/local)
+    resp.set_cookie("helm_session", token, httponly=False, samesite="Lax")
+    return resp
+
+
+@app.route("/api/auth/login", methods=["POST"])
+@require_configured
+def auth_login():
+    """
+    Login either as admin or user.
+    Admin body: { "mode":"admin", "username":"...", "password":"..." }
+    User  body: { "mode":"pin", "pin":"1234" }  (PIN must be unique)
+    """
+    data = request.get_json(silent=True) or {}
+    mode = str(data.get("mode") or "").strip().lower()
+
+    u = None
+    if mode == "admin":
+        username = str(data.get("username") or "").strip()
+        password = str(data.get("password") or "").strip()
+        if not username or not password:
+            return jsonify({"error": "username_and_password_required"}), 400
+        adm = find_admin_by_username(username)
+        if not adm or str(adm.get("password") or "") != password:
+            return jsonify({"error": "invalid_credentials"}), 401
+        u = adm
+
+    elif mode == "pin":
+        pin = str(data.get("pin") or "").strip()
+        if not pin:
+            return jsonify({"error": "pin_required"}), 400
+        usr = find_user_by_pin(pin)
+        if not usr:
+            return jsonify({"error": "invalid_pin"}), 401
+        u = usr
+
+    else:
+        return jsonify({"error": "invalid_mode", "modes": ["admin", "pin"]}), 400
+
+    token = create_session(str(u.get("id")))
+    resp = make_response(jsonify({
+        "ok": True,
+        "token": token,
+        "role": u.get("role"),
+        "user": {"id": u.get("id"), "role": u.get("role"), "name": u.get("name") or u.get("username")}
+    }))
+    resp.set_cookie("helm_session", token, httponly=False, samesite="Lax")
+    return resp
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    tok = get_token_from_request()
+    if tok:
+        clear_session(tok)
+    resp = make_response(jsonify({"ok": True}))
+    resp.delete_cookie("helm_session")
+    return resp
+
+
+@app.route("/api/me", methods=["GET"])
+@require_auth
+def me():
+    u = current_user()
+    allowed = allowed_printer_hostnames_for_user(u)
+    return jsonify({
+        "id": u.get("id"),
+        "role": u.get("role"),
+        "name": u.get("name") or u.get("username"),
+        "allowed_printers": None if allowed is None else sorted(list(allowed)),
+    })
+
+
+# ---------------------------
+# Routes: Admin user management
+# ---------------------------
+
+@app.route("/api/users", methods=["GET"])
+@require_admin
+def users_list():
+    doc = load_users_doc()
+    # Don’t leak admin password to the UI
+    users_out = []
+    for u in doc.get("users", []):
+        u2 = dict(u)
+        if u2.get("role") == "admin":
+            u2.pop("password", None)
+        users_out.append(u2)
+    return jsonify({"users": users_out})
+
+
+@app.route("/api/users", methods=["POST"])
+@require_admin
+def users_create():
+    """
+    Create a PIN user.
+    Body: { "name":"Operator 1", "pin":"1234" }
+    """
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name") or "").strip()
+    pin = str(data.get("pin") or "").strip()
+
+    if not name or not pin:
+        return jsonify({"error": "name_and_pin_required"}), 400
+    if not pin.isdigit():
+        return jsonify({"error": "pin_must_be_digits"}), 400
+    if len(pin) < 3 or len(pin) > 8:
+        return jsonify({"error": "pin_length_invalid", "min": 3, "max": 8}), 400
+
+    # Ensure PIN uniqueness
+    if find_user_by_pin(pin):
+        return jsonify({"error": "pin_already_in_use"}), 409
+
+    doc = load_users_doc()
+    new_id = "u_" + secrets.token_hex(4)
+
+    doc["users"].append({
+        "id": new_id,
+        "role": "user",
+        "name": name,
+        "pin": pin,
+        "printers": [],
+        "created_at": datetime.now().isoformat(),
+    })
+    save_users_doc(doc)
+
+    return jsonify({"ok": True, "user": {"id": new_id, "role": "user", "name": name, "pin": pin, "printers": []}})
+
+
+@app.route("/api/users/<user_id>", methods=["PATCH"])
+@require_admin
+def users_patch(user_id: str):
+    """
+    Update a user name and/or pin.
+    Body: { "name": "...", "pin":"...." }
+    """
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+    pin = data.get("pin")
+
+    doc = load_users_doc()
+    users = doc.get("users", [])
+    target = None
+    for u in users:
+        if u.get("id") == user_id:
+            target = u
+            break
+    if not target:
+        return jsonify({"error": "not_found"}), 404
+    if target.get("role") == "admin":
+        return jsonify({"error": "cannot_edit_admin_here"}), 400
+
+    if name is not None:
+        name_s = str(name).strip()
+        if not name_s:
+            return jsonify({"error": "name_empty"}), 400
+        target["name"] = name_s
+
+    if pin is not None:
+        pin_s = str(pin).strip()
+        if not pin_s or not pin_s.isdigit():
+            return jsonify({"error": "pin_must_be_digits"}), 400
+        if len(pin_s) < 3 or len(pin_s) > 8:
+            return jsonify({"error": "pin_length_invalid", "min": 3, "max": 8}), 400
+        existing = find_user_by_pin(pin_s)
+        if existing and existing.get("id") != user_id:
+            return jsonify({"error": "pin_already_in_use"}), 409
+        target["pin"] = pin_s
+
+    save_users_doc(doc)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/users/<user_id>", methods=["DELETE"])
+@require_admin
+def users_delete(user_id: str):
+    doc = load_users_doc()
+    users = doc.get("users", [])
+    before = len(users)
+    users = [u for u in users if u.get("id") != user_id]
+    if len(users) == before:
+        return jsonify({"error": "not_found"}), 404
+    # never delete admin via this path
+    users = [u for u in users if u.get("role") != "admin" or u.get("id") == "admin"]
+    doc["users"] = users
+    save_users_doc(doc)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/users/<user_id>/printers", methods=["PUT"])
+@require_admin
+def users_set_printers(user_id: str):
+    """
+    Assign printers by hostname.
+    Body: { "printers": ["gigabot-xlt-01", "terabot-02"] }
+    """
+    data = request.get_json(silent=True) or {}
+    printers = data.get("printers")
+    if not isinstance(printers, list):
+        return jsonify({"error": "printers_list_required"}), 400
+
+    printers_norm = []
+    for p in printers:
+        s = str(p).strip()
+        if s:
+            printers_norm.append(s)
+
+    doc = load_users_doc()
+    target = None
+    for u in doc.get("users", []):
+        if u.get("id") == user_id:
+            target = u
+            break
+    if not target:
+        return jsonify({"error": "not_found"}), 404
+    if target.get("role") == "admin":
+        return jsonify({"error": "admin_always_all"}), 400
+
+    target["printers"] = printers_norm
+    save_users_doc(doc)
+    return jsonify({"ok": True, "user": {"id": user_id, "printers": printers_norm}})
+
+
+# ---------------------------
+# Routes: Devices (filtered)
+# ---------------------------
 
 @app.route("/api/devices", methods=["GET"])
+@require_auth
 def get_devices_api():
-    return get_devices()
-
-
-@app.route("/devices", methods=["GET"])
-def get_devices():
     cidr = request.args.get("cidr", "192.168.1.0/24")
     warm = request.args.get("warm", "1") != "0"
     ports_arg = request.args.get("ports", "")
@@ -605,22 +1033,18 @@ def get_devices():
             return jsonify({"error": "Invalid ports param. Use e.g. ?ports=7125,80,4408"}), 400
 
     devices_list = discover_devices(cidr=cidr, warm=warm, ports=ports)
+    u = current_user()
+    devices_list = filter_devices_for_user(devices_list, u)
     return jsonify(devices_list)
 
 
-@app.route("/api/history/aggregate", methods=["GET"])
-def history_aggregate():
-    """
-    Returns fleet + per-printer job history totals from Moonraker /server/history/totals.
-    Also attempts to locate the job entry (filename, status, times) for the "longest" durations
-    by scanning /server/history/list.
+# ---------------------------
+# Routes: History aggregate (filtered)
+# ---------------------------
 
-    NEW: Also returns fleet-level breakdown fields used by Analytics.vue:
-      - fleet.status_breakdown
-      - fleet.status_time_hours
-      - fleet.by_period
-      - fleet.last_print_finished
-    """
+@app.route("/api/history/aggregate", methods=["GET"])
+@require_auth
+def history_aggregate():
     cidr = request.args.get("cidr", "192.168.1.0/24")
     warm = request.args.get("warm", "1") != "0"
     ports_arg = request.args.get("ports", "")
@@ -637,6 +1061,8 @@ def history_aggregate():
     stats_pages = int(request.args.get("stats_pages", "12"))
 
     devices = discover_devices(cidr=cidr, warm=warm, ports=ports)
+    u = current_user()
+    devices = filter_devices_for_user(devices, u)
 
     opts = {
         "match_longest": match_longest,
@@ -670,10 +1096,9 @@ def history_aggregate():
         "total_time": 0.0,
         "total_print_time": 0.0,
         "total_filament_used": 0.0,
-        "fleet_longest_job": None,   # includes printer + job object (if found)
-        "fleet_longest_print": None, # includes printer + job object (if found)
+        "fleet_longest_job": None,
+        "fleet_longest_print": None,
 
-        # NEW: analytics fields expected by Analytics.vue
         "status_breakdown": {"completed": 0, "cancelled": 0, "error": 0, "other": 0},
         "status_time_hours": {"completed": 0.0, "cancelled": 0.0, "error": 0.0, "other": 0.0},
         "by_period": [],
@@ -683,7 +1108,6 @@ def history_aggregate():
     best_job = {"seconds": 0.0, "printer": None, "job": None}
     best_print = {"seconds": 0.0, "printer": None, "job": None}
 
-    # NEW: fleet merge state for month rollups + last-finished
     fleet_by_month: Dict[str, float] = {}
     fleet_last_end_ts: float = 0.0
 
@@ -697,7 +1121,6 @@ def history_aggregate():
         except Exception:
             pass
 
-        # NEW: merge per-device status counts / hours
         sb = r.get("status_breakdown") or {}
         sth = r.get("status_time_hours") or {}
         for k in ("completed", "cancelled", "error", "other"):
@@ -710,7 +1133,6 @@ def history_aggregate():
             except Exception:
                 pass
 
-        # NEW: merge monthly periods
         periods = r.get("by_period") or []
         for p in periods:
             try:
@@ -721,7 +1143,6 @@ def history_aggregate():
             except Exception:
                 continue
 
-        # NEW: merge last finished time
         lpf = r.get("last_print_finished")
         if lpf:
             try:
@@ -731,7 +1152,6 @@ def history_aggregate():
             except Exception:
                 pass
 
-        # longest job (total duration)
         try:
             lj_s = float(jt.get("longest_job") or 0.0)
             if lj_s > best_job["seconds"]:
@@ -743,7 +1163,6 @@ def history_aggregate():
         except Exception:
             pass
 
-        # longest print (print duration)
         try:
             lp_s = float(jt.get("longest_print") or 0.0)
             if lp_s > best_print["seconds"]:
@@ -760,7 +1179,6 @@ def history_aggregate():
     if best_print["printer"]:
         fleet["fleet_longest_print"] = best_print
 
-    # Build sorted by_period from merged fleet_by_month
     def _month_sort_key(label: str) -> float:
         try:
             return datetime.strptime(label, "%b %Y").timestamp()
@@ -774,7 +1192,6 @@ def history_aggregate():
     if fleet_last_end_ts > 0:
         fleet["last_print_finished"] = datetime.fromtimestamp(fleet_last_end_ts).isoformat()
 
-    # Sort per_printer by total_print_time desc
     def sort_key(x: Dict[str, Any]) -> float:
         jt2 = x.get("job_totals") or {}
         try:
@@ -801,6 +1218,37 @@ def pick_port(host="0.0.0.0", preferred=5000):
         finally:
             s.close()
     return preferred
+
+@app.route("/__debug")
+def __debug():
+    return jsonify({
+        "file": __file__,
+        "cwd": os.getcwd(),
+        "static_folder": app.static_folder,
+        "index_exists": os.path.isfile(os.path.join(app.static_folder, "index.html")),
+    })
+
+@app.route("/__ping")
+def __ping():
+    return "pong-from-this-app.py", 200
+
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_spa(path):
+    # Never let SPA fallback swallow API routes
+    if path.startswith("api/"):
+        abort(404)
+
+    static_dir = app.static_folder  # backend/static
+
+    # If it's a real file (assets, images, etc.), serve it
+    full_path = os.path.join(static_dir, path)
+    if path and os.path.isfile(full_path):
+        return send_from_directory(static_dir, path)
+
+    # Otherwise serve the SPA shell
+    return send_from_directory(static_dir, "index.html")
 
 
 if __name__ == "__main__":

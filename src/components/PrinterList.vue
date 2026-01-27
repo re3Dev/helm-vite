@@ -99,7 +99,7 @@
 
             <v-divider>
               <v-card-title class="text-h6">
-                <a :href="`http://${printer.ip}`" target="_blank">{{ printer.hostname }}</a>
+                <a :href="printer.base_url" target="_blank">{{ printer.hostname }}</a>
               </v-card-title>
             </v-divider>
 
@@ -347,16 +347,18 @@
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
+import { apiFetch } from '../api';
 
 interface Printer {
   hostname: string;
   ip: string;
+  mac: string;
+  base_url: string; // ✅ NEW
   status: string;
   extruder_temperature: number;
   extruder1_temperature: number;
   extruder2_temperature: number;
   heater_bed_temperature: number;
-  mac: string;
   print_progress: number;
   state_message: string;
   file_path: string;
@@ -415,9 +417,7 @@ export default defineComponent({
 
     const fetchPrinters = async () => {
       try {
-        const response = await fetch('/api/devices');
-        if (!response.ok) throw new Error(`Error: ${response.status}`);
-        const data = await response.json();
+        const data = await apiFetch<Printer[]>('/api/devices'); // ✅ CHANGED
         await updatePrinters(data);
         isLoading.value = false;
       } catch (error) {
@@ -428,9 +428,9 @@ export default defineComponent({
     const updatePrinters = async (newData: Printer[]) => {
       const updatedPrinters = [...printers.value];
 
-      async function fetchModelType(ip: string): Promise<string | null> {
+      async function fetchModelType(baseUrl: string): Promise<string | null> {
         try {
-          const res = await fetch(`http://${ip}/server/files/config/.master.cfg`);
+          const res = await fetch(`${baseUrl}/server/files/config/.master.cfg`); // ✅ CHANGED
           if (!res.ok) return null;
           const text = await res.text();
 
@@ -452,7 +452,7 @@ export default defineComponent({
           }
           return model || `${firstLine || ''} ${platform}`.trim() || null;
         } catch (e) {
-          console.warn(`Failed to fetch model type for ${ip}:`, e);
+          console.warn(`Failed to fetch model type for ${baseUrl}:`, e);
           return null;
         }
       }
@@ -462,7 +462,7 @@ export default defineComponent({
         if (index !== -1) {
           updatedPrinters[index] = { ...updatedPrinters[index], ...device };
         } else {
-          const modelType = await fetchModelType(device.ip);
+          const modelType = await fetchModelType(device.base_url); // ✅ CHANGED
           updatedPrinters.push({ ...device, modelType: modelType ?? undefined });
         }
       }
@@ -519,6 +519,8 @@ export default defineComponent({
 
       const results = await Promise.all(selectedPrinters.value.map(async (ip) => {
         try {
+          // NOTE: This still posts directly to Moonraker by IP (same as your original).
+          // For permission enforcement + fewer CORS issues, move this behind your Flask backend later.
           const res = await fetch(`http://${ip}/printer/gcode/script?script=M119`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
