@@ -81,6 +81,15 @@
       <div class="main-content">
         <router-view />
       </div>
+
+      <!-- ✅ Right utility sidebar -->
+      <div ref="rightWrap" class="right-wrap">
+        <RightBar
+          :collapsed="rightCollapsed"
+          :width="rightWidth"
+          @toggle="toggleRight"
+        />
+      </div>
     </div>
   </v-main>
 </template>
@@ -90,6 +99,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
 import MachineCommandSidebar from './MachineCommandSidebar.vue'
+import RightBar from './RightBar.vue'
 import { commandGroups } from './commandService.ts'
 
 import router from '../router'
@@ -111,20 +121,40 @@ const isActive = (path: string) => {
   return route.path.startsWith(path)
 }
 
-/** --- ✅ Main-content-center alignment logic --- */
+/** ---------------------------
+ * ✅ Right bar state
+ * --------------------------- */
+const rightCollapsed = ref(false)
+const rightWidth = ref(300)
+const toggleRight = () => (rightCollapsed.value = !rightCollapsed.value)
+
+/** ---------------------------
+ * ✅ Main-content-center alignment logic (NOW accounts for left + right)
+ * --------------------------- */
 const sidebarWrap = ref<HTMLElement | null>(null)
-const sidebarWidthPx = ref(0)
+const rightWrap = ref<HTMLElement | null>(null)
+
+const leftWidthPx = ref(0)
+const rightWidthPxMeasured = ref(0)
 const contentCenterPx = ref(0)
 
-let ro: ResizeObserver | null = null
+let roLeft: ResizeObserver | null = null
+let roRight: ResizeObserver | null = null
 
 function computeContentCenter() {
   const vw = window.innerWidth || 0
-  const sw = sidebarWidthPx.value || 0
-  contentCenterPx.value = sw + (vw - sw) / 2
+  const lw = leftWidthPx.value || 0
+  const rw = rightWidthPxMeasured.value || 0
+
+  // main content region is [lw .. (vw - rw)]
+  // center is lw + (vw - rw - lw)/2
+  const mainW = Math.max(0, vw - lw - rw)
+  contentCenterPx.value = lw + mainW / 2
 }
 
-/** --- ✅ Backend heartbeat logic --- */
+/** ---------------------------
+ * ✅ Backend heartbeat logic
+ * --------------------------- */
 type HeartbeatState = 'ok' | 'warn' | 'down'
 const hbState = ref<HeartbeatState>('warn')
 const hbRttMs = ref<number | null>(null)
@@ -163,10 +193,6 @@ async function pollHealthOnce() {
     const j = await res.json().catch(() => null)
     hbLastOkIso.value = new Date().toISOString()
 
-    // Decide state:
-    // - ok if fast
-    // - warn if slow (or snapshot reports recent errors)
-    // - down if fetch fails (handled in catch)
     const hasErr = !!j?.snapshot?.last_error
     if (hasErr) {
       hbState.value = 'warn'
@@ -188,7 +214,6 @@ async function pollHealthOnce() {
 }
 
 const heartbeatClass = computed(() => {
-  // When down, stop “pinging” and show solid red
   return {
     ok: hbState.value === 'ok',
     warn: hbState.value === 'warn',
@@ -203,15 +228,24 @@ const heartbeatTitle = computed(() => {
 })
 
 onMounted(() => {
-  // sidebar width observer
+  // measure left sidebar width continuously
   if (sidebarWrap.value) {
-    ro = new ResizeObserver(entries => {
+    roLeft = new ResizeObserver(entries => {
       const entry = entries[0]
-      const next = entry?.contentRect?.width ?? 0
-      sidebarWidthPx.value = next
+      leftWidthPx.value = entry?.contentRect?.width ?? 0
       computeContentCenter()
     })
-    ro.observe(sidebarWrap.value)
+    roLeft.observe(sidebarWrap.value)
+  }
+
+  // measure right rail width continuously (0 when collapsed)
+  if (rightWrap.value) {
+    roRight = new ResizeObserver(entries => {
+      const entry = entries[0]
+      rightWidthPxMeasured.value = entry?.contentRect?.width ?? 0
+      computeContentCenter()
+    })
+    roRight.observe(rightWrap.value)
   }
 
   window.addEventListener('resize', computeContentCenter)
@@ -224,8 +258,12 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', computeContentCenter)
-  if (ro && sidebarWrap.value) ro.unobserve(sidebarWrap.value)
-  ro = null
+
+  if (roLeft && sidebarWrap.value) roLeft.unobserve(sidebarWrap.value)
+  roLeft = null
+
+  if (roRight && rightWrap.value) roRight.unobserve(rightWrap.value)
+  roRight = null
 
   if (hbTimer) window.clearInterval(hbTimer)
   hbTimer = null
@@ -345,7 +383,7 @@ onBeforeUnmount(() => {
   opacity: 0.95;
 }
 
-/* ✅ functional heartbeat */
+/* functional heartbeat */
 .heartbeat{
   width: 9px;
   height: 9px;
@@ -380,9 +418,9 @@ onBeforeUnmount(() => {
 }
 
 @keyframes ping{
-  0%   { transform: scale(0.92); box-shadow: 0 0 0 0 currentColor; opacity: 1; }
-  65%  { transform: scale(1.0);  box-shadow: 0 0 0 10px rgba(0,0,0,0); opacity: 1; }
-  100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(0,0,0,0); opacity: 0.95; }
+  0%   { transform: scale(0.92); opacity: 1; }
+  65%  { transform: scale(1.0);  opacity: 1; }
+  100% { transform: scale(0.92); opacity: 0.95; }
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -438,7 +476,10 @@ onBeforeUnmount(() => {
   background: rgba(255,255,255,0.06);
 }
 
-/* Layout */
+/* =========================
+   Layout
+   ========================= */
+
 .layout-container{
   display: flex;
   width: 100%;
@@ -449,8 +490,14 @@ onBeforeUnmount(() => {
   display: block; /* wrapper is for measuring width */
 }
 
+.right-wrap{
+  display: block; /* wrapper is for measuring width */
+  height: 100%;
+}
+
 .main-content{
   flex: 1;
+  min-width: 0;  /* ✅ important: allows flex shrink with side rails */
   overflow: auto;
   padding: 16px;
   display: flex;
