@@ -2,9 +2,10 @@
   <div class="pm-shell">
     <div class="sidebar-container" :style="{ width: sidebarWidth + 'px' }">
       <div v-show="!isCollapsed" class="pm-drawer">
-        <div class="sidebar-header">
+        <!-- ✅ Flair header -->
+        <div class="sidebar-header fancy">
           <div class="header-content">
-            <div class="header-title">Printer Management</div>
+            <div class="header-title">Printer Control</div>
           </div>
         </div>
 
@@ -265,18 +266,18 @@
       <div v-if="!isCollapsed" class="resizer" @mousedown.stop.prevent="startResize"></div>
     </div>
 
-<v-btn
-  class="edge-toggle top-right square"
-  icon
-  :style="{ left: toggleLeft + 'px' }"
-  @click="toggleCollapse"
-  color="#333131"
->
-  <v-icon size="18">
-    {{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}
-  </v-icon>
-</v-btn>
-
+    <!-- ✅ Square toggle w/ yellow accent + icon class -->
+    <v-btn
+      class="edge-toggle top-right square yellow-accent"
+      icon
+      :style="{ left: toggleLeft + 'px' }"
+      @click="toggleCollapse"
+      color="#333131"
+    >
+      <v-icon class="toggle-icon" size="18">
+        {{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}
+      </v-icon>
+    </v-btn>
   </div>
 </template>
 
@@ -423,6 +424,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('mousemove', handleMouseMove)
   window.removeEventListener('mouseup', stopResize)
 })
+
 function toggleCollapse() {
   if (isCollapsed.value) {
     sidebarWidth.value = lastWidth || 300
@@ -448,17 +450,100 @@ function toggleCollapse() {
   display: flex;
   flex-direction: column;
   background-color: #242527;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid rgba(255,255,255,0.08);
 }
 
+/* ✅ Header base */
 .sidebar-header{
   height: 30px;
   background-color: #333131;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
   display:flex;
   align-items:center;
   justify-content:center;
   flex: 0 0 auto;
+}
+
+/* ✅ Flair header */
+.sidebar-header.fancy{
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.10)),
+    #333131;
+}
+
+.sidebar-header.fancy::before{
+  content:"";
+  position:absolute;
+  top:-40%;
+  left:-60%;
+  width: 160%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,213,74,0.10) 45%,
+    rgba(255,213,74,0.22) 50%,
+    rgba(255,213,74,0.10) 55%,
+    transparent 100%
+  );
+  transform: rotate(8deg);
+  animation: headerSheen 7.5s ease-in-out infinite;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+
+.sidebar-header.fancy::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.06), transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 55%);
+  pointer-events:none;
+  opacity: 0.6;
+}
+
+/* ✅ Edge glow line on right side of drawer */
+.pm-drawer::after{
+  content:"";
+  position:absolute;
+  top: 0;
+  right: 0;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255,213,74,0.0),
+    rgba(255,213,74,0.28),
+    rgba(255,213,74,0.0)
+  );
+  opacity: 0.65;
+  filter: blur(0.2px);
+  animation: edgeGlow 4.5s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .sidebar-header.fancy::before,
+  .pm-drawer::after{
+    animation: none !important;
+  }
+}
+
+@keyframes headerSheen{
+  0%   { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
+  35%  { transform: translateX(0%)   rotate(8deg); opacity: 0.60; }
+  70%  { transform: translateX(18%)  rotate(8deg); opacity: 0.35; }
+  100% { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
+}
+
+@keyframes edgeGlow{
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.75; }
 }
 
 .header-content{
@@ -490,38 +575,35 @@ function toggleCollapse() {
   z-index: 50;
 }
 
+/* ✅ Toggle button */
 .edge-toggle{
   position: absolute;
   z-index: 9999;
   padding: 0;
 }
 
-/* align to your header bar */
 .edge-toggle.top-right{
-  top: 0;
+  top: 0; /* align with header */
 }
 
-/* square, same height as header */
 .edge-toggle.square{
   width: 30px;
   height: 30px;
   min-width: 30px;
-  border-radius: 6px; /* still "square", but nicer */
+  border-radius: 6px;
   background: #333131;
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 10px 22px rgba(0,0,0,0.35);
-  transform: translateX(-1px); /* tuck into edge */
+  transform: translateX(-1px);
   overflow: hidden;
 }
 
-/* center icon */
 .edge-toggle.square :deep(.v-btn__content){
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
-/* yellow accent strip on the right edge */
 .edge-toggle.square.yellow-accent::after{
   content: "";
   position: absolute;
@@ -529,16 +611,15 @@ function toggleCollapse() {
   right: 0;
   width: 3px;
   height: 100%;
-  background: #FFD54A; /* your yellow vibe */
+  background: #FFD54A;
   opacity: 0.9;
 }
 
-/* icon defaults subtle, then pops with yellow */
 .edge-toggle.square .toggle-icon{
   color: rgba(255,255,255,0.82);
+  transition: color 120ms ease;
 }
 
-/* hover: slightly lighter + yellow icon */
 .edge-toggle.square:hover{
   background: #3b3a3a;
   border-color: rgba(255,255,255,0.14);
@@ -546,13 +627,6 @@ function toggleCollapse() {
 .edge-toggle.square:hover .toggle-icon{
   color: #FFD54A;
 }
-
-/* optional: when collapsed, keep icon yellow so state is obvious */
-.edge-toggle.square.yellow-accent .toggle-icon{
-  transition: color 120ms ease;
-}
-
-
 
 /* Movement */
 .movement-wrap{
