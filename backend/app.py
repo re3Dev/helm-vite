@@ -21,6 +21,9 @@
 # Existing endpoints (now filtered by user permissions):
 #   GET /api/devices
 #   GET /api/history/aggregate
+#
+# NEW (UI heartbeat):
+#   GET /api/health
 
 from flask import Flask, jsonify, request, send_from_directory, make_response, abort
 from flask_cors import CORS
@@ -34,6 +37,7 @@ import subprocess
 import re
 import socket
 import ipaddress
+import time
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict, Any, Callable
 from functools import wraps
@@ -61,6 +65,21 @@ users_file_lock = threading.Lock()
 # (Not persisted; restart requires re-login)
 sessions_lock = threading.Lock()
 sessions: Dict[str, str] = {}
+
+# ---------------------------
+# ✅ Health snapshot for UI heartbeat
+# ---------------------------
+
+APP_STARTED_TS = time.time()
+
+# Updated whenever discovery runs (devices/history endpoints)
+HEALTH_SNAPSHOT: Dict[str, Any] = {
+    "last_discovery": None,
+    "last_discovery_cidr": None,
+    "last_printers_found": 0,
+    "last_discovery_ms": None,
+    "last_error": None,
+}
 
 
 def ensure_data_dir() -> None:
@@ -439,34 +458,59 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
 
 
 def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, Any]]:
-    my_ip = get_my_ipv4()
-    logger.info("My IP: %s", my_ip)
-    logger.info("Using CIDR: %s", cidr)
-    logger.info("Probe ports: %s", ports)
+    t0 = time.time()
+    try:
+        my_ip = get_my_ipv4()
+        logger.info("My IP: %s", my_ip)
+        logger.info("Using CIDR: %s", cidr)
+        logger.info("Probe ports: %s", ports)
 
-    if warm:
-        logger.info("Warming neighbor table (ping sweep)...")
-        warm_neighbor_table(cidr, limit=None)
+        if warm:
+            logger.info("Warming neighbor table (ping sweep)...")
+            warm_neighbor_table(cidr, limit=None)
 
-    arp_entries = parse_arp_a()
-    logger.info("arp -a entries: %d", len(arp_entries))
+        arp_entries = parse_arp_a()
+        logger.info("arp -a entries: %d", len(arp_entries))
 
-    devices_list: List[Dict[str, Any]] = []
-    processed_hostnames = set()
-    threads = []
+        devices_list: List[Dict[str, Any]] = []
+        processed_hostnames = set()
+        threads = []
 
-    for ip, mac in arp_entries:
-        if ip == my_ip:
-            continue
-        t = threading.Thread(target=probe_and_collect, args=(ip, mac, ports, devices_list, processed_hostnames))
-        t.start()
-        threads.append(t)
+        for ip, mac in arp_entries:
+            if ip == my_ip:
+                continue
+            t = threading.Thread(target=probe_and_collect, args=(ip, mac, ports, devices_list, processed_hostnames))
+            t.start()
+            threads.append(t)
 
-    for t in threads:
-        t.join()
+        for t in threads:
+            t.join()
 
-    logger.info("Printers found: %d", len(devices_list))
-    return devices_list
+        logger.info("Printers found: %d", len(devices_list))
+
+        # ✅ health snapshot on success
+        try:
+            HEALTH_SNAPSHOT["last_discovery"] = datetime.now().isoformat()
+            HEALTH_SNAPSHOT["last_discovery_cidr"] = cidr
+            HEALTH_SNAPSHOT["last_printers_found"] = len(devices_list)
+            HEALTH_SNAPSHOT["last_discovery_ms"] = int((time.time() - t0) * 1000)
+            HEALTH_SNAPSHOT["last_error"] = None
+        except Exception:
+            pass
+
+        return devices_list
+
+    except Exception as e:
+        # ✅ health snapshot on failure
+        try:
+            HEALTH_SNAPSHOT["last_discovery"] = datetime.now().isoformat()
+            HEALTH_SNAPSHOT["last_discovery_cidr"] = cidr
+            HEALTH_SNAPSHOT["last_printers_found"] = 0
+            HEALTH_SNAPSHOT["last_discovery_ms"] = int((time.time() - t0) * 1000)
+            HEALTH_SNAPSHOT["last_error"] = str(e)
+        except Exception:
+            pass
+        raise
 
 
 # ---------------------------
@@ -750,9 +794,6 @@ def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -
     return out
 
 
-
-
-
 # ---------------------------
 # Routes: Auth
 # ---------------------------
@@ -862,6 +903,26 @@ def me():
         "role": u.get("role"),
         "name": u.get("name") or u.get("username"),
         "allowed_printers": None if allowed is None else sorted(list(allowed)),
+    })
+
+
+# ---------------------------
+# ✅ Routes: Health (for UI heartbeat)
+# ---------------------------
+
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    """
+    Lightweight health check for the UI heartbeat.
+    No auth required so it can show on login screens too.
+    """
+    uptime_s = int(time.time() - APP_STARTED_TS)
+    return jsonify({
+        "ok": True,
+        "uptime_s": uptime_s,
+        "configured": is_configured(),
+        "time": datetime.now().isoformat(),
+        "snapshot": HEALTH_SNAPSHOT,
     })
 
 
@@ -1220,6 +1281,7 @@ def pick_port(host="0.0.0.0", preferred=5000):
             s.close()
     return preferred
 
+
 @app.route("/__debug")
 def __debug():
     return jsonify({
@@ -1228,6 +1290,7 @@ def __debug():
         "static_folder": app.static_folder,
         "index_exists": os.path.isfile(os.path.join(app.static_folder, "index.html")),
     })
+
 
 @app.route("/__ping")
 def __ping():

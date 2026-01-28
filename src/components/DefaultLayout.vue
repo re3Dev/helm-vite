@@ -4,13 +4,23 @@
     app
     dark
     class="animated-toolbar"
-    :style="{
-      '--content-center-x': contentCenterPx + 'px'
-    }"
+    :style="{ '--content-center-x': contentCenterPx + 'px' }"
   >
-    &ensp;&ensp;
-    <img src="/src/assets/re3D Logo White.png" width="40.9px" height="47.5px" />
-    <v-toolbar-title class="helm-title">HELM</v-toolbar-title>
+    <!-- ✅ Brand group (logo + HELM + indicator) -->
+    <div class="brand-group">
+      <img class="brand-logo" src="/src/assets/re3D Logo White.png" alt="re3D" />
+      <div class="title-group">
+        <v-toolbar-title class="helm-title">HELM</v-toolbar-title>
+
+        <!-- ✅ functional heartbeat w/ tooltip -->
+        <span
+          class="heartbeat"
+          :class="heartbeatClass"
+          :title="heartbeatTitle"
+          aria-label="Backend status"
+        ></span>
+      </div>
+    </div>
 
     <v-spacer />
 
@@ -76,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
 import MachineCommandSidebar from './MachineCommandSidebar.vue'
@@ -109,17 +119,91 @@ const contentCenterPx = ref(0)
 let ro: ResizeObserver | null = null
 
 function computeContentCenter() {
-  // viewport width (app bar spans the viewport)
   const vw = window.innerWidth || 0
   const sw = sidebarWidthPx.value || 0
-
-  // main content region = [sw .. vw]
-  // center = sw + (vw - sw)/2
   contentCenterPx.value = sw + (vw - sw) / 2
 }
 
+/** --- ✅ Backend heartbeat logic --- */
+type HeartbeatState = 'ok' | 'warn' | 'down'
+const hbState = ref<HeartbeatState>('warn')
+const hbRttMs = ref<number | null>(null)
+const hbLastOkIso = ref<string | null>(null)
+const hbMsg = ref<string>('Checking backend…')
+
+let hbTimer: number | null = null
+
+function withTimeout(ms: number) {
+  const controller = new AbortController()
+  const id = window.setTimeout(() => controller.abort(), ms)
+  return { controller, clear: () => window.clearTimeout(id) }
+}
+
+async function pollHealthOnce() {
+  const t0 = performance.now()
+  const { controller, clear } = withTimeout(1500)
+
+  try {
+    // same-origin call; in dev ensure Vite proxy routes /api to Flask
+    const res = await fetch('/api/health', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+
+    const rtt = Math.max(0, Math.round(performance.now() - t0))
+    hbRttMs.value = rtt
+
+    if (!res.ok) {
+      hbState.value = 'warn'
+      hbMsg.value = `Health returned HTTP ${res.status}`
+      return
+    }
+
+    const j = await res.json().catch(() => null)
+    hbLastOkIso.value = new Date().toISOString()
+
+    // Decide state:
+    // - ok if fast
+    // - warn if slow (or snapshot reports recent errors)
+    // - down if fetch fails (handled in catch)
+    const hasErr = !!j?.snapshot?.last_error
+    if (hasErr) {
+      hbState.value = 'warn'
+      hbMsg.value = `Backend OK (reported error)`
+    } else if (rtt >= 700) {
+      hbState.value = 'warn'
+      hbMsg.value = `Backend slow`
+    } else {
+      hbState.value = 'ok'
+      hbMsg.value = `Backend OK`
+    }
+  } catch (e: any) {
+    hbState.value = 'down'
+    hbRttMs.value = null
+    hbMsg.value = 'Backend unreachable'
+  } finally {
+    clear()
+  }
+}
+
+const heartbeatClass = computed(() => {
+  // When down, stop “pinging” and show solid red
+  return {
+    ok: hbState.value === 'ok',
+    warn: hbState.value === 'warn',
+    down: hbState.value === 'down',
+  }
+})
+
+const heartbeatTitle = computed(() => {
+  const rtt = hbRttMs.value != null ? `${hbRttMs.value}ms` : '—'
+  const last = hbLastOkIso.value ? new Date(hbLastOkIso.value).toLocaleTimeString() : '—'
+  return `${hbMsg.value}\nRTT: ${rtt}\nLast OK: ${last}`
+})
+
 onMounted(() => {
-  // measure sidebar width continuously (resizer drag, collapse, etc.)
+  // sidebar width observer
   if (sidebarWrap.value) {
     ro = new ResizeObserver(entries => {
       const entry = entries[0]
@@ -132,12 +216,19 @@ onMounted(() => {
 
   window.addEventListener('resize', computeContentCenter)
   computeContentCenter()
+
+  // heartbeat polling
+  pollHealthOnce()
+  hbTimer = window.setInterval(pollHealthOnce, 2500)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', computeContentCenter)
   if (ro && sidebarWrap.value) ro.unobserve(sidebarWrap.value)
   ro = null
+
+  if (hbTimer) window.clearInterval(hbTimer)
+  hbTimer = null
 })
 </script>
 
@@ -162,8 +253,7 @@ onBeforeUnmount(() => {
     0 -1px 0 rgba(0,0,0,0.35) inset,
     0 10px 24px rgba(0,0,0,0.28);
 
-  /* default value if JS hasn’t run yet */
-  --content-center-x: 50vw;
+  --content-center-x: 50vw; /* default if JS hasn't run yet */
 }
 
 @keyframes gradientFlow{
@@ -172,6 +262,7 @@ onBeforeUnmount(() => {
   100% { background-position: 0% 50% }
 }
 
+/* subtle sheen sweep */
 .animated-toolbar::before{
   content:"";
   position:absolute;
@@ -196,12 +287,13 @@ onBeforeUnmount(() => {
   animation: toolbarSweep 9s ease-in-out infinite;
 }
 
+/* scanline texture */
 .animated-toolbar::after{
   content:"";
   position:absolute;
   inset:0;
   pointer-events:none;
-  opacity: 0.25;
+  opacity: 0.22;
   background:
     repeating-linear-gradient(
       180deg,
@@ -224,13 +316,81 @@ onBeforeUnmount(() => {
   .animated-toolbar::before{ animation: none !important; }
 }
 
+/* =========================
+   Brand cluster
+   ========================= */
+
+.brand-group{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+}
+
+.brand-logo{
+  width: 40.9px;
+  height: 47.5px;
+  display: block;
+}
+
+.title-group{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .helm-title{
   letter-spacing: 0.08em;
   font-weight: 800;
   opacity: 0.95;
 }
 
-/* ✅ rail whose "bright center" tracks the main content center */
+/* ✅ functional heartbeat */
+.heartbeat{
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+/* OK = green + ping */
+.heartbeat.ok{
+  background: #7CFFB2;
+  box-shadow:
+    0 0 0 0 rgba(124,255,178,0.55),
+    0 0 18px rgba(124,255,178,0.22);
+  animation: ping 1.6s ease-out infinite;
+}
+
+/* WARN = yellow + slower ping */
+.heartbeat.warn{
+  background: #FFD54A;
+  box-shadow:
+    0 0 0 0 rgba(255,213,74,0.55),
+    0 0 18px rgba(255,213,74,0.22);
+  animation: ping 2.2s ease-out infinite;
+}
+
+/* DOWN = red + no ping (solid) */
+.heartbeat.down{
+  background: #FF6B6B;
+  box-shadow:
+    0 0 10px rgba(255,107,107,0.25);
+  animation: none;
+}
+
+@keyframes ping{
+  0%   { transform: scale(0.92); box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  65%  { transform: scale(1.0);  box-shadow: 0 0 0 10px rgba(0,0,0,0); opacity: 1; }
+  100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(0,0,0,0); opacity: 0.95; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .heartbeat.ok,
+  .heartbeat.warn{ animation: none !important; }
+}
+
+/* Bottom rail aligned to main-content center */
 .toolbar-rail{
   position: absolute;
   left: 0;
@@ -239,7 +399,6 @@ onBeforeUnmount(() => {
   height: 3px;
   pointer-events: none;
 
-  /* the center point follows --content-center-x */
   background:
     radial-gradient(
       circle at var(--content-center-x) 50%,
@@ -262,20 +421,14 @@ onBeforeUnmount(() => {
   padding: 6px 10px;
   transition: transform 140ms ease, background-color 140ms ease, color 140ms ease;
 }
-
 .nav-btn:hover{
   background: rgba(255,255,255,0.06);
   transform: translateY(-1px);
 }
-
-
-
-
 .nav-btn.active{
   color: #fff;
   background: rgba(255,255,255,0.05);
 }
-
 
 .account-btn{
   border-radius: 12px;
@@ -293,8 +446,7 @@ onBeforeUnmount(() => {
 }
 
 .sidebar-wrap{
-  /* no styling needed; wrapper is for measuring width */
-  display: block;
+  display: block; /* wrapper is for measuring width */
 }
 
 .main-content{
