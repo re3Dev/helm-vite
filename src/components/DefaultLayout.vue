@@ -268,36 +268,14 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
 }
 
-.nav-btn::after{
-  content:"";
-  position:absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(255,213,74,0.0);
-  transform: scaleX(0.25);
-  transform-origin: center;
-  opacity: 0;
-  transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
-}
 
-.nav-btn:hover::after{
-  background: rgba(255,213,74,0.75);
-  transform: scaleX(1);
-  opacity: 1;
-}
+
 
 .nav-btn.active{
   color: #fff;
   background: rgba(255,255,255,0.05);
 }
-.nav-btn.active::after{
-  background: rgba(255,213,74,0.95);
-  transform: scaleX(1);
-  opacity: 1;
-}
+
 
 .account-btn{
   border-radius: 12px;
