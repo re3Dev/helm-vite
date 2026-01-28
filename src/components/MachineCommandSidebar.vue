@@ -442,7 +442,73 @@ function toggleCollapse() {
 * { font-family: 'Lato', sans-serif !important; }
 
 .pm-shell{ position: relative; height: 100%; overflow: visible; }
-.sidebar-container{ position: relative; height: 100%; }
+
+/* ✅ This is the “empty space” area too */
+.sidebar-container{
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+
+  /* console background even when collapsed */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14)),
+    radial-gradient(circle at 30% 20%, rgba(255,213,74,0.08), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 60%),
+    #1f2022;
+
+  /* slight inner edge framing */
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 -1px 0 rgba(0,0,0,0.35) inset;
+}
+
+/* subtle scanlines across the sidebar region */
+.sidebar-container::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity: 0.18;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255,255,255,0.05) 0px,
+      rgba(255,255,255,0.05) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+}
+
+/* soft “system glow” at the right edge of the container */
+.sidebar-container::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
+  width: 3px;
+  height: 100%;
+  pointer-events:none;
+  background: linear-gradient(
+    180deg,
+    rgba(255,213,74,0.0),
+    rgba(255,213,74,0.20),
+    rgba(255,213,74,0.0)
+  );
+  opacity: 0.70;
+  filter: blur(0.4px);
+  animation: containerEdgeGlow 5.2s ease-in-out infinite;
+}
+
+@keyframes containerEdgeGlow{
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .sidebar-container::after{
+    animation: none !important;
+  }
+}
 
 .pm-drawer{
   position: absolute;
@@ -564,15 +630,26 @@ function toggleCollapse() {
 
 .drawer-body{ flex: 1 1 auto; overflow: auto; padding: 0; }
 
+/* ✅ Resizer: nicer grip */
 .resizer{
   position: absolute;
   top: 0;
   right: 0;
-  width: 5px;
+  width: 6px;
   height: 100%;
   cursor: col-resize;
-  background-color: #1d1d1d;
   z-index: 50;
+
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18));
+  border-left: 1px solid rgba(255,255,255,0.06);
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.resizer:hover{
+  background:
+    linear-gradient(180deg, rgba(255,213,74,0.10), rgba(0,0,0,0.18));
+  box-shadow: -1px 0 0 rgba(255,213,74,0.30) inset;
 }
 
 /* ✅ Toggle button */
