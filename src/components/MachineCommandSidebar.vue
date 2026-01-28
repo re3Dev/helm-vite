@@ -265,18 +265,18 @@
       <div v-if="!isCollapsed" class="resizer" @mousedown.stop.prevent="startResize"></div>
     </div>
 
-    <v-btn
-      class="edge-toggle top-right"
-      size="x-small"
-      icon
-      :style="{ left: toggleLeft + 'px' }"
-      @click="toggleCollapse"
-      color="#181B20"
-    >
-      <v-icon color="primary">
-        {{ isCollapsed ? 'mdi-plus' : 'mdi-minus' }}
-      </v-icon>
-    </v-btn>
+<v-btn
+  class="edge-toggle top-right square"
+  icon
+  :style="{ left: toggleLeft + 'px' }"
+  @click="toggleCollapse"
+  color="#333131"
+>
+  <v-icon size="18">
+    {{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}
+  </v-icon>
+</v-btn>
+
   </div>
 </template>
 
@@ -493,9 +493,66 @@ function toggleCollapse() {
 .edge-toggle{
   position: absolute;
   z-index: 9999;
-  border-radius: 999px;
+  padding: 0;
 }
-.edge-toggle.top-right{ top: 6px; transform: translateX(50%); }
+
+/* align to your header bar */
+.edge-toggle.top-right{
+  top: 0;
+}
+
+/* square, same height as header */
+.edge-toggle.square{
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 6px; /* still "square", but nicer */
+  background: #333131;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+  transform: translateX(-1px); /* tuck into edge */
+  overflow: hidden;
+}
+
+/* center icon */
+.edge-toggle.square :deep(.v-btn__content){
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* yellow accent strip on the right edge */
+.edge-toggle.square.yellow-accent::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: #FFD54A; /* your yellow vibe */
+  opacity: 0.9;
+}
+
+/* icon defaults subtle, then pops with yellow */
+.edge-toggle.square .toggle-icon{
+  color: rgba(255,255,255,0.82);
+}
+
+/* hover: slightly lighter + yellow icon */
+.edge-toggle.square:hover{
+  background: #3b3a3a;
+  border-color: rgba(255,255,255,0.14);
+}
+.edge-toggle.square:hover .toggle-icon{
+  color: #FFD54A;
+}
+
+/* optional: when collapsed, keep icon yellow so state is obvious */
+.edge-toggle.square.yellow-accent .toggle-icon{
+  transition: color 120ms ease;
+}
+
+
 
 /* Movement */
 .movement-wrap{
