@@ -10,14 +10,14 @@
         </div>
 
         <div class="drawer-body">
-          <v-expansion-panels multiple>
-            <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx">
-              <v-expansion-panel-title>
+          <v-expansion-panels multiple class="sidebar-panels">
+            <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx" class="sidebar-panel">
+              <v-expansion-panel-title class="sidebar-panel-title">
                 <v-icon color="yellow">{{ group.icon }}</v-icon>&nbsp;
                 {{ group.title }}
               </v-expansion-panel-title>
 
-              <v-expansion-panel-text>
+              <v-expansion-panel-text class="sidebar-panel-text">
                 <!-- MOVEMENT -->
                 <template v-if="group.title === 'Movement'">
                   <div class="movement-wrap">
@@ -110,6 +110,7 @@
                           :items="printSelectCommand(group.commands).options"
                           density="compact"
                           hide-details
+                          class="sidebar-input"
                           @update:modelValue="v => runCommand(printSelectCommand(group.commands), v)"
                         />
                       </div>
@@ -136,7 +137,7 @@
                         prepend-icon="mdi-upload"
                         density="compact"
                         hide-details
-                        class="file-upload-input"
+                        class="file-upload-input sidebar-input"
                         @update:modelValue="val => onFilePicked(gIdx, val)"
                       />
 
@@ -148,6 +149,7 @@
                         :disabled="!pendingFiles[gIdx] || uploadState[gIdx]?.loading"
                         :loading="uploadState[gIdx]?.loading"
                         @click="uploadPickedFile(printUploadCommand(group.commands), gIdx)"
+                        class="primary-action"
                       >
                         <v-icon start>mdi-cloud-upload</v-icon>
                         Upload
@@ -177,7 +179,7 @@
                         density="compact"
                         placeholder="Enter G-code (examples: M105, M119, G28, PAUSE)"
                         hide-details
-                        class="terminal-box"
+                        class="terminal-box sidebar-input"
                       />
 
                       <div class="terminal-actions">
@@ -208,10 +210,10 @@
 
                 <!-- EVERYTHING ELSE -->
                 <template v-else>
-                  <v-list>
-                    <v-list-item v-for="(cmd, cIdx) in group.commands" :key="cIdx">
+                  <v-list class="sidebar-list">
+                    <v-list-item v-for="(cmd, cIdx) in group.commands" :key="cIdx" class="sidebar-list-item">
                       <template v-if="cmd.type === 'button'">
-                        <v-btn block @click="runCommand(cmd)" :color="cmd.color" :variant="cmd.variant">
+                        <v-btn block @click="runCommand(cmd)" :color="cmd.color" :variant="cmd.variant" class="list-btn">
                           <v-icon v-if="cmd.icon">{{ cmd.icon }}</v-icon>
                           {{ cmd.label }}
                         </v-btn>
@@ -226,11 +228,21 @@
                           :suffix="cmd.unit"
                           :value="cmd.default"
                           @change="value => runCommand(cmd, value)"
+                          density="compact"
+                          hide-details
+                          class="sidebar-input"
                         />
                       </template>
 
                       <template v-else-if="cmd.type === 'dropdown'">
-                        <v-select :label="cmd.label" :items="cmd.options" @change="value => runCommand(cmd, value)" />
+                        <v-select
+                          :label="cmd.label"
+                          :items="cmd.options"
+                          @change="value => runCommand(cmd, value)"
+                          density="compact"
+                          hide-details
+                          class="sidebar-input"
+                        />
                       </template>
 
                       <template v-else-if="cmd.type === 'gcode-input'">
@@ -240,9 +252,9 @@
                           placeholder="Enter G-code (e.g. M119)"
                           @keyup.enter="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
                           hide-details
-                          dense
-                          class="gcode-input-box"
-                          style="width: 100%; max-width: 100%; display: block; margin-bottom: 4px;"
+                          density="compact"
+                          class="sidebar-input"
+                          style="width: 100%; max-width: 100%; display: block; margin-bottom: 6px;"
                         />
                         <v-btn
                           block
@@ -250,6 +262,7 @@
                           color="grey"
                           variant="outlined"
                           @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
+                          class="list-btn"
                         >
                           Send
                         </v-btn>
@@ -334,7 +347,7 @@ function shortLabel(label) {
 }
 
 /** Sidebar width & collapse */
-const sidebarWidth = ref(300)
+const sidebarWidth = ref(320)
 const isCollapsed = ref(false)
 let isResizing = false
 let lastWidth = sidebarWidth.value
@@ -380,7 +393,7 @@ async function uploadPickedFile(cmd, gIdx) {
   }
 }
 
-/** ✅ Terminal state (separate from old gcodeInputs) */
+/** ✅ Terminal state */
 const terminalText = ref({})
 
 function findTerminalCommand(commands) {
@@ -443,32 +456,29 @@ function toggleCollapse() {
 
 .pm-shell{ position: relative; height: 100%; overflow: visible; }
 
-/* ✅ This is the “empty space” area too */
+/* ✅ Overall “console” region (shows when collapsed too) */
 .sidebar-container{
   position: relative;
   height: 100%;
   overflow: hidden;
 
-  /* console background even when collapsed */
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14)),
     radial-gradient(circle at 30% 20%, rgba(255,213,74,0.08), transparent 55%),
     radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 60%),
     #1f2022;
 
-  /* slight inner edge framing */
   box-shadow:
     0 1px 0 rgba(255,255,255,0.05) inset,
     0 -1px 0 rgba(0,0,0,0.35) inset;
 }
 
-/* subtle scanlines across the sidebar region */
 .sidebar-container::before{
   content:"";
   position:absolute;
   inset:0;
   pointer-events:none;
-  opacity: 0.18;
+  opacity: 0.16;
   background:
     repeating-linear-gradient(
       180deg,
@@ -479,7 +489,6 @@ function toggleCollapse() {
     );
 }
 
-/* soft “system glow” at the right edge of the container */
 .sidebar-container::after{
   content:"";
   position:absolute;
@@ -505,9 +514,7 @@ function toggleCollapse() {
 }
 
 @media (prefers-reduced-motion: reduce){
-  .sidebar-container::after{
-    animation: none !important;
-  }
+  .sidebar-container::after{ animation: none !important; }
 }
 
 .pm-drawer{
@@ -515,7 +522,7 @@ function toggleCollapse() {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background-color: #242527;
+  background-color: rgba(36,37,39,0.92); /* slightly translucent to unify w/ glass */
   border-right: 1px solid rgba(255,255,255,0.08);
 }
 
@@ -572,7 +579,6 @@ function toggleCollapse() {
   opacity: 0.6;
 }
 
-/* ✅ Edge glow line on right side of drawer */
 .pm-drawer::after{
   content:"";
   position:absolute;
@@ -586,18 +592,15 @@ function toggleCollapse() {
     rgba(255,213,74,0.28),
     rgba(255,213,74,0.0)
   );
-  opacity: 0.65;
+  opacity: 0.55;
   filter: blur(0.2px);
   animation: edgeGlow 4.5s ease-in-out infinite;
   pointer-events:none;
 }
 
-/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
   .sidebar-header.fancy::before,
-  .pm-drawer::after{
-    animation: none !important;
-  }
+  .pm-drawer::after{ animation: none !important; }
 }
 
 @keyframes headerSheen{
@@ -606,10 +609,9 @@ function toggleCollapse() {
   70%  { transform: translateX(18%)  rotate(8deg); opacity: 0.35; }
   100% { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
 }
-
 @keyframes edgeGlow{
-  0%, 100% { opacity: 0.35; }
-  50%      { opacity: 0.75; }
+  0%, 100% { opacity: 0.30; }
+  50%      { opacity: 0.65; }
 }
 
 .header-content{
@@ -623,12 +625,147 @@ function toggleCollapse() {
 .header-title{
   width: 100%;
   text-align:center;
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 650;
+  font-size: 13.5px;
   line-height: 30px;
+  letter-spacing: 0.25px;
+  position: relative;
 }
 
-.drawer-body{ flex: 1 1 auto; overflow: auto; padding: 0; }
+/* subtle yellow “engineering underline” */
+.header-title::after{
+  content:"";
+  position:absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 62px;
+  height: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(255,213,74,0.90), transparent);
+  opacity: 0.65;
+}
+
+/* ✅ BODY becomes a unified glass well */
+.drawer-body{
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 10px;
+  position: relative;
+}
+
+/* Glass sheet behind everything in body (covers empty space too) */
+.drawer-body::before{
+  content:"";
+  position:absolute;
+  inset: 10px;
+  border-radius: 14px;
+  pointer-events:none;
+
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.10);
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 18px 46px rgba(0,0,0,0.30);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* sheen texture */
+.drawer-body::after{
+  content:"";
+  position:absolute;
+  inset: 10px;
+  border-radius: 14px;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,255,255,0.10), transparent 50%),
+    radial-gradient(circle at 82% 70%, rgba(255,213,74,0.07), transparent 58%),
+    linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.10));
+  opacity: 0.92;
+}
+
+/* Panels above glass */
+.drawer-body :deep(.sidebar-panels){
+  position: relative;
+  z-index: 2;
+  gap: 10px;
+}
+
+/* ✅ Each panel is a consistent “card” */
+.drawer-body :deep(.sidebar-panel){
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.16);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 10px 22px rgba(0,0,0,0.25);
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.drawer-body :deep(.sidebar-panel:hover){
+  background: rgba(0,0,0,0.20);
+  border-color: rgba(255,255,255,0.14);
+  transform: translateY(-1px);
+}
+
+/* Panel title: consistent, no random Vuetify bg */
+.drawer-body :deep(.sidebar-panel-title){
+  background: rgba(0,0,0,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  min-height: 44px;
+}
+
+/* Subtle yellow hint on active/open panel title */
+.drawer-body :deep(.v-expansion-panel--active > .v-expansion-panel-title){
+  box-shadow: 0 -1px 0 rgba(255,213,74,0.26) inset;
+}
+
+/* Panel content padding */
+.drawer-body :deep(.sidebar-panel-text){
+  padding-top: 10px;
+}
+
+/* ✅ Normalize inputs (selects/textfields/textarea/file input) */
+.sidebar-input :deep(.v-field){
+  background: rgba(0,0,0,0.18) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+
+.sidebar-input :deep(.v-field__outline){
+  opacity: 0 !important;
+}
+
+.sidebar-input :deep(.v-label){
+  opacity: 0.80;
+}
+
+.sidebar-input :deep(.v-field__input),
+.sidebar-input :deep(textarea){
+  font-size: 12.5px;
+}
+
+/* ✅ Lists look consistent */
+.sidebar-list{
+  padding: 0 !important;
+  background: transparent !important;
+}
+.sidebar-list-item{
+  padding-inline: 0 !important;
+}
+
+/* Buttons feel like they belong */
+.list-btn{
+  border-radius: 12px;
+}
+
+.primary-action{
+  border-radius: 12px;
+}
 
 /* ✅ Resizer: nicer grip */
 .resizer{
@@ -645,7 +782,6 @@ function toggleCollapse() {
   border-left: 1px solid rgba(255,255,255,0.06);
   transition: background 160ms ease, box-shadow 160ms ease;
 }
-
 .resizer:hover{
   background:
     linear-gradient(180deg, rgba(255,213,74,0.10), rgba(0,0,0,0.18));
@@ -653,16 +789,8 @@ function toggleCollapse() {
 }
 
 /* ✅ Toggle button */
-.edge-toggle{
-  position: absolute;
-  z-index: 9999;
-  padding: 0;
-}
-
-.edge-toggle.top-right{
-  top: 0; /* align with header */
-}
-
+.edge-toggle{ position: absolute; z-index: 9999; padding: 0; }
+.edge-toggle.top-right{ top: 0; }
 .edge-toggle.square{
   width: 30px;
   height: 30px;
@@ -674,13 +802,9 @@ function toggleCollapse() {
   transform: translateX(-1px);
   overflow: hidden;
 }
-
 .edge-toggle.square :deep(.v-btn__content){
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex; align-items:center; justify-content:center;
 }
-
 .edge-toggle.square.yellow-accent::after{
   content: "";
   position: absolute;
@@ -691,12 +815,10 @@ function toggleCollapse() {
   background: #FFD54A;
   opacity: 0.9;
 }
-
 .edge-toggle.square .toggle-icon{
   color: rgba(255,255,255,0.82);
   transition: color 120ms ease;
 }
-
 .edge-toggle.square:hover{
   background: #3b3a3a;
   border-color: rgba(255,255,255,0.14);
@@ -745,24 +867,20 @@ function toggleCollapse() {
 .z-stack{ height: 100%; display: flex; flex-direction: column; }
 
 .z-tall{ flex: 1; min-height: 0; width: 100%; border-radius: 0; }
-.z-top{ border-top-left-radius: 6px; border-top-right-radius: 6px; }
+.z-top{ border-top-left-radius: 10px; border-top-right-radius: 10px; }
 .z-bottom{
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
   border-top: 1px solid rgba(255,255,255,0.18);
 }
 
 .step-active{
-  outline: 2px solid rgba(255, 255, 255, 0.25);
+  outline: 2px solid rgba(255, 255, 255, 0.22);
   outline-offset: 2px;
 }
 
-/* ✅ Print section layout */
-.print-wrap{
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+/* Print section layout */
+.print-wrap{ display: flex; flex-direction: column; gap: 12px; }
 
 .print-controls{
   display: grid;
@@ -770,49 +888,28 @@ function toggleCollapse() {
   gap: 8px;
 }
 
-.print-control-btn{
-  min-width: 0;
-  height: 38px;
-}
+.print-control-btn{ min-width: 0; height: 38px; border-radius: 12px; }
 
-.print-row{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+.print-row{ display: flex; align-items: center; gap: 8px; }
 .grow{ flex: 1; min-width: 0; }
+.icon-btn{ width: 40px; height: 40px; border-radius: 12px; }
 
-.icon-btn{
-  width: 40px;
-  height: 40px;
-}
+.print-upload{ display: flex; flex-direction: column; gap: 8px; }
 
-.print-upload{
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.upload-status{
-  font-size: 12px;
-  line-height: 1.2;
-  opacity: 0.9;
-}
+.upload-status{ font-size: 12px; line-height: 1.2; opacity: 0.9; }
 .upload-status.ok{ color: #7CFFB2; }
 .upload-status.bad{ color: #FF8A8A; }
 
-/* ✅ Terminal */
+/* Terminal */
 .terminal-wrap{
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(0,0,0,0.14);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .terminal-title{
   display: flex;
   align-items: center;
@@ -820,18 +917,11 @@ function toggleCollapse() {
   font-size: 12px;
   opacity: 0.9;
 }
-
 .terminal-box :deep(textarea){
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
   font-size: 12px;
   line-height: 1.35;
 }
-
-.terminal-actions{
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.terminal-send{ min-width: 92px; }
+.terminal-actions{ display: flex; justify-content: flex-end; gap: 8px; }
+.terminal-send{ min-width: 92px; border-radius: 12px; }
 </style>
