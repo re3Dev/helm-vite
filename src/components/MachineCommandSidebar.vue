@@ -1,14 +1,30 @@
 <template>
   <div class="pm-shell">
-    <div class="sidebar-container" :style="{ width: sidebarWidth + 'px' }">
+    <!-- ✅ width mirrors right rail behavior: collapsed -> collapsedWidth, open -> sidebarWidth -->
+    <div
+      class="sidebar-container"
+      :style="{ width: isCollapsed ? collapsedWidth + 'px' : sidebarWidth + 'px' }"
+    >
       <div v-show="!isCollapsed" class="pm-drawer">
-        <!-- ✅ Flair header -->
+        <!-- ✅ Header: mirror of right rail (arrow far LEFT, title on RIGHT) -->
         <div class="sidebar-header fancy">
-          <div class="header-content">
-            <div class="header-title">Printer Control</div>
+          <div class="header-content header-content-mirror">
+            <v-btn
+              icon
+              variant="text"
+              size="small"
+              class="header-close header-close-left"
+              @click="toggleCollapse"
+              title="Collapse printer control"
+            >
+              <v-icon>mdi-chevron-left</v-icon>
+            </v-btn>
+
+            <div class="header-title header-title-right">Printer Control</div>
           </div>
         </div>
 
+        <!-- Body (unchanged; keeps Movement formatting correct) -->
         <div class="drawer-body">
           <v-expansion-panels multiple class="sidebar-panels">
             <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx" class="sidebar-panel">
@@ -83,10 +99,9 @@
                   </div>
                 </template>
 
-                <!-- PRINT: neat layout -->
+                <!-- PRINT -->
                 <template v-else-if="group.title === 'Print'">
                   <div class="print-wrap">
-                    <!-- Controls row -->
                     <div class="print-controls">
                       <v-btn
                         v-for="cmd in printControlCommands(group.commands)"
@@ -101,7 +116,6 @@
                       </v-btn>
                     </div>
 
-                    <!-- File select + refresh -->
                     <div class="print-row">
                       <div class="grow">
                         <v-select
@@ -127,7 +141,6 @@
                       </v-btn>
                     </div>
 
-                    <!-- Upload picker + upload action + status -->
                     <div class="print-upload">
                       <v-file-input
                         v-if="printUploadCommand(group.commands)"
@@ -164,7 +177,6 @@
                       </div>
                     </div>
 
-                    <!-- G-code terminal (clean) -->
                     <div class="terminal-wrap">
                       <div class="terminal-title">
                         <v-icon size="18">mdi-console</v-icon>
@@ -277,33 +289,31 @@
       </div>
 
       <div v-if="!isCollapsed" class="resizer" @mousedown.stop.prevent="startResize"></div>
-    </div>
 
-    <!-- ✅ Square toggle w/ yellow accent + icon class -->
-    <v-btn
-      class="edge-toggle top-right square yellow-accent"
-      icon
-      :style="{ left: toggleLeft + 'px' }"
-      @click="toggleCollapse"
-      color="#333131"
-    >
-      <v-icon class="toggle-icon" size="18">
-        {{ isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left' }}
-      </v-icon>
-    </v-btn>
+      <!-- ✅ Edge toggle when collapsed (lives inside the collapsed strip now) -->
+      <v-btn
+        v-if="isCollapsed"
+        class="rail-toggle square yellow-accent"
+        icon
+        @click="toggleCollapse"
+        title="Open printer control"
+      >
+        <v-icon>mdi-chevron-right</v-icon>
+      </v-btn>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, defineProps } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
 import { runCommand, selectedStepSize } from './commandService.ts'
 
 const props = defineProps({
-  groups: {
-    type: Array,
-    default: () => []
-  }
+  groups: { type: Array, default: () => [] }
 })
+
+/** ✅ Match right rail behavior */
+const collapsedWidth = 38
 
 /** Movement helpers */
 function isStepButton(cmd) { return typeof cmd?.stepSize === 'number' }
@@ -326,7 +336,7 @@ function gridCommands(commands) {
 function zUpCommand(commands) { return (commands || []).find(c => c?.zRole === 'up') }
 function zDownCommand(commands) { return (commands || []).find(c => c?.zRole === 'down') }
 
-/** ✅ Print section helpers */
+/** Print helpers */
 function printControlCommands(commands) {
   return (commands || []).filter(c => c?.ui === 'print-controls' && c.type === 'button')
 }
@@ -354,7 +364,7 @@ let lastWidth = sidebarWidth.value
 
 const gcodeInputs = ref({})
 
-/** ✅ Upload UX state */
+/** Upload UX */
 const pendingFiles = ref({})
 const uploadState = ref({})
 
@@ -366,7 +376,6 @@ function normalizeFile(val) {
   if (maybeFiles && maybeFiles.length && maybeFiles[0] instanceof File) return maybeFiles[0]
   return null
 }
-
 function onFilePicked(gIdx, val) {
   const file = normalizeFile(val)
   pendingFiles.value[gIdx] = file
@@ -374,7 +383,6 @@ function onFilePicked(gIdx, val) {
     ? { loading: false, ok: undefined, msg: `Ready: ${file.name}` }
     : { loading: false, ok: undefined, msg: '' }
 }
-
 async function uploadPickedFile(cmd, gIdx) {
   const file = pendingFiles.value[gIdx]
   if (!file) return
@@ -393,9 +401,8 @@ async function uploadPickedFile(cmd, gIdx) {
   }
 }
 
-/** ✅ Terminal state */
+/** Terminal */
 const terminalText = ref({})
-
 function findTerminalCommand(commands) {
   return (commands || []).find(c => c.type === 'gcode-input' && c.label === 'G-code Terminal')
 }
@@ -407,13 +414,7 @@ async function sendTerminal(gIdx, commands) {
   terminalText.value[gIdx] = ''
 }
 
-/** Toggle button anchor */
-const EDGE_BTN_MIN_LEFT = 10
-const toggleLeft = computed(() => {
-  const boundary = isCollapsed.value ? 0 : sidebarWidth.value
-  return Math.max(EDGE_BTN_MIN_LEFT, boundary)
-})
-
+/** Resize handlers */
 function startResize() {
   isResizing = true
   if (isCollapsed.value) {
@@ -444,7 +445,6 @@ function toggleCollapse() {
     isCollapsed.value = false
   } else {
     lastWidth = sidebarWidth.value
-    sidebarWidth.value = 0
     isCollapsed.value = true
   }
 }
@@ -461,6 +461,7 @@ function toggleCollapse() {
   position: relative;
   height: 100%;
   overflow: hidden;
+  transition: width 160ms ease; /* ✅ same as right rail */
 
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14)),
@@ -522,11 +523,11 @@ function toggleCollapse() {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background-color: rgba(36,37,39,0.92); /* slightly translucent to unify w/ glass */
+  background-color: rgba(36,37,39,0.92);
   border-right: 1px solid rgba(255,255,255,0.08);
 }
 
-/* ✅ Header base */
+/* Header base */
 .sidebar-header{
   height: 30px;
   background-color: #333131;
@@ -537,7 +538,6 @@ function toggleCollapse() {
   flex: 0 0 auto;
 }
 
-/* ✅ Flair header */
 .sidebar-header.fancy{
   position: relative;
   overflow: hidden;
@@ -579,47 +579,30 @@ function toggleCollapse() {
   opacity: 0.6;
 }
 
-.pm-drawer::after{
-  content:"";
-  position:absolute;
-  top: 0;
-  right: 0;
-  width: 2px;
-  height: 100%;
-  background: linear-gradient(
-    180deg,
-    rgba(255,213,74,0.0),
-    rgba(255,213,74,0.28),
-    rgba(255,213,74,0.0)
-  );
-  opacity: 0.55;
-  filter: blur(0.2px);
-  animation: edgeGlow 4.5s ease-in-out infinite;
-  pointer-events:none;
-}
-
-@media (prefers-reduced-motion: reduce){
-  .sidebar-header.fancy::before,
-  .pm-drawer::after{ animation: none !important; }
-}
-
 @keyframes headerSheen{
   0%   { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
   35%  { transform: translateX(0%)   rotate(8deg); opacity: 0.60; }
   70%  { transform: translateX(18%)  rotate(8deg); opacity: 0.35; }
   100% { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
 }
-@keyframes edgeGlow{
-  0%, 100% { opacity: 0.30; }
-  50%      { opacity: 0.65; }
+
+@media (prefers-reduced-motion: reduce){
+  .sidebar-header.fancy::before{ animation: none !important; }
 }
 
+/* Mirror header layout */
 .header-content{
   width: 100%;
   display:flex;
   align-items:center;
   justify-content:center;
   padding: 0 10px;
+}
+
+.header-content-mirror{
+  justify-content: space-between;
+  padding: 0 8px 0 10px;
+  gap: 8px;
 }
 
 .header-title{
@@ -632,20 +615,21 @@ function toggleCollapse() {
   position: relative;
 }
 
-/* subtle yellow “engineering underline” */
-.header-title::after{
-  content:"";
-  position:absolute;
-  left: 50%;
-  bottom: 4px;
-  width: 62px;
-  height: 2px;
-  transform: translateX(-50%);
-  background: linear-gradient(90deg, transparent, rgba(255,213,74,0.90), transparent);
-  opacity: 0.65;
+.header-title-right{
+  width: auto;
+  flex: 1 1 auto;
+  text-align: right;
+  opacity: 0.95;
 }
 
-/* ✅ BODY becomes a unified glass well */
+.header-title-right::after{
+  display: none;
+}
+
+.header-close{ opacity: 0.85; }
+.header-close:hover{ opacity: 1; }
+
+/* Body glass well */
 .drawer-body{
   flex: 1 1 auto;
   overflow: auto;
@@ -653,26 +637,21 @@ function toggleCollapse() {
   position: relative;
 }
 
-/* Glass sheet behind everything in body (covers empty space too) */
 .drawer-body::before{
   content:"";
   position:absolute;
   inset: 10px;
   border-radius: 14px;
   pointer-events:none;
-
   background: rgba(255,255,255,0.035);
   border: 1px solid rgba(255,255,255,0.10);
-
   box-shadow:
     0 1px 0 rgba(255,255,255,0.06) inset,
     0 18px 46px rgba(0,0,0,0.30);
-
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* sheen texture */
 .drawer-body::after{
   content:"";
   position:absolute;
@@ -686,14 +665,12 @@ function toggleCollapse() {
   opacity: 0.92;
 }
 
-/* Panels above glass */
 .drawer-body :deep(.sidebar-panels){
   position: relative;
   z-index: 2;
   gap: 10px;
 }
 
-/* ✅ Each panel is a consistent “card” */
 .drawer-body :deep(.sidebar-panel){
   border-radius: 14px;
   overflow: hidden;
@@ -711,63 +688,33 @@ function toggleCollapse() {
   transform: translateY(-1px);
 }
 
-/* Panel title: consistent, no random Vuetify bg */
 .drawer-body :deep(.sidebar-panel-title){
   background: rgba(0,0,0,0.12);
   border-bottom: 1px solid rgba(255,255,255,0.08);
   min-height: 44px;
 }
 
-/* Subtle yellow hint on active/open panel title */
 .drawer-body :deep(.v-expansion-panel--active > .v-expansion-panel-title){
   box-shadow: 0 -1px 0 rgba(255,213,74,0.26) inset;
 }
 
-/* Panel content padding */
 .drawer-body :deep(.sidebar-panel-text){
   padding-top: 10px;
 }
 
-/* ✅ Normalize inputs (selects/textfields/textarea/file input) */
+/* Inputs normalize */
 .sidebar-input :deep(.v-field){
   background: rgba(0,0,0,0.18) !important;
   border: 1px solid rgba(255,255,255,0.10) !important;
   border-radius: 12px !important;
   box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
 }
-
-.sidebar-input :deep(.v-field__outline){
-  opacity: 0 !important;
-}
-
-.sidebar-input :deep(.v-label){
-  opacity: 0.80;
-}
-
+.sidebar-input :deep(.v-field__outline){ opacity: 0 !important; }
+.sidebar-input :deep(.v-label){ opacity: 0.80; }
 .sidebar-input :deep(.v-field__input),
-.sidebar-input :deep(textarea){
-  font-size: 12.5px;
-}
+.sidebar-input :deep(textarea){ font-size: 12.5px; }
 
-/* ✅ Lists look consistent */
-.sidebar-list{
-  padding: 0 !important;
-  background: transparent !important;
-}
-.sidebar-list-item{
-  padding-inline: 0 !important;
-}
-
-/* Buttons feel like they belong */
-.list-btn{
-  border-radius: 12px;
-}
-
-.primary-action{
-  border-radius: 12px;
-}
-
-/* ✅ Resizer: nicer grip */
+/* Resizer */
 .resizer{
   position: absolute;
   top: 0;
@@ -776,7 +723,6 @@ function toggleCollapse() {
   height: 100%;
   cursor: col-resize;
   z-index: 50;
-
   background:
     linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18));
   border-left: 1px solid rgba(255,255,255,0.06);
@@ -788,10 +734,12 @@ function toggleCollapse() {
   box-shadow: -1px 0 0 rgba(255,213,74,0.30) inset;
 }
 
-/* ✅ Toggle button */
-.edge-toggle{ position: absolute; z-index: 9999; padding: 0; }
-.edge-toggle.top-right{ top: 0; }
-.edge-toggle.square{
+/* ✅ Collapsed toggle button: visible inside collapsedWidth strip (mirror of right rail) */
+.rail-toggle{
+  position: absolute;
+  top: 0;
+  right: 4px; /* keep inside 38px strip */
+  z-index: 50;
   width: 30px;
   height: 30px;
   min-width: 30px;
@@ -799,35 +747,22 @@ function toggleCollapse() {
   background: #333131;
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 10px 22px rgba(0,0,0,0.35);
-  transform: translateX(-1px);
   overflow: hidden;
 }
-.edge-toggle.square :deep(.v-btn__content){
-  display:flex; align-items:center; justify-content:center;
-}
-.edge-toggle.square.yellow-accent::after{
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
+
+/* Yellow accent bar on RIGHT for LEFT sidebar (mirror of right rail toggle) */
+.rail-toggle.yellow-accent::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:0;
   width: 3px;
   height: 100%;
   background: #FFD54A;
   opacity: 0.9;
 }
-.edge-toggle.square .toggle-icon{
-  color: rgba(255,255,255,0.82);
-  transition: color 120ms ease;
-}
-.edge-toggle.square:hover{
-  background: #3b3a3a;
-  border-color: rgba(255,255,255,0.14);
-}
-.edge-toggle.square:hover .toggle-icon{
-  color: #FFD54A;
-}
 
-/* Movement */
+/* Movement + Print styles (unchanged) */
 .movement-wrap{
   --move-btn-h: 48px;
   --move-gap: 8px;
@@ -837,14 +772,12 @@ function toggleCollapse() {
 }
 .step-row{ display:flex; gap: 8px; }
 .step-btn{ flex: 1; min-width: 0; }
-
 .move-two-col{
   display: grid;
   grid-template-columns: 1fr 0.25fr;
   gap: 10px;
   align-items: start;
 }
-
 .movement-grid{
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -852,7 +785,6 @@ function toggleCollapse() {
   gap: var(--move-gap);
   margin-bottom: 12px;
 }
-
 .movement-btn{
   min-width: 0;
   min-height: var(--move-btn-h);
@@ -862,10 +794,8 @@ function toggleCollapse() {
   justify-content: center;
   font-size: 0.9em;
 }
-
 .z-col{ height: calc(var(--move-btn-h) * 3 + var(--move-gap) * 2); }
 .z-stack{ height: 100%; display: flex; flex-direction: column; }
-
 .z-tall{ flex: 1; min-height: 0; width: 100%; border-radius: 0; }
 .z-top{ border-top-left-radius: 10px; border-top-right-radius: 10px; }
 .z-bottom{
@@ -873,34 +803,21 @@ function toggleCollapse() {
   border-bottom-right-radius: 10px;
   border-top: 1px solid rgba(255,255,255,0.18);
 }
-
 .step-active{
   outline: 2px solid rgba(255, 255, 255, 0.22);
   outline-offset: 2px;
 }
 
-/* Print section layout */
 .print-wrap{ display: flex; flex-direction: column; gap: 12px; }
-
-.print-controls{
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
+.print-controls{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .print-control-btn{ min-width: 0; height: 38px; border-radius: 12px; }
-
 .print-row{ display: flex; align-items: center; gap: 8px; }
 .grow{ flex: 1; min-width: 0; }
 .icon-btn{ width: 40px; height: 40px; border-radius: 12px; }
-
 .print-upload{ display: flex; flex-direction: column; gap: 8px; }
-
 .upload-status{ font-size: 12px; line-height: 1.2; opacity: 0.9; }
 .upload-status.ok{ color: #7CFFB2; }
 .upload-status.bad{ color: #FF8A8A; }
-
-/* Terminal */
 .terminal-wrap{
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(0,0,0,0.14);

@@ -33,9 +33,7 @@
 
           <div class="card-sub">Pin printers for quick access.</div>
 
-          <div class="empty-hint">
-            Nothing pinned yet.
-          </div>
+          <div class="empty-hint">Nothing pinned yet.</div>
         </div>
 
         <!-- Selected Printers (placeholder) -->
@@ -74,7 +72,7 @@
             max-rows="6"
             hide-details
             placeholder="Scratchpad…"
-            class="notes"
+            class="notes sidebar-input"
           />
         </div>
       </div>
@@ -83,7 +81,7 @@
     <!-- Edge toggle when collapsed -->
     <v-btn
       v-if="collapsed"
-      class="rail-toggle yellow-accent"
+      class="rail-toggle square yellow-accent"
       icon
       @click="$emit('toggle')"
       title="Open utilities"
@@ -111,6 +109,10 @@ defineEmits<{
 </script>
 
 <style scoped>
+/* -------------------------------------------------------------------------- */
+/*  RIGHT RAIL: make it match the LEFT sidebar aesthetic                       */
+/* -------------------------------------------------------------------------- */
+
 .right-rail{
   position: relative;
   height: 100%;
@@ -118,11 +120,11 @@ defineEmits<{
   transition: width 160ms ease;
   flex: 0 0 auto;
 
-  /* background “shell” */
+  /* SAME shell background language as left sidebar */
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14)),
-    radial-gradient(circle at 65% 18%, rgba(255,213,74,0.08), transparent 52%),
-    radial-gradient(circle at 20% 75%, rgba(255,255,255,0.04), transparent 60%),
+    radial-gradient(circle at 30% 20%, rgba(255,213,74,0.08), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 60%),
     #1f2022;
 
   box-shadow:
@@ -131,6 +133,7 @@ defineEmits<{
 }
 
 .right-rail::before{
+  /* SAME scanline texture */
   content:"";
   position:absolute;
   inset:0;
@@ -147,7 +150,7 @@ defineEmits<{
 }
 
 .right-rail::after{
-  /* subtle yellow edge glow on LEFT edge of right rail */
+  /* Symmetric yellow edge glow: LEFT edge of right rail */
   content:"";
   position:absolute;
   top:0;
@@ -163,18 +166,31 @@ defineEmits<{
   );
   opacity: 0.70;
   filter: blur(0.4px);
+  animation: containerEdgeGlow 5.2s ease-in-out infinite;
 }
 
+@keyframes containerEdgeGlow{
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .right-rail::after{ animation: none !important; }
+}
+
+/* Drawer surface */
 .rail-drawer{
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  background-color: #242527;
+
+  /* Match left: slightly translucent “console surface” */
+  background-color: rgba(36,37,39,0.92);
   border-left: 1px solid rgba(255,255,255,0.08);
 }
 
-/* Header */
+/* Header (match left fancy header) */
 .rail-header{
   height: 30px;
   background-color: #333131;
@@ -215,11 +231,26 @@ defineEmits<{
   opacity: 0.55;
 }
 
+.rail-header.fancy::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.06), transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 55%);
+  pointer-events:none;
+  opacity: 0.6;
+}
+
 @keyframes headerSheen{
   0%   { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
   35%  { transform: translateX(0%)   rotate(8deg); opacity: 0.60; }
   70%  { transform: translateX(18%)  rotate(8deg); opacity: 0.35; }
   100% { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .rail-header.fancy::before{ animation: none !important; }
 }
 
 .rail-header-content{
@@ -231,41 +262,97 @@ defineEmits<{
 }
 
 .rail-title{
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 650;
+  font-size: 13.5px;
   line-height: 30px;
+  letter-spacing: 0.25px;
   opacity: 0.95;
+  position: relative;
 }
 
-.rail-close{
-  opacity: 0.85;
-}
-.rail-close:hover{
-  opacity: 1;
+/* mirror the left header underline (subtle, centered-ish but looks good left aligned too) */
+.rail-title::after{
+  content:"";
+  position:absolute;
+  left: 0;
+  bottom: -6px;
+  width: 54px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,213,74,0.90), transparent);
+  opacity: 0.50;
 }
 
-/* Body */
+.rail-close{ opacity: 0.85; }
+.rail-close:hover{ opacity: 1; }
+
+/* Body: unified “glass well” like left sidebar */
 .rail-body{
   flex: 1 1 auto;
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
+  position: relative;
+
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* Glass cards inside */
-.glass-card{
-  position: relative;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+/* Glass sheet behind everything (like your left drawer-body) */
+.rail-body::before{
+  content:"";
+  position:absolute;
+  inset: 10px;
+  border-radius: 14px;
+  pointer-events:none;
+
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.10);
+
   box-shadow:
     0 1px 0 rgba(255,255,255,0.06) inset,
-    0 18px 40px rgba(0,0,0,0.22);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+    0 18px 46px rgba(0,0,0,0.30);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.rail-body::after{
+  content:"";
+  position:absolute;
+  inset: 10px;
+  border-radius: 14px;
+  pointer-events:none;
+
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,255,255,0.10), transparent 50%),
+    radial-gradient(circle at 82% 70%, rgba(255,213,74,0.07), transparent 58%),
+    linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.10));
+  opacity: 0.92;
+}
+
+/* Cards now behave like the left sidebar panels */
+.glass-card{
+  position: relative;
+  z-index: 2;
+
+  padding: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+
+  background: rgba(0,0,0,0.16);
+  border: 1px solid rgba(255,255,255,0.10);
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 10px 22px rgba(0,0,0,0.25);
+
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.glass-card:hover{
+  background: rgba(0,0,0,0.20);
+  border-color: rgba(255,255,255,0.14);
+  transform: translateY(-1px);
 }
 
 .card-title{
@@ -290,8 +377,8 @@ defineEmits<{
   font-size: 12px;
   opacity: 0.65;
   padding: 10px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.18);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.14);
   border: 1px dashed rgba(255,255,255,0.10);
 }
 
@@ -302,17 +389,29 @@ defineEmits<{
   gap: 8px;
 }
 
+/* Match left input styling (so Notes feels identical) */
+.sidebar-input :deep(.v-field){
+  background: rgba(0,0,0,0.18) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+.sidebar-input :deep(.v-field__outline){ opacity: 0 !important; }
+.sidebar-input :deep(.v-label){ opacity: 0.80; }
+.sidebar-input :deep(.v-field__input),
+.sidebar-input :deep(textarea){ font-size: 12.5px; }
+
 .notes :deep(textarea){
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
   font-size: 12px;
   line-height: 1.35;
 }
 
-/* Collapsed toggle button (shows inside the slim collapsed rail) */
+/* Collapsed toggle button (match left “square” toggle vibe) */
 .rail-toggle{
   position: absolute;
   top: 0;
-  right: 4px; /* keep it visible in collapsedWidth */
+  left: 4px; /* inside collapsed rail */
   z-index: 50;
   width: 30px;
   height: 30px;
@@ -324,6 +423,7 @@ defineEmits<{
   overflow: hidden;
 }
 
+/* Yellow accent bar on the LEFT for the RIGHT rail (mirror of left sidebar button) */
 .rail-toggle.yellow-accent::after{
   content:"";
   position:absolute;
