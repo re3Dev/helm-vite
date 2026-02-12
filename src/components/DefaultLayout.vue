@@ -114,9 +114,15 @@ const route = useRoute()
 const isAuthRoute = computed(() => route.path === '/login' || route.path === '/setup')
 
 const logout = () => {
+  // Prevent immediate autologin bounce-back after logout
+  try {
+    sessionStorage.setItem('helm_autologin_suppress_once', '1')
+  } catch {}
+
   clearSession()
   router.push('/login')
 }
+
 
 const goUsers = () => {
   router.push('/admin/users')

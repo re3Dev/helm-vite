@@ -1195,6 +1195,63 @@ def users_set_printers(user_id: str):
     save_users_doc(doc)
     return jsonify({"ok": True, "user": {"id": user_id, "printers": printers_norm}})
 
+def _local_ipv4_set() -> set:
+    """
+    Best-effort list of IPs that represent THIS machine.
+    Allows autologin when the browser is on the same computer,
+    even if using the LAN IP (e.g. http://192.168.1.122:5000).
+    """
+    ips = set()
+
+    # localhost
+    ips.add("127.0.0.1")
+    ips.add("::1")
+
+    # Your existing helper picks the primary LAN IPv4
+    try:
+        ips.add(get_my_ipv4())
+    except Exception:
+        pass
+
+    # Add any other IPv4s assigned to this host (covers multi-NIC)
+    try:
+        host = socket.gethostname()
+        _, _, addrs = socket.gethostbyname_ex(host)
+        for a in addrs:
+            if isinstance(a, str) and a.count(".") == 3:
+                ips.add(a)
+    except Exception:
+        pass
+
+    return ips
+
+
+@app.route("/api/auth/autologin", methods=["POST"])
+def auth_autologin():
+    # Only allow auto-login from the SAME machine running the server
+    caller = request.remote_addr or ""
+    if caller not in _local_ipv4_set():
+        return jsonify({"error": "forbidden", "remote_addr": caller}), 403
+
+    if not is_configured():
+        return jsonify({"error": "not_configured"}), 409
+
+    adm = find_admin()
+    if not adm:
+        return jsonify({"error": "no_admin"}), 404
+
+    token = create_session(str(adm.get("id")))
+    resp = make_response(jsonify({
+        "ok": True,
+        "token": token,
+        "role": "admin",
+        "user": {"id": adm.get("id"), "role": "admin", "name": adm.get("username") or "admin"}
+    }))
+    resp.set_cookie("helm_session", token, httponly=False, samesite="Lax")
+    return resp
+
+
+
 
 # ---------------------------
 # Routes: Devices (filtered)

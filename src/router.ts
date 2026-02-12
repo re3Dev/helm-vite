@@ -50,6 +50,33 @@ async function refreshConfigured(): Promise<void> {
   }
 }
 
+/**
+ * ✅ If "admin auto-login on this computer" is enabled, try to mint a fresh session.
+ * This is what makes "stop backend -> start backend -> visit /printers" work.
+ */
+async function tryAutoLoginIfEnabled(): Promise<boolean> {
+  try {
+    const enabled = localStorage.getItem('helm_autologin_admin') === '1'
+    if (!enabled) return false
+
+    const r = await fetch('/api/auth/autologin', {
+      method: 'POST',
+      credentials: 'include',
+    })
+    if (!r.ok) return false
+
+    const j = await r.json().catch(() => null)
+    if (!j?.token) return false
+
+    auth.token = String(j.token)
+    auth.role = j.role
+    auth.userName = j.user?.name || 'admin'
+    return true
+  } catch {
+    return false
+  }
+}
+
 router.beforeEach(async (to) => {
   // Re-check configured status in cases where it matters
   const shouldRefresh =
@@ -67,9 +94,11 @@ router.beforeEach(async (to) => {
     return '/setup'
   }
 
-  // If configured but not logged in, force login (except setup/login)
+  // ✅ If configured but not logged in, try auto-login BEFORE forcing /login
   if (auth.configured && !auth.token && to.path !== '/login' && to.path !== '/setup') {
-    return '/login'
+    const ok = await tryAutoLoginIfEnabled()
+    if (!ok) return '/login'
+    // if ok, continue to the route they requested
   }
 
   // If logged in and trying to visit setup/login, bounce to printers
