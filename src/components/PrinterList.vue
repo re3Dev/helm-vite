@@ -172,8 +172,8 @@
                     <span
                       :class="{
                         'text-yellow': isPrinterPrinting(printer) && printer.state_message === 'Printer is ready',
-                        'text-green': printer.status === 'Ready',
-                        'text-grey': printer.status === 'Idle',
+                        'text-green': isReady(printer),
+                        'text-grey': isIdle(printer),
                         'text-red': printer.state_message !== 'Printer is ready',
                       }"
                     >
@@ -192,12 +192,12 @@
                         PRINTING
                       </template>
 
-                      <template v-else-if="printer.status === 'Ready'">
+                      <template v-else-if="isReady(printer)">
                         <v-icon>mdi-home</v-icon>
                         HOMED
                       </template>
 
-                      <template v-else-if="printer.status === 'Idle'">
+                      <template v-else-if="isIdle(printer)">
                         <v-icon>mdi-engine-off</v-icon>
                         MOTORS DISENGAGED
                       </template>
@@ -380,7 +380,17 @@ interface Printer {
   file_path: string;
   thumbnail_url: string;
   modelType?: string;
+
+  // ✅ derived fields (frontend only)
+  derived_printing?: boolean;
 }
+
+type PrinterCache = {
+  lastPrintingAt?: number;          // last time we saw strong evidence of printing
+  lastKnownStatus?: string;         // last non-empty status
+  lastKnownStateMessage?: string;   // last non-empty state_message
+  lastKnownFilePath?: string;       // last non-empty file_path
+};
 
 export default defineComponent({
   name: 'PrinterGrid',
@@ -393,21 +403,42 @@ export default defineComponent({
 
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
 
-    const normalizeStatus = (s?: string) => (s ?? '').trim().toLowerCase();
+    // ✅ per-printer cache to prevent flapping + preserve last good fields
+    const cacheByIp = ref<Record<string, PrinterCache>>({});
+
+    // how long to "hold" printing true after it was true
+    const PRINTING_GRACE_MS = 15_000;
+
+    const normalizeStatus = (s?: string | null) => (s ?? '').trim().toLowerCase();
+    const isReady = (p: Printer) => normalizeStatus(p.status) === 'ready';
+    const isIdle = (p: Printer) => normalizeStatus(p.status) === 'idle';
 
     const isPrinterBusy = (p: Printer) => {
       const s = normalizeStatus(p.status);
       return s === 'busy' || s.includes('busy');
     };
 
-    const isPrinterPrinting = (p: Printer) => {
+    // ✅ raw signal (no hysteresis)
+    const rawIsPrinting = (p: Printer) => {
       const s = normalizeStatus(p.status);
       if (s !== 'printing') return false;
 
-      const hasProgress = typeof p.print_progress === 'number' && p.print_progress > 0;
-      const hasFile = typeof p.file_path === 'string' && p.file_path.trim().length > 0;
+      // If Moonraker says printing, we accept it.
+      // We still keep file/progress checks as *extra* evidence (used by hysteresis),
+      // but we don’t require them anymore.
+      return true;
+    };
 
-      return hasProgress || hasFile;
+    // ✅ "strong evidence" of printing helps us keep printing stable
+    const hasStrongPrintingEvidence = (p: Printer) => {
+      const hasFile = typeof p.file_path === 'string' && p.file_path.trim().length > 0;
+      const hasProgress = typeof p.print_progress === 'number' && p.print_progress > 0;
+      return rawIsPrinting(p) || hasFile || hasProgress;
+    };
+
+    const isPrinterPrinting = (p: Printer) => {
+      if (typeof p.derived_printing === 'boolean') return p.derived_printing;
+      return rawIsPrinting(p);
     };
 
     const isPrinterLocked = (p: Printer) => {
@@ -424,34 +455,90 @@ export default defineComponent({
 
     let fetchInterval: number | null = null;
 
-    // ✅ NEW sorting:
-    // 0: selected + not printing
-    // 1: unselected + not printing
-    // 2: selected + printing
-    // 3: unselected + printing
-   const sortedPrinters = computed(() => {
-   const printing = (p: Printer) => isPrinterPrinting(p);
+    // ✅ sorting stays stable
+    const sortedPrinters = computed(() => {
+      const printing = (p: Printer) => isPrinterPrinting(p);
 
-   return [...printers.value].sort((a, b) => {
-    const ap = printing(a);
-    const bp = printing(b);
+      return [...printers.value].sort((a, b) => {
+        const ap = printing(a);
+        const bp = printing(b);
 
-    // ✅ Not printing first, printing last
-    if (ap !== bp) return ap ? 1 : -1;
+        // ✅ Not printing first, printing last
+        if (ap !== bp) return ap ? 1 : -1;
 
-    // ✅ Stable-ish tie breaker so list doesn't jump around when selecting
-    // Prefer hostname, then IP (keeps a consistent order across refreshes)
-    const ah = String(a.hostname || '');
-    const bh = String(b.hostname || '');
-    const hn = ah.localeCompare(bh, undefined, { sensitivity: 'base' });
-    if (hn !== 0) return hn;
+        // ✅ stable tie breaker (prevents jumping)
+        const ah = String(a.hostname || '');
+        const bh = String(b.hostname || '');
+        const hn = ah.localeCompare(bh, undefined, { sensitivity: 'base' });
+        if (hn !== 0) return hn;
 
-    return String(a.ip || '').localeCompare(String(b.ip || ''), undefined, { sensitivity: 'base' });
-  });
-});
-
+        return String(a.ip || '').localeCompare(String(b.ip || ''), undefined, { sensitivity: 'base' });
+      });
+    });
 
     const viewType = ref('grid');
+
+    // ✅ Only replace old fields if the new value is actually usable
+    const mergePreferGood = <T extends Record<string, any>>(oldObj: T, incoming: Partial<T>): T => {
+      const out: any = { ...oldObj };
+
+      for (const [k, v] of Object.entries(incoming)) {
+        // keep old if incoming is null/undefined
+        if (v === null || v === undefined) continue;
+
+        // keep old if incoming is an empty string
+        if (typeof v === 'string' && v.trim().length === 0) continue;
+
+        out[k] = v;
+      }
+
+      return out as T;
+    };
+
+    const applyDerivedPrinting = (p: Printer): Printer => {
+      const now = Date.now();
+      const ip = p.ip;
+      const c = (cacheByIp.value[ip] ??= {});
+
+      const raw = rawIsPrinting(p);
+      const strong = hasStrongPrintingEvidence(p);
+
+      // update last-known good fields for stability
+      if (typeof p.status === 'string' && p.status.trim().length > 0) c.lastKnownStatus = p.status;
+      if (typeof p.state_message === 'string' && p.state_message.trim().length > 0) c.lastKnownStateMessage = p.state_message;
+      if (typeof p.file_path === 'string' && p.file_path.trim().length > 0) c.lastKnownFilePath = p.file_path;
+
+      // if we lost status/state_message due to some transient backend nulls,
+      // restore last known values so UI doesn’t say "Unknown"
+      const stableStatus = (typeof p.status === 'string' && p.status.trim().length > 0) ? p.status : (c.lastKnownStatus ?? p.status);
+      const stableStateMessage =
+        (typeof p.state_message === 'string' && p.state_message.trim().length > 0)
+          ? p.state_message
+          : (c.lastKnownStateMessage ?? p.state_message);
+
+      const stableFilePath =
+        (typeof p.file_path === 'string' && p.file_path.trim().length > 0)
+          ? p.file_path
+          : (c.lastKnownFilePath ?? p.file_path);
+
+      // hysteresis: once printing, keep it for a grace window
+      if (strong) {
+        c.lastPrintingAt = now;
+      }
+
+      const wasRecentlyPrinting =
+        typeof c.lastPrintingAt === 'number' && (now - c.lastPrintingAt) < PRINTING_GRACE_MS;
+
+      const derived_printing = raw || wasRecentlyPrinting;
+
+      return {
+        ...p,
+        status: stableStatus,
+        state_message: stableStateMessage,
+        file_path: stableFilePath,
+        derived_printing,
+      };
+    };
 
     const fetchPrinters = async (opts?: { force?: boolean }) => {
       try {
@@ -511,7 +598,8 @@ export default defineComponent({
       for (const device of newData) {
         const index = updatedPrinters.findIndex((printer) => printer.mac === device.mac);
         if (index !== -1) {
-          updatedPrinters[index] = { ...updatedPrinters[index], ...device };
+          // ✅ SAFE MERGE: don’t overwrite good values with null/empty
+          updatedPrinters[index] = mergePreferGood(updatedPrinters[index], device);
         } else {
           const modelType = await fetchModelType(device.base_url);
           updatedPrinters.push({ ...device, modelType: modelType ?? undefined });
@@ -524,7 +612,8 @@ export default defineComponent({
         return acc;
       }, []);
 
-      printers.value = uniquePrinters;
+      // ✅ Apply stability + hysteresis before committing
+      printers.value = uniquePrinters.map(applyDerivedPrinting);
 
       const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
       const nextUnlocked = new Set<string>();
@@ -601,10 +690,13 @@ export default defineComponent({
       isPrinterPrinting,
       isPrinterLocked,
       togglePrinterLock,
+      isReady,
+      isIdle,
     };
   },
 });
 </script>
+
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
