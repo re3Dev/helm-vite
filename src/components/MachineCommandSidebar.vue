@@ -719,19 +719,24 @@ function toggleCollapse() {
   position: absolute;
   top: 0;
   right: 0;
-  width: 6px;
+  width: 6px;              /* keep nice wide drag zone */
   height: 100%;
   cursor: col-resize;
   z-index: 50;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18));
-  border-left: 1px solid rgba(255,255,255,0.06);
-  transition: background 160ms ease, box-shadow 160ms ease;
+
+  /* 👇 invisible by default */
+  background: transparent;
+  border: none;
 }
 .resizer:hover{
-  background:
-    linear-gradient(180deg, rgba(255,213,74,0.10), rgba(0,0,0,0.18));
-  box-shadow: -1px 0 0 rgba(255,213,74,0.30) inset;
+  background: linear-gradient(
+    180deg,
+    rgba(255,213,74,0.08),
+    rgba(255,213,74,0.18),
+    rgba(255,213,74,0.08)
+  );
+  box-shadow: -1px 0 0 rgba(255,213,74,0.25) inset;
+  transition: background 120ms ease, box-shadow 120ms ease;
 }
 
 /* ✅ Collapsed toggle button: visible inside collapsedWidth strip (mirror of right rail) */
