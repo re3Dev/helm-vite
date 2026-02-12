@@ -24,66 +24,69 @@
 
     <v-spacer />
 
-    <v-btn variant="text" to="/" class="nav-btn" :class="{ active: isActive('/') }">
-      Dashboard
-    </v-btn>
-    <v-btn variant="text" to="/analytics" class="nav-btn" :class="{ active: isActive('/analytics') }">
-      Analytics
-    </v-btn>
+    <!-- ✅ Hide app navigation on auth routes -->
+    <template v-if="!isAuthRoute">
+      <v-btn variant="text" to="/" class="nav-btn" :class="{ active: isActive('/') }">
+        Dashboard
+      </v-btn>
+      <v-btn variant="text" to="/analytics" class="nav-btn" :class="{ active: isActive('/analytics') }">
+        Analytics
+      </v-btn>
 
-    <!-- ✅ Account menu -->
-    <v-menu location="bottom end" offset="8">
-      <template #activator="{ props }">
-        <v-btn v-bind="props" icon class="account-btn">
-          <v-icon color="primary">mdi-account</v-icon>
-        </v-btn>
-      </template>
+      <!-- ✅ Account menu -->
+      <v-menu location="bottom end" offset="8">
+        <template #activator="{ props }">
+          <v-btn v-bind="props" icon class="account-btn">
+            <v-icon color="primary">mdi-account</v-icon>
+          </v-btn>
+        </template>
 
-      <v-list density="compact" min-width="220">
-        <v-list-item>
-          <v-list-item-title class="text-subtitle-2">
-            {{ auth.userName || 'User' }}
-          </v-list-item-title>
-          <v-list-item-subtitle>
-            {{ auth.role || 'unknown' }}
-          </v-list-item-subtitle>
-        </v-list-item>
+        <v-list density="compact" min-width="220">
+          <v-list-item>
+            <v-list-item-title class="text-subtitle-2">
+              {{ auth.userName || 'User' }}
+            </v-list-item-title>
+            <v-list-item-subtitle>
+              {{ auth.role || 'unknown' }}
+            </v-list-item-subtitle>
+          </v-list-item>
 
-        <v-divider />
+          <v-divider />
 
-        <v-list-item v-if="auth.role === 'admin'" @click="goUsers">
-          <template #prepend>
-            <v-icon>mdi-account-multiple</v-icon>
-          </template>
-          <v-list-item-title>User Management</v-list-item-title>
-        </v-list-item>
+          <v-list-item v-if="auth.role === 'admin'" @click="goUsers">
+            <template #prepend>
+              <v-icon>mdi-account-multiple</v-icon>
+            </template>
+            <v-list-item-title>User Management</v-list-item-title>
+          </v-list-item>
 
-        <v-list-item @click="logout">
-          <template #prepend>
-            <v-icon color="red">mdi-logout</v-icon>
-          </template>
-          <v-list-item-title>Logout</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
+          <v-list-item @click="logout">
+            <template #prepend>
+              <v-icon color="red">mdi-logout</v-icon>
+            </template>
+            <v-list-item-title>Logout</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </template>
 
     <!-- ✅ Bottom rail aligned to main-content center -->
     <div class="toolbar-rail" aria-hidden="true"></div>
   </v-app-bar>
 
   <v-main>
-    <div class="layout-container">
-      <!-- ✅ Wrap sidebar so we can measure actual width -->
-      <div ref="sidebarWrap" class="sidebar-wrap">
+    <div class="layout-container" :class="{ 'auth-layout': isAuthRoute }">
+      <!-- ✅ Left sidebar hidden on auth routes -->
+      <div v-if="!isAuthRoute" ref="sidebarWrap" class="sidebar-wrap">
         <MachineCommandSidebar :groups="commandGroups" />
       </div>
 
-      <div class="main-content">
+      <div class="main-content" :class="{ 'auth-main': isAuthRoute }">
         <router-view />
       </div>
 
-      <!-- ✅ Right utility sidebar -->
-      <div ref="rightWrap" class="right-wrap">
+      <!-- ✅ Right utility sidebar hidden on auth routes -->
+      <div v-if="!isAuthRoute" ref="rightWrap" class="right-wrap">
         <RightBar
           :collapsed="rightCollapsed"
           :width="rightWidth"
@@ -95,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import MachineCommandSidebar from './MachineCommandSidebar.vue'
@@ -106,6 +109,9 @@ import router from '../router'
 import { auth, clearSession } from '../auth'
 
 const route = useRoute()
+
+/** ✅ auth routes (no sidebars, no app nav) */
+const isAuthRoute = computed(() => route.path === '/login' || route.path === '/setup')
 
 const logout = () => {
   clearSession()
@@ -143,6 +149,13 @@ let roRight: ResizeObserver | null = null
 
 function computeContentCenter() {
   const vw = window.innerWidth || 0
+
+  // If auth route, there are no sidebars, so center is the viewport center
+  if (isAuthRoute.value) {
+    contentCenterPx.value = vw / 2
+    return
+  }
+
   const lw = leftWidthPx.value || 0
   const rw = rightWidthPxMeasured.value || 0
 
@@ -227,9 +240,9 @@ const heartbeatTitle = computed(() => {
   return `${hbMsg.value}\nRTT: ${rtt}\nLast OK: ${last}`
 })
 
-onMounted(() => {
+function startSidebarObservers() {
   // measure left sidebar width continuously
-  if (sidebarWrap.value) {
+  if (sidebarWrap.value && !roLeft) {
     roLeft = new ResizeObserver(entries => {
       const entry = entries[0]
       leftWidthPx.value = entry?.contentRect?.width ?? 0
@@ -239,7 +252,7 @@ onMounted(() => {
   }
 
   // measure right rail width continuously (0 when collapsed)
-  if (rightWrap.value) {
+  if (rightWrap.value && !roRight) {
     roRight = new ResizeObserver(entries => {
       const entry = entries[0]
       rightWidthPxMeasured.value = entry?.contentRect?.width ?? 0
@@ -247,23 +260,43 @@ onMounted(() => {
     })
     roRight.observe(rightWrap.value)
   }
+}
 
+function stopSidebarObservers() {
+  if (roLeft && sidebarWrap.value) roLeft.unobserve(sidebarWrap.value)
+  roLeft = null
+  leftWidthPx.value = 0
+
+  if (roRight && rightWrap.value) roRight.unobserve(rightWrap.value)
+  roRight = null
+  rightWidthPxMeasured.value = 0
+}
+
+onMounted(() => {
   window.addEventListener('resize', computeContentCenter)
-  computeContentCenter()
 
-  // heartbeat polling
+  // heartbeat polling (keep it even on login)
   pollHealthOnce()
   hbTimer = window.setInterval(pollHealthOnce, 2500)
+
+  // initial observers depending on route
+  if (!isAuthRoute.value) startSidebarObservers()
+  computeContentCenter()
+})
+
+watch(isAuthRoute, (authRouteNow) => {
+  // Toggle observers cleanly when moving between login/setup and app pages
+  if (authRouteNow) {
+    stopSidebarObservers()
+  } else {
+    startSidebarObservers()
+  }
+  computeContentCenter()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', computeContentCenter)
-
-  if (roLeft && sidebarWrap.value) roLeft.unobserve(sidebarWrap.value)
-  roLeft = null
-
-  if (roRight && rightWrap.value) roRight.unobserve(rightWrap.value)
-  roRight = null
+  stopSidebarObservers()
 
   if (hbTimer) window.clearInterval(hbTimer)
   hbTimer = null
@@ -502,5 +535,16 @@ onBeforeUnmount(() => {
   padding: 16px;
   display: flex;
   height: 100%;
+}
+
+/* ✅ auth routes: remove padding and let login center nicely */
+.auth-layout{
+  height: 100%;
+}
+
+.auth-main{
+  padding: 0;
+  align-items: center;   /* centers router-view container vertically if it uses flex */
+  justify-content: center;
 }
 </style>
