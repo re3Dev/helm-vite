@@ -45,7 +45,14 @@ from functools import wraps
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_folder="static", static_url_path="")
+# Serve the built Vue app from project-root /dist
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # project root (parent of /backend)
+
+
+app = Flask(__name__, static_folder="static/assets", static_url_path="/assets")
+
+
+
 # If you want cookie-based auth from a different origin, keep supports_credentials True
 CORS(app, supports_credentials=True)
 
@@ -1410,22 +1417,30 @@ def __ping():
     return "pong-from-this-app.py", 200
 
 
+
+
+
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
-def serve_spa(path):
-    # Never let SPA fallback swallow API routes
-    if path.startswith("api/"):
+def spa_fallback(path):
+    if path.startswith("api/") or path.startswith("__") or path.startswith("assets/"):
         abort(404)
 
-    static_dir = app.static_folder  # backend/static
+    # Serve the SPA shell + non-hashed static files from backend/static
+    static_root = os.path.join(os.path.dirname(__file__), "static")
 
-    # If it's a real file (assets, images, etc.), serve it
-    full_path = os.path.join(static_dir, path)
+    full_path = os.path.join(static_root, path)
     if path and os.path.isfile(full_path):
-        return send_from_directory(static_dir, path)
+        return send_from_directory(static_root, path)
 
-    # Otherwise serve the SPA shell
-    return send_from_directory(static_dir, "index.html")
+    return send_from_directory(static_root, "index.html")
+
+
+@app.route("/__routes")
+def __routes():
+    return jsonify(sorted([str(r) for r in app.url_map.iter_rules()]))
+
+
 
 
 if __name__ == "__main__":
