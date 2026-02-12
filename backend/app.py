@@ -59,6 +59,94 @@ device_list_lock = threading.Lock()
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 
+# ---------------------------
+# ✅ Right-rail persistence (per-user)
+# ---------------------------
+
+RIGHT_RAIL_DIR = os.path.join(DATA_DIR, "right_rail")
+right_rail_lock = threading.Lock()
+
+def _ensure_right_rail_dir() -> None:
+    ensure_data_dir()
+    os.makedirs(RIGHT_RAIL_DIR, exist_ok=True)
+
+def _right_rail_path_for_user(user_id: str) -> str:
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", str(user_id or "unknown"))
+    return os.path.join(RIGHT_RAIL_DIR, f"{safe}.json")
+
+def _default_right_rail_doc() -> Dict[str, Any]:
+    return {"notes": [], "tasks": [], "scratchpad": ""}
+
+def _sanitize_right_rail_payload(payload: Any) -> Dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+
+    notes = payload.get("notes", [])
+    tasks = payload.get("tasks", [])
+    scratchpad = payload.get("scratchpad", "")
+
+    if not isinstance(notes, list): notes = []
+    if not isinstance(tasks, list): tasks = []
+    if not isinstance(scratchpad, str): scratchpad = ""
+
+    # Light shape validation (keep only expected fields)
+    clean_notes = []
+    for n in notes:
+        if not isinstance(n, dict): 
+            continue
+        nid = str(n.get("id") or "")
+        text = str(n.get("text") or "")
+        created_at = n.get("created_at")
+        try:
+            created_at = int(created_at)
+        except Exception:
+            created_at = 0
+        if nid and text.strip():
+            clean_notes.append({"id": nid, "text": text, "created_at": created_at})
+
+    clean_tasks = []
+    for t in tasks:
+        if not isinstance(t, dict):
+            continue
+        tid = str(t.get("id") or "")
+        text = str(t.get("text") or "")
+        done = bool(t.get("done", False))
+        created_at = t.get("created_at")
+        try:
+            created_at = int(created_at)
+        except Exception:
+            created_at = 0
+        if tid and text.strip():
+            clean_tasks.append({"id": tid, "text": text, "done": done, "created_at": created_at})
+
+    # Optional: cap sizes so file doesn’t explode
+    clean_notes = clean_notes[:200]
+    clean_tasks = clean_tasks[:400]
+    if len(scratchpad) > 10000:
+        scratchpad = scratchpad[:10000]
+
+    return {"notes": clean_notes, "tasks": clean_tasks, "scratchpad": scratchpad}
+
+def _read_right_rail_for_user(user_id: str) -> Dict[str, Any]:
+    _ensure_right_rail_dir()
+    path = _right_rail_path_for_user(user_id)
+    if not os.path.isfile(path):
+        return _default_right_rail_doc()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+        return _sanitize_right_rail_payload(doc)
+    except Exception:
+        return _default_right_rail_doc()
+
+def _write_right_rail_for_user(user_id: str, doc: Dict[str, Any]) -> None:
+    _ensure_right_rail_dir()
+    path = _right_rail_path_for_user(user_id)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(doc, f, indent=2)
+    os.replace(tmp, path)
+
+
 users_file_lock = threading.Lock()
 
 # In-memory session store: token -> user_id
@@ -904,6 +992,31 @@ def me():
         "name": u.get("name") or u.get("username"),
         "allowed_printers": None if allowed is None else sorted(list(allowed)),
     })
+
+# ---------------------------
+# ✅ Routes: Right rail (Notes/Tasks) — per-user
+# ---------------------------
+
+@app.route("/api/right-rail", methods=["GET"])
+@require_auth
+def right_rail_get():
+    u = current_user()
+    uid = str(u.get("id") or "")
+    with right_rail_lock:
+        doc = _read_right_rail_for_user(uid)
+    return jsonify(doc)
+
+@app.route("/api/right-rail", methods=["PUT"])
+@require_auth
+def right_rail_put():
+    u = current_user()
+    uid = str(u.get("id") or "")
+    payload = request.get_json(silent=True) or {}
+    doc = _sanitize_right_rail_payload(payload)
+    with right_rail_lock:
+        _write_right_rail_for_user(uid, doc)
+    return jsonify({"ok": True})
+
 
 
 # ---------------------------

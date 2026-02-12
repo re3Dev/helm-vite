@@ -24,54 +24,177 @@
       </div>
 
       <div class="rail-body">
-        <!-- Pinned Printers -->
-        <div class="glass-card">
-          <div class="card-title">
-            <v-icon size="18" color="yellow">mdi-pin</v-icon>
-            <span>Pinned</span>
-          </div>
-
-          <div class="card-sub">Pin printers for quick access.</div>
-
-          <div class="empty-hint">Nothing pinned yet.</div>
-        </div>
-
-        <!-- Selected Printers (placeholder) -->
-        <div class="glass-card">
-          <div class="card-title">
-            <v-icon size="18" color="yellow">mdi-checkbox-multiple-marked</v-icon>
-            <span>Selected</span>
-          </div>
-
-          <div class="card-sub">Quick actions for your current selection.</div>
-
-          <div class="quick-actions">
-            <v-btn size="small" variant="tonal" color="yellow" block>
-              <v-icon start>mdi-refresh</v-icon>
-              Refresh Selected
-            </v-btn>
-
-            <v-btn size="small" variant="outlined" color="grey" block>
-              <v-icon start>mdi-restart</v-icon>
-              Firmware Restart
-            </v-btn>
-          </div>
-        </div>
-
-        <!-- Notes / Scratchpad -->
+        <!-- Notes -->
         <div class="glass-card">
           <div class="card-title">
             <v-icon size="18" color="yellow">mdi-note-text</v-icon>
             <span>Notes</span>
+
+            <v-spacer />
+
+            <v-btn
+              icon
+              size="x-small"
+              variant="text"
+              class="mini-icon"
+              :title="apiOk ? 'Saved' : 'Offline (local only)'"
+            >
+              <v-icon :color="apiOk ? 'green' : 'grey'">
+                {{ apiOk ? 'mdi-cloud-check-outline' : 'mdi-cloud-off-outline' }}
+              </v-icon>
+            </v-btn>
+          </div>
+
+          <div class="card-sub">Quick notes that persist.</div>
+
+          <div class="note-entry">
+            <v-text-field
+              v-model="newNote"
+              density="compact"
+              hide-details
+              placeholder="Add a note…"
+              class="sidebar-input"
+              @keyup.enter="addNote()"
+            />
+            <v-btn
+              icon
+              size="small"
+              variant="tonal"
+              color="yellow"
+              class="add-btn"
+              @click="addNote()"
+              :disabled="!newNote.trim()"
+              title="Add note"
+            >
+              <v-icon>mdi-plus</v-icon>
+            </v-btn>
+          </div>
+
+          <div v-if="notes.length === 0" class="empty-hint">No notes yet.</div>
+
+          <div v-else class="note-list">
+            <div v-for="n in notes" :key="n.id" class="note-item">
+              <div class="note-text">{{ n.text }}</div>
+              <div class="note-meta">
+                <span class="note-date">{{ fmtTime(n.created_at) }}</span>
+
+                <v-btn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  class="mini-icon"
+                  @click="deleteNote(n.id)"
+                  title="Delete note"
+                >
+                  <v-icon>mdi-delete-outline</v-icon>
+                </v-btn>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="glass-card">
+          <div class="card-title">
+            <v-icon size="18" color="yellow">mdi-format-list-checks</v-icon>
+            <span>Tasks</span>
+
+            <v-spacer />
+
+            <div class="task-count" :title="`${openTasks} open / ${tasks.length} total`">
+              {{ openTasks }} open
+            </div>
+          </div>
+
+          <div class="card-sub">Small checklist that persists.</div>
+
+          <div class="task-entry">
+            <v-text-field
+              v-model="newTask"
+              density="compact"
+              hide-details
+              placeholder="Add a task…"
+              class="sidebar-input"
+              @keyup.enter="addTask()"
+            />
+            <v-btn
+              icon
+              size="small"
+              variant="tonal"
+              color="yellow"
+              class="add-btn"
+              @click="addTask()"
+              :disabled="!newTask.trim()"
+              title="Add task"
+            >
+              <v-icon>mdi-plus</v-icon>
+            </v-btn>
+          </div>
+
+          <div v-if="tasks.length === 0" class="empty-hint">No tasks yet.</div>
+
+          <div v-else class="task-list">
+            <div
+              v-for="t in sortedTasks"
+              :key="t.id"
+              class="task-item"
+              :class="{ done: t.done }"
+            >
+              <v-checkbox-btn
+                :model-value="t.done"
+                @update:model-value="(v:boolean) => setTaskDone(t.id, v)"
+                density="compact"
+                class="task-check"
+              />
+              <div class="task-main">
+                <div class="task-text">{{ t.text }}</div>
+                <div class="task-meta">
+                  <span>{{ fmtTime(t.created_at) }}</span>
+                </div>
+              </div>
+
+              <v-btn
+                icon
+                size="x-small"
+                variant="text"
+                class="mini-icon"
+                @click="deleteTask(t.id)"
+                title="Delete task"
+              >
+                <v-icon>mdi-delete-outline</v-icon>
+              </v-btn>
+            </div>
+
+            <div class="task-actions" v-if="tasks.some(t => t.done)">
+              <v-btn
+                size="small"
+                variant="outlined"
+                color="grey"
+                block
+                @click="clearCompleted()"
+              >
+                <v-icon start>mdi-broom</v-icon>
+                Clear completed
+              </v-btn>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional scratchpad (single large field) -->
+        <div class="glass-card">
+          <div class="card-title">
+            <v-icon size="18" color="yellow">mdi-text-long</v-icon>
+            <span>Scratchpad</span>
           </div>
 
           <v-textarea
+            v-model="scratchpad"
             density="compact"
             auto-grow
             rows="2"
-            max-rows="6"
+            max-rows="8"
             hide-details
-            placeholder="Scratchpad…"
+            placeholder="Anything… (autosaves)"
             class="notes sidebar-input"
           />
         </div>
@@ -92,6 +215,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+
 withDefaults(
   defineProps<{
     collapsed: boolean
@@ -99,13 +224,171 @@ withDefaults(
     collapsedWidth?: number
   }>(),
   {
-    collapsedWidth: 38, // enough room for the 30px button + padding
+    collapsedWidth: 38,
   }
 )
 
 defineEmits<{
   (e: 'toggle'): void
 }>()
+
+type NoteItem = { id: string; text: string; created_at: number }
+type TaskItem = { id: string; text: string; done: boolean; created_at: number }
+type RailState = { notes: NoteItem[]; tasks: TaskItem[]; scratchpad: string }
+
+const STORAGE_KEY = 'helm:rightRailState:v1'
+const API_URL = '/api/right-rail' // see Flask section below
+
+const apiOk = ref(true)
+
+const notes = ref<NoteItem[]>([])
+const tasks = ref<TaskItem[]>([])
+const scratchpad = ref('')
+
+const newNote = ref('')
+const newTask = ref('')
+
+const openTasks = computed(() => tasks.value.filter(t => !t.done).length)
+
+const sortedTasks = computed(() => {
+  // open tasks first, then completed; newest first within each group
+  const copy = [...tasks.value]
+  copy.sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1
+    return b.created_at - a.created_at
+  })
+  return copy
+})
+
+function uid(prefix: string) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+function fmtTime(ts: number) {
+  try {
+    return new Date(ts).toLocaleString()
+  } catch {
+    return ''
+  }
+}
+
+function addNote() {
+  const text = newNote.value.trim()
+  if (!text) return
+  notes.value.unshift({ id: uid('note'), text, created_at: Date.now() })
+  newNote.value = ''
+}
+
+function deleteNote(id: string) {
+  notes.value = notes.value.filter(n => n.id !== id)
+}
+
+function addTask() {
+  const text = newTask.value.trim()
+  if (!text) return
+  tasks.value.unshift({ id: uid('task'), text, done: false, created_at: Date.now() })
+  newTask.value = ''
+}
+
+function setTaskDone(id: string, done: boolean) {
+  const t = tasks.value.find(x => x.id === id)
+  if (t) t.done = done
+}
+
+function deleteTask(id: string) {
+  tasks.value = tasks.value.filter(t => t.id !== id)
+}
+
+function clearCompleted() {
+  tasks.value = tasks.value.filter(t => !t.done)
+}
+
+/** ---- Persistence (API first, localStorage fallback) ---- */
+function getState(): RailState {
+  return { notes: notes.value, tasks: tasks.value, scratchpad: scratchpad.value }
+}
+
+function applyState(s: RailState) {
+  notes.value = Array.isArray(s.notes) ? s.notes : []
+  tasks.value = Array.isArray(s.tasks) ? s.tasks : []
+  scratchpad.value = typeof s.scratchpad === 'string' ? s.scratchpad : ''
+}
+
+function saveLocal(s: RailState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+  } catch {}
+}
+
+function loadLocal(): RailState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+async function loadRemote(): Promise<RailState | null> {
+  try {
+    const r = await fetch(API_URL, { method: 'GET' })
+    if (!r.ok) throw new Error(`GET ${r.status}`)
+    const data = (await r.json()) as RailState
+    apiOk.value = true
+    return data
+  } catch {
+    apiOk.value = false
+    return null
+  }
+}
+
+async function saveRemote(s: RailState): Promise<boolean> {
+  try {
+    const r = await fetch(API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(s),
+    })
+    if (!r.ok) throw new Error(`PUT ${r.status}`)
+    apiOk.value = true
+    return true
+  } catch {
+    apiOk.value = false
+    return false
+  }
+}
+
+// simple debounce (no deps)
+let saveTimer: number | null = null
+function scheduleSave() {
+  if (saveTimer) window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(async () => {
+    const s = getState()
+    // always keep local as a backup
+    saveLocal(s)
+    // then try server
+    await saveRemote(s)
+  }, 400)
+}
+
+onMounted(async () => {
+  // 1) prefer server state
+  const remote = await loadRemote()
+  if (remote) {
+    applyState(remote)
+    saveLocal(remote)
+    return
+  }
+
+  // 2) fallback local
+  const local = loadLocal()
+  if (local) applyState(local)
+})
+
+watch(notes, scheduleSave, { deep: true })
+watch(tasks, scheduleSave, { deep: true })
+watch(scratchpad, scheduleSave)
 </script>
 
 <style scoped>
@@ -120,7 +403,6 @@ defineEmits<{
   transition: width 160ms ease;
   flex: 0 0 auto;
 
-  /* SAME shell background language as left sidebar */
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14)),
     radial-gradient(circle at 30% 20%, rgba(255,213,74,0.08), transparent 55%),
@@ -133,7 +415,6 @@ defineEmits<{
 }
 
 .right-rail::before{
-  /* SAME scanline texture */
   content:"";
   position:absolute;
   inset:0;
@@ -150,7 +431,6 @@ defineEmits<{
 }
 
 .right-rail::after{
-  /* Symmetric yellow edge glow: LEFT edge of right rail */
   content:"";
   position:absolute;
   top:0;
@@ -178,19 +458,16 @@ defineEmits<{
   .right-rail::after{ animation: none !important; }
 }
 
-/* Drawer surface */
 .rail-drawer{
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
 
-  /* Match left: slightly translucent “console surface” */
   background-color: rgba(36,37,39,0.92);
   border-left: 1px solid rgba(255,255,255,0.08);
 }
 
-/* Header (match left fancy header) */
 .rail-header{
   height: 30px;
   background-color: #333131;
@@ -270,7 +547,6 @@ defineEmits<{
   position: relative;
 }
 
-/* mirror the left header underline (subtle, centered-ish but looks good left aligned too) */
 .rail-title::after{
   content:"";
   position:absolute;
@@ -285,7 +561,6 @@ defineEmits<{
 .rail-close{ opacity: 0.85; }
 .rail-close:hover{ opacity: 1; }
 
-/* Body: unified “glass well” like left sidebar */
 .rail-body{
   flex: 1 1 auto;
   overflow: auto;
@@ -297,7 +572,6 @@ defineEmits<{
   gap: 12px;
 }
 
-/* Glass sheet behind everything (like your left drawer-body) */
 .rail-body::before{
   content:"";
   position:absolute;
@@ -330,7 +604,6 @@ defineEmits<{
   opacity: 0.92;
 }
 
-/* Cards now behave like the left sidebar panels */
 .glass-card{
   position: relative;
   z-index: 2;
@@ -382,14 +655,6 @@ defineEmits<{
   border: 1px dashed rgba(255,255,255,0.10);
 }
 
-.quick-actions{
-  margin-top: 10px;
-  display:flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Match left input styling (so Notes feels identical) */
 .sidebar-input :deep(.v-field){
   background: rgba(0,0,0,0.18) !important;
   border: 1px solid rgba(255,255,255,0.10) !important;
@@ -399,6 +664,7 @@ defineEmits<{
 .sidebar-input :deep(.v-field__outline){ opacity: 0 !important; }
 .sidebar-input :deep(.v-label){ opacity: 0.80; }
 .sidebar-input :deep(.v-field__input),
+.sidebar-input :deep(input),
 .sidebar-input :deep(textarea){ font-size: 12.5px; }
 
 .notes :deep(textarea){
@@ -407,11 +673,122 @@ defineEmits<{
   line-height: 1.35;
 }
 
-/* Collapsed toggle button (match left “square” toggle vibe) */
+/* Notes UI */
+.note-entry,
+.task-entry{
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-btn{
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 10px;
+}
+
+.note-list{
+  margin-top: 10px;
+  display:flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-item{
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.14);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.note-text{
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-meta{
+  margin-top: 6px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  opacity: 0.70;
+  font-size: 11px;
+}
+
+/* Tasks UI */
+.task-count{
+  font-size: 11px;
+  opacity: 0.70;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.task-list{
+  margin-top: 10px;
+  display:flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item{
+  display:flex;
+  align-items:flex-start;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.14);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.task-item.done{
+  opacity: 0.72;
+}
+
+.task-item.done .task-text{
+  text-decoration: line-through;
+}
+
+.task-check{
+  margin-top: -2px;
+}
+
+.task-main{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.task-text{
+  font-size: 12.5px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.task-meta{
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.70;
+}
+
+.task-actions{
+  margin-top: 10px;
+}
+
+/* tiny icon buttons */
+.mini-icon{ opacity: 0.82; }
+.mini-icon:hover{ opacity: 1; }
+
+/* Collapsed toggle button */
 .rail-toggle{
   position: absolute;
   top: 0;
-  left: 4px; /* inside collapsed rail */
+  left: 4px;
   z-index: 50;
   width: 30px;
   height: 30px;
@@ -423,7 +800,6 @@ defineEmits<{
   overflow: hidden;
 }
 
-/* Yellow accent bar on the LEFT for the RIGHT rail (mirror of left sidebar button) */
 .rail-toggle.yellow-accent::after{
   content:"";
   position:absolute;
