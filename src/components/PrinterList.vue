@@ -34,22 +34,13 @@
         <!-- Utilities dropdown -->
         <v-menu location="bottom end" offset="8">
           <template #activator="{ props }">
-            <v-btn
-              v-bind="props"
-              icon
-              variant="text"
-              class="utility-btn"
-              :title="'Utilities'"
-            >
+            <v-btn v-bind="props" icon variant="text" class="utility-btn" :title="'Utilities'">
               <v-icon>mdi-dots-vertical</v-icon>
             </v-btn>
           </template>
 
           <v-list density="compact" class="utility-menu">
-            <v-list-item
-              :disabled="selectedPrinters.length === 0"
-              @click="restartFirmware"
-            >
+            <v-list-item :disabled="selectedPrinters.length === 0" @click="restartFirmware">
               <template #prepend>
                 <v-icon color="red">mdi-restart</v-icon>
               </template>
@@ -69,16 +60,8 @@
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
       <v-sheet class="grid-container" color="background">
         <template v-if="isLoading">
-          <v-card
-            v-for="n in 12"
-            :key="n"
-            color="#181B20"
-            class="pa-3 floating-card"
-          >
-            <v-skeleton-loader
-              type="heading, divider, heading, list-item, subtitle, image"
-              :loading="true"
-            />
+          <v-card v-for="n in 12" :key="n" color="#181B20" class="pa-3 floating-card">
+            <v-skeleton-loader type="heading, divider, heading, list-item, subtitle, image" :loading="true" />
           </v-card>
         </template>
 
@@ -120,7 +103,8 @@
 
             <v-divider color="yellow" :thickness="1"></v-divider>
 
-            <v-card-text>
+            <!-- body is a flex column so temps can pin to bottom -->
+            <v-card-text class="card-body">
               <div class="printer-type">
                 <v-icon :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
                   {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
@@ -134,92 +118,102 @@
                 </span>
               </div>
 
-              <v-progress-linear
-                v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
-                :model-value="printer.print_progress * 100"
-                color="#FFBD00"
-                :height="20"
-                class="mt-2"
-                :striped="true"
-                bg-color="#BCBEC0"
-                bg-opacity="0.8"
-                :stream="false"
-              >
-                <bold>
+              <!-- ✅ Progress slot (always reserves space, prevents layout drift) -->
+              <div class="progress-slot">
+                <v-progress-linear
+                  v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
+                  :model-value="printer.print_progress * 100"
+                  color="#FFBD00"
+                  :height="20"
+                  class="mt-2"
+                  :striped="true"
+                  bg-color="#BCBEC0"
+                  bg-opacity="0.8"
+                  :stream="false"
+                >
+                  <bold>
+                    <strong>
+                      <v-text style="color: black;">
+                        {{ (printer.print_progress * 100).toFixed(0) }}%
+                      </v-text>
+                    </strong>
+                  </bold>
+                </v-progress-linear>
+              </div>
+
+              <!-- ✅ File slot (fixed height, scrolling text inside) -->
+              <div class="file-slot">
+                <div class="file-path-container">
                   <strong>
-                    <v-text style="color: black;">
-                      {{ (printer.print_progress * 100).toFixed(0) }}%
+                    <v-text style="color: white;">
+                      {{ printer.state_message === 'Printer is ready'
+                        ? formatFileName(printer.file_path)
+                        : 'Not Printing'
+                      }}
                     </v-text>
                   </strong>
-                </bold>
-              </v-progress-linear>
-
-              <br />
-
-              <div class="file-path-container">
-                <strong>
-                  <v-text style="color: white;">
-                    {{ printer.state_message === 'Printer is ready' ? formatFileName(printer.file_path) : 'Not Printing' }}
-                  </v-text>
-                </strong>
+                </div>
               </div>
 
-              <br />
 
-              <div>
-                <strong>
-                  <div class="status-container">
-                    <span
-                      :class="{
-                        'text-yellow': isPrinterPrinting(printer) && printer.state_message === 'Printer is ready',
-                        'text-green': isReady(printer),
-                        'text-grey': isIdle(printer),
-                        'text-red': printer.state_message !== 'Printer is ready',
-                      }"
-                    >
-                      <template v-if="printer.state_message !== 'Printer is ready'">
-                        <v-icon class="text-red">mdi-alert-circle</v-icon>
-                        <span class="text-red">ERROR</span>
-                      </template>
+              <!-- status + reserved second line (compact) -->
+              <div class="status-stack">
+                <div class="status-container">
+                  <span
+                    :class="{
+                      'text-yellow': isPrinterPrinting(printer) && printer.state_message === 'Printer is ready',
+                      'text-green': isReady(printer),
+                      'text-grey': isIdle(printer),
+                      'text-red': printer.state_message !== 'Printer is ready',
+                    }"
+                  >
+                    <template v-if="printer.state_message !== 'Printer is ready'">
+                      <v-icon class="text-red">mdi-alert-circle</v-icon>
+                      <span class="text-red">ERROR</span>
+                    </template>
 
-                      <template v-else-if="isPrinterBusy(printer)">
-                        <v-icon>mdi-timer-sand</v-icon>
-                        BUSY
-                      </template>
+                    <template v-else-if="isPrinterBusy(printer)">
+                      <v-icon>mdi-timer-sand</v-icon>
+                      BUSY
+                    </template>
 
-                      <template v-else-if="isPrinterPrinting(printer)">
-                        <v-icon>mdi-printer-3d-nozzle</v-icon>
-                        PRINTING
-                      </template>
+                    <template v-else-if="isPrinterPrinting(printer)">
+                      <v-icon>mdi-printer-3d-nozzle</v-icon>
+                      PRINTING
+                    </template>
 
-                      <template v-else-if="isReady(printer)">
-                        <v-icon>mdi-home</v-icon>
-                        HOMED
-                      </template>
+                    <template v-else-if="isReady(printer)">
+                      <v-icon>mdi-home</v-icon>
+                      HOMED
+                    </template>
 
-                      <template v-else-if="isIdle(printer)">
-                        <v-icon>mdi-engine-off</v-icon>
-                        MOTORS DISENGAGED
-                      </template>
+                    <template v-else-if="isIdle(printer)">
+                      <v-icon>mdi-engine-off</v-icon>
+                      DISENGAGED
+                    </template>
 
-                      <template v-else>
-                        Status Unknown
-                      </template>
-                    </span>
-                  </div>
-                </strong>
+                    <template v-else>
+                      Status Unknown
+                    </template>
+                  </span>
+                </div>
+
+                <!-- always present: reserves 1 line -->
+                <div class="status-sub">
+                  <span
+                    v-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)"
+                    class="text-red"
+                  >
+                    <v-icon>mdi-alert-circle</v-icon>
+                    {{ printer.state_message }}
+                  </span>
+                </div>
               </div>
 
-              <div class="status-container" v-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)">
-                <span class="text-red">
-                  <v-icon>mdi-alert-circle</v-icon>
-                  {{ printer.state_message }}
-                </span>
-              </div>
-
+              <!-- temps -->
               <div class="temperature-container">
-                <div class="extruder-temps" :class="{ 'horizontal': !printer.extruder2_temperature }">
-                  <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+                <div class="extruder-temps" :class="{ horizontal: !printer.extruder2_temperature }">
+                  <div class="temp-reading" :class="{ pellet: printer.extruder2_temperature }">
                     <v-icon
                       :class="{
                         'text-blue': printer.extruder_temperature < 60,
@@ -233,7 +227,7 @@
                     <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
                   </div>
 
-                  <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+                  <div class="temp-reading" :class="{ pellet: printer.extruder2_temperature }">
                     <v-icon
                       :class="{
                         'text-blue': printer.extruder1_temperature < 60,
@@ -248,7 +242,11 @@
                   </div>
                 </div>
 
-                <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
+                <div
+                  class="temp-reading"
+                  :class="{ pellet: printer.extruder2_temperature }"
+                  v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined"
+                >
                   <v-icon
                     :class="{
                       'text-blue': printer.extruder2_temperature < 60,
@@ -262,7 +260,7 @@
                   <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
                 </div>
 
-                <div class="temp-reading" :class="{ 'pellet': printer.extruder2_temperature }">
+                <div class="temp-reading" :class="{ pellet: printer.extruder2_temperature }">
                   <v-icon
                     :class="{
                       'text-blue': printer.heater_bed_temperature < 40,
@@ -381,15 +379,14 @@ interface Printer {
   thumbnail_url: string;
   modelType?: string;
 
-  // ✅ derived fields (frontend only)
   derived_printing?: boolean;
 }
 
 type PrinterCache = {
-  lastPrintingAt?: number;          // last time we saw strong evidence of printing
-  lastKnownStatus?: string;         // last non-empty status
-  lastKnownStateMessage?: string;   // last non-empty state_message
-  lastKnownFilePath?: string;       // last non-empty file_path
+  lastPrintingAt?: number;
+  lastKnownStatus?: string;
+  lastKnownStateMessage?: string;
+  lastKnownFilePath?: string;
 };
 
 export default defineComponent({
@@ -398,15 +395,10 @@ export default defineComponent({
     const printers = ref<Printer[]>([]);
     const isLoading = ref(true);
 
-    // ✅ refresh state
     const isRefreshing = ref(false);
-
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
-
-    // ✅ per-printer cache to prevent flapping + preserve last good fields
     const cacheByIp = ref<Record<string, PrinterCache>>({});
 
-    // how long to "hold" printing true after it was true
     const PRINTING_GRACE_MS = 15_000;
 
     const normalizeStatus = (s?: string | null) => (s ?? '').trim().toLowerCase();
@@ -418,18 +410,12 @@ export default defineComponent({
       return s === 'busy' || s.includes('busy');
     };
 
-    // ✅ raw signal (no hysteresis)
     const rawIsPrinting = (p: Printer) => {
       const s = normalizeStatus(p.status);
       if (s !== 'printing') return false;
-
-      // If Moonraker says printing, we accept it.
-      // We still keep file/progress checks as *extra* evidence (used by hysteresis),
-      // but we don’t require them anymore.
       return true;
     };
 
-    // ✅ "strong evidence" of printing helps us keep printing stable
     const hasStrongPrintingEvidence = (p: Printer) => {
       const hasFile = typeof p.file_path === 'string' && p.file_path.trim().length > 0;
       const hasProgress = typeof p.print_progress === 'number' && p.print_progress > 0;
@@ -455,7 +441,6 @@ export default defineComponent({
 
     let fetchInterval: number | null = null;
 
-    // ✅ sorting stays stable
     const sortedPrinters = computed(() => {
       const printing = (p: Printer) => isPrinterPrinting(p);
 
@@ -463,10 +448,8 @@ export default defineComponent({
         const ap = printing(a);
         const bp = printing(b);
 
-        // ✅ Not printing first, printing last
         if (ap !== bp) return ap ? 1 : -1;
 
-        // ✅ stable tie breaker (prevents jumping)
         const ah = String(a.hostname || '');
         const bh = String(b.hostname || '');
         const hn = ah.localeCompare(bh, undefined, { sensitivity: 'base' });
@@ -478,17 +461,12 @@ export default defineComponent({
 
     const viewType = ref('grid');
 
-    // ✅ Only replace old fields if the new value is actually usable
     const mergePreferGood = <T extends Record<string, any>>(oldObj: T, incoming: Partial<T>): T => {
       const out: any = { ...oldObj };
 
       for (const [k, v] of Object.entries(incoming)) {
-        // keep old if incoming is null/undefined
         if (v === null || v === undefined) continue;
-
-        // keep old if incoming is an empty string
         if (typeof v === 'string' && v.trim().length === 0) continue;
-
         out[k] = v;
       }
 
@@ -503,14 +481,13 @@ export default defineComponent({
       const raw = rawIsPrinting(p);
       const strong = hasStrongPrintingEvidence(p);
 
-      // update last-known good fields for stability
       if (typeof p.status === 'string' && p.status.trim().length > 0) c.lastKnownStatus = p.status;
       if (typeof p.state_message === 'string' && p.state_message.trim().length > 0) c.lastKnownStateMessage = p.state_message;
       if (typeof p.file_path === 'string' && p.file_path.trim().length > 0) c.lastKnownFilePath = p.file_path;
 
-      // if we lost status/state_message due to some transient backend nulls,
-      // restore last known values so UI doesn’t say "Unknown"
-      const stableStatus = (typeof p.status === 'string' && p.status.trim().length > 0) ? p.status : (c.lastKnownStatus ?? p.status);
+      const stableStatus =
+        (typeof p.status === 'string' && p.status.trim().length > 0) ? p.status : (c.lastKnownStatus ?? p.status);
+
       const stableStateMessage =
         (typeof p.state_message === 'string' && p.state_message.trim().length > 0)
           ? p.state_message
@@ -521,10 +498,7 @@ export default defineComponent({
           ? p.file_path
           : (c.lastKnownFilePath ?? p.file_path);
 
-      // hysteresis: once printing, keep it for a grace window
-      if (strong) {
-        c.lastPrintingAt = now;
-      }
+      if (strong) c.lastPrintingAt = now;
 
       const wasRecentlyPrinting =
         typeof c.lastPrintingAt === 'number' && (now - c.lastPrintingAt) < PRINTING_GRACE_MS;
@@ -544,7 +518,6 @@ export default defineComponent({
       try {
         const force = !!opts?.force;
         const path = force ? '/api/devices?force=1' : '/api/devices';
-
         const data = await apiFetch<Printer[]>(path);
         await updatePrinters(data);
         isLoading.value = false;
@@ -598,7 +571,6 @@ export default defineComponent({
       for (const device of newData) {
         const index = updatedPrinters.findIndex((printer) => printer.mac === device.mac);
         if (index !== -1) {
-          // ✅ SAFE MERGE: don’t overwrite good values with null/empty
           updatedPrinters[index] = mergePreferGood(updatedPrinters[index], device);
         } else {
           const modelType = await fetchModelType(device.base_url);
@@ -612,7 +584,6 @@ export default defineComponent({
         return acc;
       }, []);
 
-      // ✅ Apply stability + hysteresis before committing
       printers.value = uniquePrinters.map(applyDerivedPrinting);
 
       const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
@@ -697,12 +668,11 @@ export default defineComponent({
 });
 </script>
 
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
 * { font-family: 'Lato', sans-serif !important; }
 
-/* ✅ three-column top bar: center toggle stays centered */
+/* three-column top bar: center toggle stays centered */
 .top-bar {
   position: relative;
   display: grid;
@@ -714,7 +684,7 @@ export default defineComponent({
 .top-bar-left { justify-self: start; }
 .top-bar-center { justify-self: center; }
 
-/* ✅ right side now has refresh + utilities */
+/* right side now has refresh + utilities */
 .top-bar-right {
   justify-self: end;
   display: flex;
@@ -734,6 +704,12 @@ export default defineComponent({
   background-color: surface;
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+
+  display: flex;
+  flex-direction: column;
+
+  /* ✅ equal height per grid row for aligned heater boxes */
+  height: 100%;
 }
 .floating-card:hover {
   transform: translateY(-4px);
@@ -769,22 +745,59 @@ a:active { color: blue; }
 .status-container {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: inline-block;
+}
+
+/* body fills the card + uses gap instead of spacer divs */
+.card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0px;
+}
+
+/* ✅ reserved slots to prevent "random big gap" while keeping alignment */
+.progress-slot { min-height: 28px; }
+.file-slot {
+  min-height: 20px;      /* keep your fixed slot */
+  height: 20px;
+  overflow: hidden;      /* prevents taking extra vertical room */
+  display: flex;
+  align-items: center;
+}
+
+
+
+.status-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  margin-top: auto;
+  margin-bottom: 0px;
+}
+.status-sub {
+  min-height: 0px;
+  font-size: 0.85rem;
+  line-height: 1.1;
+  margin: 0;
 }
 
 .temperature-container {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
   padding: 8px;
-  margin: 8px 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
   gap: 0;
+
+  /* pinned + tight */
+  margin: 0px 0 0;
+  margin-top: 0px !important;
 }
 
 .temp-reading {
@@ -862,8 +875,6 @@ a:active { color: blue; }
 }
 
 .v-table { width: 100%; min-width: 800px; margin-top: 0; }
-
-.floating-card { height: 100%; }
 
 .v-container {
   padding-top: 0;
