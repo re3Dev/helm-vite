@@ -539,11 +539,27 @@ def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, 
         arp_entries = parse_arp_a()
         logger.info("arp -a entries: %d", len(arp_entries))
 
+        # Filter ARP entries to only those in the specified CIDR
+        try:
+            net = ipaddress.ip_network(cidr, strict=False)
+            filtered_entries = []
+            for ip, mac in arp_entries:
+                try:
+                    ip_addr = ipaddress.ip_address(ip)
+                    if ip_addr in net:
+                        filtered_entries.append((ip, mac))
+                except:
+                    pass
+            logger.info("Filtered to %d entries in CIDR %s", len(filtered_entries), cidr)
+        except:
+            logger.warning("Failed to parse CIDR %s, using all ARP entries", cidr)
+            filtered_entries = arp_entries
+
         devices_list: List[Dict[str, Any]] = []
         processed_hostnames = set()
         threads = []
 
-        for ip, mac in arp_entries:
+        for ip, mac in filtered_entries:
             if ip == my_ip:
                 continue
             t = threading.Thread(target=probe_and_collect, args=(ip, mac, ports, devices_list, processed_hostnames))
@@ -1258,6 +1274,9 @@ def auth_autologin():
 @require_auth
 def get_devices_api():
     cidr = request.args.get("cidr", "192.168.1.0/24")
+    logger.info(f"[/api/devices] Request args: {dict(request.args)}")
+    logger.info(f"[/api/devices] Using CIDR: {cidr}")
+    
     warm = request.args.get("warm", "1") != "0"
     ports_arg = request.args.get("ports", "")
     ports = [7125, 80, 4408]
@@ -1289,10 +1308,15 @@ def api_gcodes():
       ?warm=1
       ?ports=7125,80,4408
     """
+    logger.info(f"[/api/gcodes] Request args: {dict(request.args)}")
+    
     cidr = request.args.get("cidr", "192.168.1.0/24")
     warm = request.args.get("warm", "1") != "0"
     ports_arg = request.args.get("ports", "")
     ports = [7125, 80, 4408]
+    
+    logger.info(f"[/api/gcodes] Raw cidr from request: '{cidr}'")
+    logger.info(f"[/api/gcodes] Type of cidr: {type(cidr)}")
 
     if ports_arg.strip():
         try:

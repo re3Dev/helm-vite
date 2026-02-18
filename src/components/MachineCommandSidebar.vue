@@ -288,6 +288,43 @@
                 </template>
               </v-expansion-panel-text>
             </v-expansion-panel>
+
+            <!-- Settings Panel -->
+            <v-expansion-panel class="sidebar-panel">
+              <v-expansion-panel-title class="sidebar-panel-title">
+                <v-icon color="yellow">mdi-cog</v-icon>&nbsp;
+                Settings
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text class="sidebar-panel-text">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <div>
+                    <label style="display: block; font-size: 12px; opacity: 0.8; margin-bottom: 4px">Scanner CIDR</label>
+                    <div style="display: flex; gap: 6px;">
+                      <v-text-field
+                        v-model="printerCidr"
+                        placeholder="192.168.1.0/24"
+                        hide-details
+                        density="compact"
+                        class="sidebar-input"
+                        style="flex: 1"
+                      />
+                      <v-btn
+                        icon
+                        small
+                        color="yellow"
+                        variant="tonal"
+                        @click="saveCidrSettings"
+                        title="Save and scan"
+                      >
+                        <v-icon>mdi-check</v-icon>
+                      </v-btn>
+                    </div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">Enter CIDR notation (e.g., 192.168.1.0/24)</div>
+                  </div>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
           </v-expansion-panels>
         </div>
       </div>
@@ -309,8 +346,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, defineProps, computed } from 'vue'
-import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles } from './commandService.ts'
+import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
+import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles, scannerCidr } from './commandService.ts'
 
 const props = defineProps({
   groups: { type: Array, default: () => [] }
@@ -335,6 +372,31 @@ function onGcodeMenuChange(isOpen) {
       console.log('[GcodeMenu] Set menu width to 560px')
     }
   }, 10)
+}
+
+/** Settings: Printer Scanner CIDR */
+const printerCidr = ref(scannerCidr.value)
+
+function saveCidrSettings() {
+  const trimmed = printerCidr.value.trim()
+  if (!trimmed) {
+    console.warn('CIDR cannot be empty')
+    return
+  }
+  
+  console.log('[Settings] Saving CIDR:', trimmed)
+  
+  // Save to store
+  scannerCidr.value = trimmed
+  console.log('[Settings] Updated scannerCidr.value to:', scannerCidr.value)
+  
+  // Save to localStorage
+  localStorage.setItem('printerScannerCidr', trimmed)
+  console.log('[Settings] Saved to localStorage:', localStorage.getItem('printerScannerCidr'))
+  
+  // Refresh file list with new CIDR
+  console.log('[Settings] Calling refreshFileListFromBackend with:', trimmed)
+  refreshFileListFromBackend(trimmed)
 }
 
 /** Movement helpers */
@@ -457,8 +519,8 @@ onMounted(() => {
   window.addEventListener('mouseup', stopResize)
   
   // Load gcode file list on mount
-  console.log('[Sidebar] Component mounted, loading gcode files...')
-  refreshFileListFromBackend().then(() => {
+  console.log('[Sidebar] Component mounted, loading gcode files with CIDR:', scannerCidr.value)
+  refreshFileListFromBackend(scannerCidr.value).then(() => {
     console.log('[Sidebar] Gcode files loaded:', gcodeFiles.value)
   }).catch(err => {
     console.error('[Sidebar] Error loading gcode files:', err)

@@ -361,6 +361,7 @@
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
+import { scannerCidr } from './commandService';
 
 interface Printer {
   hostname: string;
@@ -517,7 +518,8 @@ export default defineComponent({
     const fetchPrinters = async (opts?: { force?: boolean }) => {
       try {
         const force = !!opts?.force;
-        const path = force ? '/api/devices?force=1' : '/api/devices';
+        const cidr = scannerCidr.value;
+        const path = force ? `/api/devices?force=1&cidr=${encodeURIComponent(cidr)}` : `/api/devices?cidr=${encodeURIComponent(cidr)}`;
         const data = await apiFetch<Printer[]>(path);
         await updatePrinters(data);
         isLoading.value = false;

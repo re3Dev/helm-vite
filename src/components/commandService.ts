@@ -119,6 +119,16 @@ export const selectedStepSize = ref<number>(10)
 // Reactive gcode files list
 export const gcodeFiles = ref<string[]>([])
 
+// Network CIDR configuration (stored in localStorage)
+const getInitialCidr = () => {
+  try {
+    return localStorage.getItem('printerScannerCidr') || '192.168.1.0/24'
+  } catch {
+    return '192.168.1.0/24'
+  }
+}
+export const scannerCidr = ref<string>(getInitialCidr())
+
 // Print selection state (global for now)
 const selectedPrintFile = ref<string>('') // filename relative to gcodes root
 const lastUploadedFile = ref<string>('')
@@ -164,10 +174,13 @@ function updatePrintDropdownOptions(options: string[]) {
 
 
 
-async function refreshFileListFromBackend(): Promise<string[]> {
+async function refreshFileListFromBackend(cidr?: string): Promise<string[]> {
   try {
-    console.log('[GcodeList] Fetching gcode files from /api/gcodes')
-    const data = await apiFetch<{ count: number; files: string[] }>('/api/gcodes')
+    const url = cidr ? `/api/gcodes?cidr=${encodeURIComponent(cidr)}` : '/api/gcodes'
+    console.log('[GcodeList] Fetching gcode files from:', url)
+    console.log('[GcodeList] CIDR parameter:', cidr)
+    
+    const data = await apiFetch<{ count: number; files: string[] }>(url)
     console.log('[GcodeList] Full response received:', JSON.stringify(data, null, 2))
     console.log('[GcodeList] data.files:', data?.files)
     console.log('[GcodeList] data.count:', data?.count)
@@ -319,7 +332,7 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
 
     // Refresh file list from backend
     try {
-      await refreshFileListFromBackend()
+      await refreshFileListFromBackend(scannerCidr.value)
     } catch {}
 
     return { ok: failed === 0, total, success, failed }
@@ -334,7 +347,7 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
 
   // Refresh file list
   if (command.type === 'button' && command.label === 'Refresh File List') {
-    await refreshFileListFromBackend()
+    await refreshFileListFromBackend(scannerCidr.value)
     return
   }
 
