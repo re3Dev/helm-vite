@@ -119,6 +119,7 @@
                     <div class="print-row">
                       <div class="grow">
                         <v-autocomplete
+                          ref="gcodeAutocomplete"
                           v-if="printSelectCommand(group.commands)"
                           :label="printSelectCommand(group.commands).label"
                           :items="gcodeFiles"
@@ -128,6 +129,7 @@
                           class="sidebar-input gcode-autocomplete"
                           :menu-props="{ maxHeight: 300, contentClass: 'gcode-menu-content' }"
                           @update:modelValue="v => runCommand(printSelectCommand(group.commands), v)"
+                          @update:menu="onGcodeMenuChange"
                         />
                       </div>
 
@@ -307,7 +309,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineProps, computed } from 'vue'
 import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles } from './commandService.ts'
 
 const props = defineProps({
@@ -316,6 +318,24 @@ const props = defineProps({
 
 /** ✅ Match right rail behavior */
 const collapsedWidth = 38
+
+/** Gcode autocomplete width handler */
+const gcodeAutocomplete = ref(null)
+
+function onGcodeMenuChange(isOpen) {
+  if (!isOpen) return
+  
+  // When menu opens, force the content width
+  setTimeout(() => {
+    const menu = document.querySelector('.gcode-menu-content')
+    if (menu) {
+      menu.style.width = '560px'
+      menu.style.minWidth = '560px'
+      menu.style.maxWidth = '560px'
+      console.log('[GcodeMenu] Set menu width to 560px')
+    }
+  }, 10)
+}
 
 /** Movement helpers */
 function isStepButton(cmd) { return typeof cmd?.stepSize === 'number' }
@@ -724,25 +744,11 @@ function toggleCollapse() {
 .sidebar-input :deep(.v-field__input),
 .sidebar-input :deep(textarea){ font-size: 12.5px; }
 
-/* Gcode autocomplete: maintain dropdown width */
-.gcode-autocomplete :deep(.v-autocomplete__content) {
-  min-width: 100% !important;
-}
-
-/* Lock menu content width (prevents resizing on scroll) */
-:deep(.gcode-menu-content) {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-:deep(.gcode-menu-content .v-list) {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
+/* Gcode autocomplete: ellipsis for long names */
 :deep(.gcode-menu-content .v-list-item) {
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Resizer */
