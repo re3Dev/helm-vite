@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { selectedPrinters } from '../store/printerStore'
 import { commandValues } from '../store/commandValues'
+import { apiFetch } from '../api'
 
 type CommandType = 'button' | 'number' | 'dropdown' | 'gcode-input' | 'file-upload'
 
@@ -115,14 +116,14 @@ export { selectedPrinters }
 export const stepSizes = [100, 10, 1] as const
 export const selectedStepSize = ref<number>(10)
 
+// Reactive gcode files list
+export const gcodeFiles = ref<string[]>([])
+
 // Print selection state (global for now)
 const selectedPrintFile = ref<string>('') // filename relative to gcodes root
 const lastUploadedFile = ref<string>('')
 
-/** Helpers */
-function getFirstSelectedPrinter(): string | null {
-  return selectedPrinters.value.length ? selectedPrinters.value[0] : null
-}
+
 
 function toOneFile(value: unknown): File | null {
   if (!value) return null
@@ -134,24 +135,62 @@ function toOneFile(value: unknown): File | null {
 }
 
 function updatePrintDropdownOptions(options: string[]) {
+  console.log('[UpdateDropdown] Attempting to update dropdown with', options.length, 'options')
+  
+  // Update reactive ref
+  gcodeFiles.value = options
+  console.log('[UpdateDropdown] Updated gcodeFiles ref')
+  
+  // Also update in commandGroups for backwards compatibility
   const printGroup = commandGroups.value.find(g => g.title === 'Print')
-  if (!printGroup) return
+  console.log('[UpdateDropdown] Print group found:', !!printGroup)
+  
+  if (!printGroup) {
+    console.error('[UpdateDropdown] Print group not found!')
+    return
+  }
+  
   const dropdown = printGroup.commands.find(c => c.type === 'dropdown' && c.label === 'Select File')
-  if (!dropdown) return
+  console.log('[UpdateDropdown] Dropdown found:', !!dropdown)
+  
+  if (!dropdown) {
+    console.error('[UpdateDropdown] Dropdown command not found!')
+    return
+  }
+  
   dropdown.options = options
+  console.log('[UpdateDropdown] Dropdown options updated:', dropdown.options)
 }
 
-async function refreshFileListFromPrinter(base: string): Promise<string[]> {
-  const url = `http://${base}/server/files/list?root=gcodes`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`File list failed (${res.status})`)
-  const data = await res.json()
 
-  const paths = Array.isArray(data) ? data.map((x: any) => x?.path).filter(Boolean) : []
-  paths.sort((a: string, b: string) => a.localeCompare(b))
-  updatePrintDropdownOptions(paths)
-  return paths
+
+async function refreshFileListFromBackend(): Promise<string[]> {
+  try {
+    console.log('[GcodeList] Fetching gcode files from /api/gcodes')
+    const data = await apiFetch<{ count: number; files: string[] }>('/api/gcodes')
+    console.log('[GcodeList] Full response received:', JSON.stringify(data, null, 2))
+    console.log('[GcodeList] data.files:', data?.files)
+    console.log('[GcodeList] data.count:', data?.count)
+    console.log('[GcodeList] typeof data:', typeof data)
+    console.log('[GcodeList] data keys:', Object.keys(data || {}))
+    
+    const files = Array.isArray(data?.files) ? data.files : []
+    console.log('[GcodeList] Extracted files:', files)
+    
+    files.sort((a: string, b: string) => a.localeCompare(b))
+    console.log('[GcodeList] Sorted files:', files)
+    
+    updatePrintDropdownOptions(files)
+    console.log('[GcodeList] Updated dropdown with', files.length, 'files')
+    
+    return files
+  } catch (err) {
+    console.error('[GcodeList] Failed to fetch gcode files from backend:', err)
+    return []
+  }
 }
+
+export { refreshFileListFromBackend }
 
 async function uploadGcodeToPrinter(base: string, file: File, opts?: { path?: string; autoPrint?: boolean }) {
   const fd = new FormData()
@@ -278,10 +317,10 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
     const success = results.filter(r => r.status === 'fulfilled').length
     const failed = total - success
 
-    const first = getFirstSelectedPrinter()
-    if (first) {
-      try { await refreshFileListFromPrinter(first) } catch {}
-    }
+    // Refresh file list from backend
+    try {
+      await refreshFileListFromBackend()
+    } catch {}
 
     return { ok: failed === 0, total, success, failed }
   }
@@ -295,9 +334,7 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
 
   // Refresh file list
   if (command.type === 'button' && command.label === 'Refresh File List') {
-    const first = getFirstSelectedPrinter()
-    if (!first) return
-    await refreshFileListFromPrinter(first)
+    await refreshFileListFromBackend()
     return
   }
 

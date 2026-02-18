@@ -118,13 +118,15 @@
 
                     <div class="print-row">
                       <div class="grow">
-                        <v-select
+                        <v-autocomplete
                           v-if="printSelectCommand(group.commands)"
                           :label="printSelectCommand(group.commands).label"
-                          :items="printSelectCommand(group.commands).options"
+                          :items="gcodeFiles"
                           density="compact"
                           hide-details
-                          class="sidebar-input"
+                          clearable
+                          class="sidebar-input gcode-autocomplete"
+                          :menu-props="{ maxHeight: 300, contentClass: 'gcode-menu-content' }"
                           @update:modelValue="v => runCommand(printSelectCommand(group.commands), v)"
                         />
                       </div>
@@ -306,7 +308,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
-import { runCommand, selectedStepSize } from './commandService.ts'
+import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles } from './commandService.ts'
 
 const props = defineProps({
   groups: { type: Array, default: () => [] }
@@ -433,6 +435,14 @@ function stopResize() { isResizing = false }
 onMounted(() => {
   window.addEventListener('mousemove', handleMouseMove)
   window.addEventListener('mouseup', stopResize)
+  
+  // Load gcode file list on mount
+  console.log('[Sidebar] Component mounted, loading gcode files...')
+  refreshFileListFromBackend().then(() => {
+    console.log('[Sidebar] Gcode files loaded:', gcodeFiles.value)
+  }).catch(err => {
+    console.error('[Sidebar] Error loading gcode files:', err)
+  })
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', handleMouseMove)
@@ -713,6 +723,27 @@ function toggleCollapse() {
 .sidebar-input :deep(.v-label){ opacity: 0.80; }
 .sidebar-input :deep(.v-field__input),
 .sidebar-input :deep(textarea){ font-size: 12.5px; }
+
+/* Gcode autocomplete: maintain dropdown width */
+.gcode-autocomplete :deep(.v-autocomplete__content) {
+  min-width: 100% !important;
+}
+
+/* Lock menu content width (prevents resizing on scroll) */
+:deep(.gcode-menu-content) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.gcode-menu-content .v-list) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.gcode-menu-content .v-list-item) {
+  word-break: break-word;
+  white-space: normal;
+}
 
 /* Resizer */
 .resizer{

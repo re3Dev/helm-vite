@@ -24,6 +24,9 @@
 #
 # NEW (UI heartbeat):
 #   GET /api/health
+#
+# ✅ NEW (fleet file list):
+#   GET /api/gcodes                (unique gcode file paths across allowed printers)
 
 from flask import Flask, jsonify, request, send_from_directory, make_response, abort
 from flask_cors import CORS
@@ -48,10 +51,7 @@ logger = logging.getLogger(__name__)
 # Serve the built Vue app from project-root /dist
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # project root (parent of /backend)
 
-
 app = Flask(__name__, static_folder="static/assets", static_url_path="/assets")
-
-
 
 # If you want cookie-based auth from a different origin, keep supports_credentials True
 CORS(app, supports_credentials=True)
@@ -98,7 +98,7 @@ def _sanitize_right_rail_payload(payload: Any) -> Dict[str, Any]:
     # Light shape validation (keep only expected fields)
     clean_notes = []
     for n in notes:
-        if not isinstance(n, dict): 
+        if not isinstance(n, dict):
             continue
         nid = str(n.get("id") or "")
         text = str(n.get("text") or "")
@@ -153,7 +153,6 @@ def _write_right_rail_for_user(user_id: str, doc: Dict[str, Any]) -> None:
         json.dump(doc, f, indent=2)
     os.replace(tmp, path)
 
-
 users_file_lock = threading.Lock()
 
 # In-memory session store: token -> user_id
@@ -176,14 +175,11 @@ HEALTH_SNAPSHOT: Dict[str, Any] = {
     "last_error": None,
 }
 
-
 def ensure_data_dir() -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
 
-
 def _default_users_doc() -> Dict[str, Any]:
     return {"users": []}
-
 
 def load_users_doc() -> Dict[str, Any]:
     ensure_data_dir()
@@ -199,7 +195,6 @@ def load_users_doc() -> Dict[str, Any]:
         except Exception:
             return _default_users_doc()
 
-
 def save_users_doc(doc: Dict[str, Any]) -> None:
     ensure_data_dir()
     with users_file_lock:
@@ -208,14 +203,12 @@ def save_users_doc(doc: Dict[str, Any]) -> None:
             json.dump(doc, f, indent=2)
         os.replace(tmp, USERS_FILE)
 
-
 def is_configured() -> bool:
     doc = load_users_doc()
     for u in doc.get("users", []):
         if u.get("role") == "admin":
             return True
     return False
-
 
 def find_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     doc = load_users_doc()
@@ -224,14 +217,12 @@ def find_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
             return u
     return None
 
-
 def find_admin() -> Optional[Dict[str, Any]]:
     doc = load_users_doc()
     for u in doc.get("users", []):
         if u.get("role") == "admin":
             return u
     return None
-
 
 def find_user_by_pin(pin: str) -> Optional[Dict[str, Any]]:
     doc = load_users_doc()
@@ -240,7 +231,6 @@ def find_user_by_pin(pin: str) -> Optional[Dict[str, Any]]:
             return u
     return None
 
-
 def find_admin_by_username(username: str) -> Optional[Dict[str, Any]]:
     doc = load_users_doc()
     for u in doc.get("users", []):
@@ -248,18 +238,15 @@ def find_admin_by_username(username: str) -> Optional[Dict[str, Any]]:
             return u
     return None
 
-
 def create_session(user_id: str) -> str:
     token = secrets.token_urlsafe(24)
     with sessions_lock:
         sessions[token] = user_id
     return token
 
-
 def clear_session(token: str) -> None:
     with sessions_lock:
         sessions.pop(token, None)
-
 
 def get_token_from_request() -> Optional[str]:
     # Prefer Authorization header
@@ -269,7 +256,6 @@ def get_token_from_request() -> Optional[str]:
     # Fallback to cookie
     tok = request.cookies.get("helm_session")
     return tok or None
-
 
 def current_user() -> Optional[Dict[str, Any]]:
     tok = get_token_from_request()
@@ -281,7 +267,6 @@ def current_user() -> Optional[Dict[str, Any]]:
         return None
     return find_user_by_id(uid)
 
-
 def require_configured(fn: Callable):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -289,7 +274,6 @@ def require_configured(fn: Callable):
             return jsonify({"error": "not_configured"}), 409
         return fn(*args, **kwargs)
     return wrapper
-
 
 def require_auth(fn: Callable):
     @wraps(fn)
@@ -299,7 +283,6 @@ def require_auth(fn: Callable):
             return jsonify({"error": "unauthorized"}), 401
         return fn(*args, **kwargs)
     return wrapper
-
 
 def require_admin(fn: Callable):
     @wraps(fn)
@@ -311,7 +294,6 @@ def require_admin(fn: Callable):
             return jsonify({"error": "forbidden"}), 403
         return fn(*args, **kwargs)
     return wrapper
-
 
 def allowed_printer_hostnames_for_user(u: Dict[str, Any]) -> Optional[set]:
     """
@@ -328,7 +310,6 @@ def allowed_printer_hostnames_for_user(u: Dict[str, Any]) -> Optional[set]:
         return None
     return set(str(x) for x in printers if x)
 
-
 def filter_devices_for_user(devices: List[Dict[str, Any]], u: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
     # If not logged in, show nothing (your UI will route to login anyway)
     if not u:
@@ -342,7 +323,6 @@ def filter_devices_for_user(devices: List[Dict[str, Any]], u: Optional[Dict[str,
         if hn in allowed:
             out.append(d)
     return out
-
 
 # ---------------------------
 # Helpers: local IP, ARP table
@@ -360,7 +340,6 @@ def get_my_ipv4() -> str:
     finally:
         s.close()
 
-
 def ping_once(ip: str, timeout_ms: int = 150) -> None:
     """
     Fire-and-forget ping to warm Windows neighbor/ARP cache.
@@ -374,7 +353,6 @@ def ping_once(ip: str, timeout_ms: int = 150) -> None:
     except Exception:
         pass
 
-
 def warm_neighbor_table(cidr: str, limit: Optional[int] = None) -> None:
     """
     Ping-sweep (lightweight) to populate arp -a. Limit can reduce load.
@@ -386,7 +364,6 @@ def warm_neighbor_table(cidr: str, limit: Optional[int] = None) -> None:
         count += 1
         if limit is not None and count >= limit:
             break
-
 
 def parse_arp_a() -> List[Tuple[str, str]]:
     """
@@ -418,7 +395,6 @@ def parse_arp_a() -> List[Tuple[str, str]]:
 
     return entries
 
-
 def port_open(ip: str, port: int, timeout: float = 0.25) -> bool:
     """
     Fast TCP connect test.
@@ -428,7 +404,6 @@ def port_open(ip: str, port: int, timeout: float = 0.25) -> bool:
             return True
     except OSError:
         return False
-
 
 # ---------------------------
 # Moonraker probing + queries
@@ -453,7 +428,6 @@ def pick_moonraker_base(ip: str, ports: List[int]) -> Optional[str]:
         except ValueError:
             continue
     return None
-
 
 def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_hostnames) -> None:
     """
@@ -536,7 +510,6 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
     except (KeyError, TypeError, ValueError) as e:
         logger.info("Unexpected JSON shape for %s via %s: %s", ip, base, e)
 
-
 def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, processed_hostnames) -> None:
     """
     Worker: quick port check then Moonraker probe then details fetch.
@@ -550,7 +523,6 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
         return
 
     fetch_printer_details(base, ip, mac, devices_list, processed_hostnames)
-
 
 def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, Any]]:
     t0 = time.time()
@@ -607,20 +579,68 @@ def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, 
             pass
         raise
 
-
 # ---------------------------
 # History aggregation helpers
 # ---------------------------
 
-def moonraker_get_json(base: str, path: str, timeout: float = 2.5) -> Optional[Dict[str, Any]]:
+def moonraker_get_json(base: str, path: str, timeout: float = 2.5) -> Optional[Any]:
     url = f"{base}{path}"
     try:
+        logger.debug(f"[moonraker_get_json] GET {url}")
         r = requests.get(url, timeout=timeout)
         r.raise_for_status()
-        return r.json()
-    except Exception:
+        result = r.json()
+        logger.debug(f"[moonraker_get_json] Response: {type(result)} - {str(result)[:200]}")
+        return result
+    except Exception as e:
+        logger.error(f"[moonraker_get_json] Error fetching {url}: {e}")
         return None
 
+# ---------------------------
+# ✅ NEW: Fleet gcode file listing helper
+# ---------------------------
+
+def fetch_gcodes_for_printer(base: str, timeout: float = 6.0) -> List[str]:
+    """
+    Query Moonraker for gcodes list.
+    Returns relative paths under gcodes root, e.g.:
+      "benchy.gcode"
+      "folder/subpart.gcode"
+    """
+    j = moonraker_get_json(base, "/server/files/list?root=gcodes", timeout=timeout)
+    
+    # Handle different response formats
+    files = []
+    
+    # Case 1: Direct array response
+    if isinstance(j, list):
+        files = j
+    # Case 2: Dict with "result" key containing array
+    elif isinstance(j, dict):
+        if isinstance(j.get("result"), list):
+            files = j.get("result", [])
+        # Case 3: Dict with "files" key
+        elif isinstance(j.get("files"), list):
+            files = j.get("files", [])
+        # Case 4: Just try to use it as-is if it has properties
+        else:
+            files = [j] if j else []
+    
+    if not isinstance(files, list):
+        return []
+
+    out: List[str] = []
+    for f in files:
+        if not isinstance(f, dict):
+            continue
+        p = f.get("path") or f.get("filename") or ""
+        p = str(p).strip()
+        if not p:
+            continue
+        if not p.lower().endswith((".gcode", ".gco", ".gc")):
+            continue
+        out.append(p)
+    return out
 
 def fetch_history_totals(base: str) -> Optional[Dict[str, Any]]:
     """
@@ -636,7 +656,6 @@ def fetch_history_totals(base: str) -> Optional[Dict[str, Any]]:
         return j["result"]
     return None
 
-
 def fetch_history_list_page(base: str, limit: int, start: int, order: str = "desc") -> Optional[Dict[str, Any]]:
     """
     /server/history/list?limit=...&start=...&order=...
@@ -650,7 +669,6 @@ def fetch_history_list_page(base: str, limit: int, start: int, order: str = "des
     if "result" in j and isinstance(j["result"], dict) and "jobs" in j["result"]:
         return j["result"]
     return None
-
 
 def find_job_matching_duration(
     base: str,
@@ -688,7 +706,6 @@ def find_job_matching_duration(
 
     return None
 
-
 # ---------------------------
 # NEW: status + monthly rollups
 # ---------------------------
@@ -718,7 +735,6 @@ def _bucket_status(raw: Optional[str]) -> str:
 
     return "other"
 
-
 def _month_label_from_ts(ts: Optional[float]) -> Optional[str]:
     if not ts:
         return None
@@ -728,7 +744,6 @@ def _month_label_from_ts(ts: Optional[float]) -> Optional[str]:
     except Exception:
         return None
 
-
 def _iso_from_ts(ts: Optional[float]) -> Optional[str]:
     if not ts:
         return None
@@ -736,7 +751,6 @@ def _iso_from_ts(ts: Optional[float]) -> Optional[str]:
         return datetime.fromtimestamp(float(ts)).isoformat()
     except Exception:
         return None
-
 
 def scan_history_stats(
     base: str,
@@ -813,7 +827,6 @@ def scan_history_stats(
         "last_print_finished": _iso_from_ts(last_end_ts) if last_end_ts else None,
     }
 
-
 def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -> Dict[str, Any]:
     base = device.get("base_url")
     out: Dict[str, Any] = {
@@ -888,7 +901,6 @@ def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -
 
     return out
 
-
 # ---------------------------
 # Routes: Auth
 # ---------------------------
@@ -896,7 +908,6 @@ def aggregate_history_for_device(device: Dict[str, Any], opts: Dict[str, Any]) -
 @app.route("/api/auth/status", methods=["GET"])
 def auth_status():
     return jsonify({"configured": is_configured()})
-
 
 @app.route("/api/auth/setup", methods=["POST"])
 def auth_setup():
@@ -931,7 +942,6 @@ def auth_setup():
     # Optional cookie (works nicely for kiosk/local)
     resp.set_cookie("helm_session", token, httponly=False, samesite="Lax")
     return resp
-
 
 @app.route("/api/auth/login", methods=["POST"])
 @require_configured
@@ -977,7 +987,6 @@ def auth_login():
     resp.set_cookie("helm_session", token, httponly=False, samesite="Lax")
     return resp
 
-
 @app.route("/api/auth/logout", methods=["POST"])
 def auth_logout():
     tok = get_token_from_request()
@@ -986,7 +995,6 @@ def auth_logout():
     resp = make_response(jsonify({"ok": True}))
     resp.delete_cookie("helm_session")
     return resp
-
 
 @app.route("/api/me", methods=["GET"])
 @require_auth
@@ -1024,8 +1032,6 @@ def right_rail_put():
         _write_right_rail_for_user(uid, doc)
     return jsonify({"ok": True})
 
-
-
 # ---------------------------
 # ✅ Routes: Health (for UI heartbeat)
 # ---------------------------
@@ -1045,7 +1051,6 @@ def api_health():
         "snapshot": HEALTH_SNAPSHOT,
     })
 
-
 # ---------------------------
 # Routes: Admin user management
 # ---------------------------
@@ -1062,7 +1067,6 @@ def users_list():
             u2.pop("password", None)
         users_out.append(u2)
     return jsonify({"users": users_out})
-
 
 @app.route("/api/users", methods=["POST"])
 @require_admin
@@ -1100,7 +1104,6 @@ def users_create():
     save_users_doc(doc)
 
     return jsonify({"ok": True, "user": {"id": new_id, "role": "user", "name": name, "pin": pin, "printers": []}})
-
 
 @app.route("/api/users/<user_id>", methods=["PATCH"])
 @require_admin
@@ -1145,7 +1148,6 @@ def users_patch(user_id: str):
     save_users_doc(doc)
     return jsonify({"ok": True})
 
-
 @app.route("/api/users/<user_id>", methods=["DELETE"])
 @require_admin
 def users_delete(user_id: str):
@@ -1160,7 +1162,6 @@ def users_delete(user_id: str):
     doc["users"] = users
     save_users_doc(doc)
     return jsonify({"ok": True})
-
 
 @app.route("/api/users/<user_id>/printers", methods=["PUT"])
 @require_admin
@@ -1225,7 +1226,6 @@ def _local_ipv4_set() -> set:
 
     return ips
 
-
 @app.route("/api/auth/autologin", methods=["POST"])
 def auth_autologin():
     # Only allow auto-login from the SAME machine running the server
@@ -1250,9 +1250,6 @@ def auth_autologin():
     resp.set_cookie("helm_session", token, httponly=False, samesite="Lax")
     return resp
 
-
-
-
 # ---------------------------
 # Routes: Devices (filtered)
 # ---------------------------
@@ -1276,6 +1273,75 @@ def get_devices_api():
     devices_list = filter_devices_for_user(devices_list, u)
     return jsonify(devices_list)
 
+# ---------------------------
+# ✅ NEW: Routes: Fleet gcode list (filtered)
+# ---------------------------
+
+@app.route("/api/gcodes", methods=["GET"])
+@require_auth
+def api_gcodes():
+    """
+    Return a unique, sorted list of gcode file paths across all discovered printers
+    visible to the current user.
+
+    Query params mirror /api/devices:
+      ?cidr=192.168.1.0/24
+      ?warm=1
+      ?ports=7125,80,4408
+    """
+    cidr = request.args.get("cidr", "192.168.1.0/24")
+    warm = request.args.get("warm", "1") != "0"
+    ports_arg = request.args.get("ports", "")
+    ports = [7125, 80, 4408]
+
+    if ports_arg.strip():
+        try:
+            ports = [int(p.strip()) for p in ports_arg.split(",") if p.strip()]
+        except ValueError:
+            return jsonify({"error": "Invalid ports param. Use e.g. ?ports=7125,80,4408"}), 400
+
+    logger.info(f"[/api/gcodes] Discovering devices on CIDR: {cidr}, warm: {warm}, ports: {ports}")
+    devices = discover_devices(cidr=cidr, warm=warm, ports=ports)
+    logger.info(f"[/api/gcodes] Found {len(devices)} total devices")
+    
+    u = current_user()
+    logger.info(f"[/api/gcodes] Current user: {u.get('id') if u else 'None'}")
+    
+    devices = filter_devices_for_user(devices, u)
+    logger.info(f"[/api/gcodes] After user filter: {len(devices)} devices")
+    
+    for i, d in enumerate(devices):
+        logger.info(f"[/api/gcodes] Device {i}: {d.get('hostname')} ({d.get('ip')}) -> {d.get('base_url')}")
+
+    all_files: set = set()
+    lock = threading.Lock()
+    threads: List[threading.Thread] = []
+
+    def worker(dev: Dict[str, Any]):
+        base = dev.get("base_url")
+        if not base:
+            logger.warning(f"[/api/gcodes] Device {dev.get('hostname')} has no base_url")
+            return
+        logger.info(f"[/api/gcodes] Fetching gcodes from {base}")
+        files = fetch_gcodes_for_printer(base)
+        logger.info(f"[/api/gcodes] Got {len(files) if files else 0} files from {base}: {files}")
+        if not files:
+            return
+        with lock:
+            for p in files:
+                all_files.add(p)
+
+    for d in devices:
+        t = threading.Thread(target=worker, args=(d,))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+
+    items = sorted(all_files, key=lambda s: str(s).lower())
+    logger.info(f"[/api/gcodes] Returning {len(items)} unique gcode files")
+    return jsonify({"count": len(items), "files": items})
 
 # ---------------------------
 # Routes: History aggregate (filtered)
@@ -1445,7 +1511,6 @@ def history_aggregate():
         "by_printer": per_printer_sorted,
     })
 
-
 def pick_port(host="0.0.0.0", preferred=5000):
     for p in [preferred, 5050, 8000, 8080, 0]:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1458,7 +1523,6 @@ def pick_port(host="0.0.0.0", preferred=5000):
             s.close()
     return preferred
 
-
 @app.route("/__debug")
 def __debug():
     return jsonify({
@@ -1468,14 +1532,9 @@ def __debug():
         "index_exists": os.path.isfile(os.path.join(app.static_folder, "index.html")),
     })
 
-
 @app.route("/__ping")
 def __ping():
     return "pong-from-this-app.py", 200
-
-
-
-
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
@@ -1492,13 +1551,9 @@ def spa_fallback(path):
 
     return send_from_directory(static_root, "index.html")
 
-
 @app.route("/__routes")
 def __routes():
     return jsonify(sorted([str(r) for r in app.url_map.iter_rules()]))
-
-
-
 
 if __name__ == "__main__":
     host = "0.0.0.0"

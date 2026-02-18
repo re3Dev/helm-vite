@@ -1,18 +1,5 @@
 {
-  "notes": [
-    {
-      "id": "note_mljyztrm_kxaorw",
-      "text": "Testing: Athena, 803, 558",
-      "created_at": 1770931674994
-    }
-  ],
-  "tasks": [
-    {
-      "id": "task_mljz0gbx_aqy2i3",
-      "text": "complete stress tests",
-      "done": false,
-      "created_at": 1770931704237
-    }
-  ],
+  "notes": [],
+  "tasks": [],
   "scratchpad": ""
 }
