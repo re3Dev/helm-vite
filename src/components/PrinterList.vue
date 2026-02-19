@@ -225,6 +225,13 @@
                 </div>
               </div>
 
+              <div v-if="selectedFileName" class="file-availability-row">
+                <span :class="['file-availability-badge', fileAvailabilityClass(printer)]">
+                  <v-icon size="14">{{ fileAvailabilityIcon(printer) }}</v-icon>
+                  {{ fileAvailabilityLabel(printer) }}
+                </span>
+              </div>
+
 
               <!-- status + reserved second line (compact) -->
               <div class="status-stack">
@@ -432,6 +439,9 @@
                 <span>
                   {{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : 'Not Printing' }}
                 </span>
+                <div v-if="selectedFileName" :class="['list-file-availability', fileAvailabilityClass(printer)]">
+                  {{ fileAvailabilityLabel(printer) }}
+                </div>
               </td>
             </tr>
           </tbody>
@@ -445,7 +455,7 @@
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
-import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp } from './commandService';
+import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPrintFile } from './commandService';
 
 interface Printer {
   hostname: string;
@@ -475,6 +485,7 @@ type PrinterCache = {
 };
 
 type SortMode = 'dynamic' | 'alphabetical' | 'custom';
+type FileAvailability = 'checking' | 'exists' | 'missing' | 'error';
 
 export default defineComponent({
   name: 'PrinterGrid',
@@ -488,6 +499,9 @@ export default defineComponent({
     const isRefreshing = ref(false);
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
     const cacheByIp = ref<Record<string, PrinterCache>>({});
+    const selectedFileAvailabilityByIp = ref<Record<string, FileAvailability>>({});
+    const selectedFileName = computed(() => String(selectedPrintFile.value || '').trim());
+    let fileAvailabilityRun = 0;
 
     const SORT_MODE_KEY = 'printerListSortMode';
     const SORT_ORDER_KEY = 'printerListCustomOrder';
@@ -794,6 +808,123 @@ export default defineComponent({
       return printerTransientStatusByIp.value[printer.ip] || '';
     };
 
+    const getFileAvailability = (printer: Printer): FileAvailability => {
+      if (!selectedFileName.value) return 'checking';
+      return selectedFileAvailabilityByIp.value[printer.ip] || 'checking';
+    };
+
+    const fileAvailabilityClass = (printer: Printer) => {
+      const s = getFileAvailability(printer);
+      if (s === 'exists') return 'file-exists';
+      if (s === 'missing') return 'file-missing';
+      if (s === 'error') return 'file-error';
+      return 'file-checking';
+    };
+
+    const fileAvailabilityIcon = (printer: Printer) => {
+      const s = getFileAvailability(printer);
+      if (s === 'exists') return 'mdi-check-circle';
+      if (s === 'missing') return 'mdi-close-circle';
+      if (s === 'error') return 'mdi-alert-circle';
+      return 'mdi-progress-clock';
+    };
+
+    const fileAvailabilityLabel = (printer: Printer) => {
+      const s = getFileAvailability(printer);
+      if (s === 'exists') return 'Selected file found';
+      if (s === 'missing') return 'Selected file missing';
+      if (s === 'error') return 'Cannot verify selected file';
+      return 'Checking selected file...';
+    };
+
+    const checkFileExistsOnPrinter = async (baseUrl: string, filename: string): Promise<FileAvailability> => {
+      const target = String(baseUrl || '').trim();
+      const file = String(filename || '').trim();
+      if (!target || !file) return 'missing';
+
+      try {
+        const metadataRes = await fetch(`${target}/server/files/metadata?filename=${encodeURIComponent(file)}`);
+        if (metadataRes.ok) {
+          const data = await metadataRes.json().catch(() => ({}));
+          if ((data as any)?.error) return 'missing';
+          return 'exists';
+        }
+        if (metadataRes.status === 404) return 'missing';
+      } catch {
+      }
+
+      try {
+        const listRes = await fetch(`${target}/server/files/list?root=gcodes`);
+        if (!listRes.ok) return 'error';
+        const raw = await listRes.json().catch(() => ({}));
+
+        const files = Array.isArray(raw)
+          ? raw
+          : Array.isArray((raw as any)?.result)
+            ? (raw as any).result
+            : Array.isArray((raw as any)?.files)
+              ? (raw as any).files
+              : [];
+
+        const needle = file.toLowerCase();
+        const exists = files.some((entry: any) => {
+          const p = String(entry?.path ?? entry?.filename ?? '').trim().toLowerCase();
+          return p === needle;
+        });
+
+        return exists ? 'exists' : 'missing';
+      } catch {
+        return 'error';
+      }
+    };
+
+    const refreshSelectedFileAvailability = async () => {
+      const runId = ++fileAvailabilityRun;
+      const file = selectedFileName.value;
+      const snapshot = printers.value.map((p) => ({ ip: p.ip, base_url: p.base_url }));
+
+      if (!file) {
+        selectedFileAvailabilityByIp.value = {};
+        return;
+      }
+
+      const initial: Record<string, FileAvailability> = {};
+      snapshot.forEach((p) => {
+        initial[p.ip] = 'checking';
+      });
+      selectedFileAvailabilityByIp.value = initial;
+
+      const resolved = await Promise.all(
+        snapshot.map(async (p) => {
+          const state = await checkFileExistsOnPrinter(p.base_url, file);
+          return { ip: p.ip, state };
+        })
+      );
+
+      if (runId !== fileAvailabilityRun) return;
+
+      const next: Record<string, FileAvailability> = {};
+      resolved.forEach(({ ip, state }) => {
+        next[ip] = state;
+      });
+      selectedFileAvailabilityByIp.value = next;
+    };
+
+    const fileCheckPrinterSignature = computed(() => {
+      return printers.value
+        .map((p) => `${p.ip}|${p.base_url}`)
+        .sort()
+        .join(';');
+    });
+
+    watch(
+      [selectedFileName, fileCheckPrinterSignature],
+      () => {
+        void refreshSelectedFileAvailability();
+      },
+      { immediate: true }
+    );
+
     const formatFileName = (filePath: string | null): string => {
       if (!filePath) return "Not Printing";
       const prefix = "/home/pi/printer_data/gcodes/";
@@ -807,6 +938,7 @@ export default defineComponent({
     });
 
     onBeforeUnmount(() => {
+      fileAvailabilityRun++;
       if (fetchInterval) clearInterval(fetchInterval);
     });
 
@@ -846,6 +978,10 @@ export default defineComponent({
       selectedPrinters,
       toggleSelection,
       getTransientStatus,
+      selectedFileName,
+      fileAvailabilityClass,
+      fileAvailabilityIcon,
+      fileAvailabilityLabel,
       formatFileName,
       restartFirmware,
       isPrinterBusy,
@@ -992,6 +1128,32 @@ a:active { color: blue; }
   display: flex;
   align-items: center;
 }
+
+.file-availability-row {
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.file-availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.list-file-availability {
+  font-size: 0.75rem;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.file-exists { color: #7CFFB2; }
+.file-missing { color: #FF8A8A; }
+.file-error { color: #FFC107; }
+.file-checking { color: #BCBEC0; }
 
 
 
