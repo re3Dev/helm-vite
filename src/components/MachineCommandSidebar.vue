@@ -914,8 +914,41 @@ function toggleCollapse() {
 }
 
 .print-wrap{ display: flex; flex-direction: column; gap: 12px; }
-.print-controls{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.print-control-btn{ min-width: 0; height: 38px; border-radius: 12px; }
+.print-controls{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.print-control-btn{
+  min-width: 0;
+  height: 42px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08) inset,
+    0 8px 16px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.16);
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.print-control-btn:hover{
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.12) inset,
+    0 10px 18px rgba(0,0,0,0.30);
+  border-color: rgba(255,255,255,0.26);
+}
+
+.print-control-btn:active{
+  transform: translateY(0);
+}
+
+.print-control-btn :deep(.v-btn__content){
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.print-control-btn :deep(.v-icon){
+  font-size: 18px !important;
+}
 .print-row{ display: flex; align-items: center; gap: 8px; }
 .grow{ flex: 1; min-width: 0; }
 .icon-btn{ width: 40px; height: 40px; border-radius: 12px; }
