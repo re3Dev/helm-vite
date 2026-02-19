@@ -121,6 +121,7 @@
                         <v-autocomplete
                           ref="gcodeAutocomplete"
                           v-if="printSelectCommand(group.commands)"
+                          v-model="selectedPrintFile"
                           :label="printSelectCommand(group.commands).label"
                           :items="gcodeFiles"
                           density="compact"
@@ -347,7 +348,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
-import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles, scannerCidr } from './commandService.ts'
+import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles, scannerCidr, selectedPrintFile } from './commandService.ts'
 
 const props = defineProps({
   groups: { type: Array, default: () => [] }

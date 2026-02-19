@@ -271,7 +271,14 @@
                 <!-- always present: reserves 1 line -->
                 <div class="status-sub">
                   <span
-                    v-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)"
+                    v-if="getTransientStatus(printer)"
+                    class="text-yellow"
+                  >
+                    <v-icon>mdi-progress-clock</v-icon>
+                    {{ getTransientStatus(printer) }}
+                  </span>
+                  <span
+                    v-else-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)"
                     class="text-red"
                   >
                     <v-icon>mdi-alert-circle</v-icon>
@@ -392,7 +399,14 @@
 
               <td>{{ printer.hostname }}</td>
               <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
-              <td>{{ isPrinterBusy(printer) ? 'Busy' : printer.status }}</td>
+              <td>
+                <span v-if="getTransientStatus(printer)" class="text-yellow">
+                  {{ getTransientStatus(printer) }}
+                </span>
+                <span v-else>
+                  {{ isPrinterBusy(printer) ? 'Busy' : printer.status }}
+                </span>
+              </td>
 
               <td>
                 <v-progress-linear
@@ -431,7 +445,7 @@
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
-import { scannerCidr, printerBaseUrlByIp } from './commandService';
+import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp } from './commandService';
 
 interface Printer {
   hostname: string;
@@ -478,7 +492,8 @@ export default defineComponent({
     const SORT_MODE_KEY = 'printerListSortMode';
     const SORT_ORDER_KEY = 'printerListCustomOrder';
 
-    const PRINTING_GRACE_MS = 15_000;
+    const PRINTING_GRACE_MS = 4_000;
+    const POLL_INTERVAL_MS = 2_000;
 
     const normalizeStatus = (s?: string | null) => (s ?? '').trim().toLowerCase();
     const isReady = (p: Printer) => normalizeStatus(p.status) === 'ready';
@@ -496,7 +511,10 @@ export default defineComponent({
     };
 
     const hasStrongPrintingEvidence = (p: Printer) => {
-      const hasProgress = typeof p.print_progress === 'number' && p.print_progress > 0;
+      const hasProgress =
+        typeof p.print_progress === 'number' &&
+        p.print_progress > 0 &&
+        p.print_progress < 1;
       return rawIsPrinting(p) || hasProgress;
     };
 
@@ -771,6 +789,11 @@ export default defineComponent({
       }
     };
 
+    const getTransientStatus = (printer: Printer) => {
+      if (!selectedPrinters.value.includes(printer.ip)) return '';
+      return printerTransientStatusByIp.value[printer.ip] || '';
+    };
+
     const formatFileName = (filePath: string | null): string => {
       if (!filePath) return "Not Printing";
       const prefix = "/home/pi/printer_data/gcodes/";
@@ -780,7 +803,7 @@ export default defineComponent({
     onMounted(() => {
       loadSortSettings();
       fetchPrinters();
-      fetchInterval = window.setInterval(fetchPrinters, 5000);
+      fetchInterval = window.setInterval(fetchPrinters, POLL_INTERVAL_MS);
     });
 
     onBeforeUnmount(() => {
@@ -822,6 +845,7 @@ export default defineComponent({
       refreshNow,
       selectedPrinters,
       toggleSelection,
+      getTransientStatus,
       formatFileName,
       restartFirmware,
       isPrinterBusy,

@@ -130,8 +130,43 @@ const getInitialCidr = () => {
 export const scannerCidr = ref<string>(getInitialCidr())
 
 // Print selection state (global for now)
-const selectedPrintFile = ref<string>('') // filename relative to gcodes root
+export const selectedPrintFile = ref<string>('') // filename relative to gcodes root
 const lastUploadedFile = ref<string>('')
+
+// Transient per-printer command status (e.g. "Print job starting...")
+export const printerTransientStatusByIp = ref<Record<string, string>>({})
+const transientStatusTimers = new Map<string, number>()
+const TRANSIENT_STATUS_TTL_MS = 8_000
+
+function clearTransientStatus(ips: string[]) {
+  if (!ips.length) return
+  const next = { ...printerTransientStatusByIp.value }
+  ips.forEach((ip) => {
+    delete next[ip]
+    const t = transientStatusTimers.get(ip)
+    if (typeof t === 'number') {
+      clearTimeout(t)
+      transientStatusTimers.delete(ip)
+    }
+  })
+  printerTransientStatusByIp.value = next
+}
+
+function setTransientStatus(ips: string[], message: string) {
+  if (!ips.length) return
+  const text = String(message || '').trim()
+  if (!text) return
+
+  const next = { ...printerTransientStatusByIp.value }
+  ips.forEach((ip) => {
+    next[ip] = text
+    const prevTimer = transientStatusTimers.get(ip)
+    if (typeof prevTimer === 'number') clearTimeout(prevTimer)
+    const timer = window.setTimeout(() => clearTransientStatus([ip]), TRANSIENT_STATUS_TTL_MS)
+    transientStatusTimers.set(ip, timer)
+  })
+  printerTransientStatusByIp.value = next
+}
 
 // Printer address map: ip -> base_url (e.g. http://192.168.1.50:7125)
 export const printerBaseUrlByIp = ref<Record<string, string>>({})
@@ -372,6 +407,8 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
       return { ok: false }
     }
 
+    setTransientStatus([...selectedPrinters.value], 'Print job starting...')
+
     const results = await Promise.allSettled(
       selectedPrinters.value.map(async (base) => startPrintOnPrinter(base, filename))
     )
@@ -380,6 +417,8 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
   }
 
   if (command.type === 'button' && command.label === 'Pause Print') {
+    setTransientStatus([...selectedPrinters.value], 'Pausing print job...')
+
     const results = await Promise.allSettled(
       selectedPrinters.value.map(async (base) => pausePrintOnPrinter(base))
     )
@@ -388,6 +427,8 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
   }
 
   if (command.type === 'button' && command.label === 'Stop Print') {
+    setTransientStatus([...selectedPrinters.value], 'Stopping print job...')
+
     const results = await Promise.allSettled(
       selectedPrinters.value.map(async (base) => stopPrintOnPrinter(base))
     )
