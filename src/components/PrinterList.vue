@@ -50,11 +50,81 @@
               </v-list-item-subtitle>
             </v-list-item>
 
+            <v-list-item @click="showSortSettings = true">
+              <template #prepend>
+                <v-icon color="yellow">mdi-sort</v-icon>
+              </template>
+              <v-list-item-title>Sort Settings</v-list-item-title>
+            </v-list-item>
+
             <!-- Add more utilities later -->
           </v-list>
         </v-menu>
       </div>
     </div>
+
+    <v-dialog v-model="showSortSettings" max-width="560">
+      <v-card color="background">
+        <v-card-title class="d-flex align-center">
+          <v-icon color="yellow" class="mr-2">mdi-sort</v-icon>
+          Printer Sort Settings
+        </v-card-title>
+
+        <v-card-text>
+          <v-radio-group v-model="sortMode" density="compact">
+            <v-radio value="dynamic" label="Dynamic (non-printing first, printing last)"></v-radio>
+            <v-radio value="alphabetical" label="Alphabetical (static)"></v-radio>
+            <v-radio value="custom" label="Custom order (static)"></v-radio>
+          </v-radio-group>
+
+          <div v-if="sortMode === 'custom'" class="custom-order-box">
+            <div class="text-caption mb-2">Move printers to set display order:</div>
+            <v-list density="compact" class="custom-order-list">
+              <v-list-item
+                v-for="(printer, idx) in customOrderPrinters"
+                :key="printer.ip"
+                class="custom-order-item"
+              >
+                <template #prepend>
+                  <span class="order-index">{{ idx + 1 }}</span>
+                </template>
+
+                <v-list-item-title>{{ printer.hostname }}</v-list-item-title>
+                <v-list-item-subtitle>{{ printer.ip }}</v-list-item-subtitle>
+
+                <template #append>
+                  <div class="order-actions">
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      :disabled="idx === 0"
+                      @click="moveCustomOrderUp(printer.ip)"
+                    >
+                      <v-icon>mdi-chevron-up</v-icon>
+                    </v-btn>
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      :disabled="idx === customOrderPrinters.length - 1"
+                      @click="moveCustomOrderDown(printer.ip)"
+                    >
+                      <v-icon>mdi-chevron-down</v-icon>
+                    </v-btn>
+                  </div>
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="tonal" color="yellow" @click="showSortSettings = false">Done</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- GRID VIEW -->
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
@@ -358,7 +428,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
 import { scannerCidr, printerBaseUrlByIp } from './commandService';
@@ -390,15 +460,23 @@ type PrinterCache = {
   lastKnownFilePath?: string;
 };
 
+type SortMode = 'dynamic' | 'alphabetical' | 'custom';
+
 export default defineComponent({
   name: 'PrinterGrid',
   setup() {
     const printers = ref<Printer[]>([]);
     const isLoading = ref(true);
+    const showSortSettings = ref(false);
+    const sortMode = ref<SortMode>('dynamic');
+    const customOrder = ref<string[]>([]);
 
     const isRefreshing = ref(false);
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
     const cacheByIp = ref<Record<string, PrinterCache>>({});
+
+    const SORT_MODE_KEY = 'printerListSortMode';
+    const SORT_ORDER_KEY = 'printerListCustomOrder';
 
     const PRINTING_GRACE_MS = 15_000;
 
@@ -441,23 +519,97 @@ export default defineComponent({
 
     let fetchInterval: number | null = null;
 
-    const sortedPrinters = computed(() => {
-      const printing = (p: Printer) => isPrinterPrinting(p);
+    const byNameThenIp = (a: Printer, b: Printer) => {
+      const ah = String(a.hostname || '');
+      const bh = String(b.hostname || '');
+      const hn = ah.localeCompare(bh, undefined, { sensitivity: 'base' });
+      if (hn !== 0) return hn;
+      return String(a.ip || '').localeCompare(String(b.ip || ''), undefined, { sensitivity: 'base' });
+    };
 
+    const syncCustomOrderWithPrinters = () => {
+      const ips = printers.value.map((p) => p.ip);
+      const kept = customOrder.value.filter((ip) => ips.includes(ip));
+      const missing = ips.filter((ip) => !kept.includes(ip));
+      customOrder.value = [...kept, ...missing];
+    };
+
+    const sortedPrinters = computed(() => {
+      if (sortMode.value === 'alphabetical') {
+        return [...printers.value].sort(byNameThenIp);
+      }
+
+      if (sortMode.value === 'custom') {
+        const rank = new Map<string, number>(customOrder.value.map((ip, idx) => [ip, idx]));
+        return [...printers.value].sort((a, b) => {
+          const ar = rank.get(a.ip);
+          const br = rank.get(b.ip);
+          const ai = ar === undefined ? Number.MAX_SAFE_INTEGER : ar;
+          const bi = br === undefined ? Number.MAX_SAFE_INTEGER : br;
+          if (ai !== bi) return ai - bi;
+          return byNameThenIp(a, b);
+        });
+      }
+
+      const printing = (p: Printer) => isPrinterPrinting(p);
       return [...printers.value].sort((a, b) => {
         const ap = printing(a);
         const bp = printing(b);
 
         if (ap !== bp) return ap ? 1 : -1;
-
-        const ah = String(a.hostname || '');
-        const bh = String(b.hostname || '');
-        const hn = ah.localeCompare(bh, undefined, { sensitivity: 'base' });
-        if (hn !== 0) return hn;
-
-        return String(a.ip || '').localeCompare(String(b.ip || ''), undefined, { sensitivity: 'base' });
+        return byNameThenIp(a, b);
       });
     });
+
+    const customOrderPrinters = computed(() => {
+      return customOrder.value
+        .map((ip) => printers.value.find((p) => p.ip === ip))
+        .filter((p): p is Printer => !!p);
+    });
+
+    const moveCustomOrder = (ip: string, delta: -1 | 1) => {
+      const idx = customOrder.value.indexOf(ip);
+      if (idx < 0) return;
+      const next = idx + delta;
+      if (next < 0 || next >= customOrder.value.length) return;
+      const arr = [...customOrder.value];
+      [arr[idx], arr[next]] = [arr[next], arr[idx]];
+      customOrder.value = arr;
+    };
+
+    const moveCustomOrderUp = (ip: string) => moveCustomOrder(ip, -1);
+    const moveCustomOrderDown = (ip: string) => moveCustomOrder(ip, 1);
+
+    const loadSortSettings = () => {
+      try {
+        const rawMode = localStorage.getItem(SORT_MODE_KEY);
+        if (rawMode === 'dynamic' || rawMode === 'alphabetical' || rawMode === 'custom') {
+          sortMode.value = rawMode;
+        }
+
+        const rawOrder = localStorage.getItem(SORT_ORDER_KEY);
+        if (rawOrder) {
+          const parsed = JSON.parse(rawOrder);
+          if (Array.isArray(parsed)) {
+            customOrder.value = parsed.filter((x) => typeof x === 'string');
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load sort settings:', e);
+      }
+    };
+
+    const persistSortSettings = () => {
+      try {
+        localStorage.setItem(SORT_MODE_KEY, sortMode.value);
+        localStorage.setItem(SORT_ORDER_KEY, JSON.stringify(customOrder.value));
+      } catch (e) {
+        console.warn('Failed to persist sort settings:', e);
+      }
+    };
+
+    watch(sortMode, () => persistSortSettings());
+    watch(customOrder, () => persistSortSettings(), { deep: true });
 
     const viewType = ref('grid');
 
@@ -587,6 +739,7 @@ export default defineComponent({
       }, []);
 
       printers.value = uniquePrinters.map(applyDerivedPrinting);
+      syncCustomOrderWithPrinters();
 
       const nextBaseMap: Record<string, string> = {};
       printers.value.forEach((printer) => {
@@ -625,6 +778,7 @@ export default defineComponent({
     };
 
     onMounted(() => {
+      loadSortSettings();
       fetchPrinters();
       fetchInterval = window.setInterval(fetchPrinters, 5000);
     });
@@ -658,6 +812,11 @@ export default defineComponent({
       viewType,
       printers,
       sortedPrinters,
+      showSortSettings,
+      sortMode,
+      customOrderPrinters,
+      moveCustomOrderUp,
+      moveCustomOrderDown,
       isLoading,
       isRefreshing,
       refreshNow,
@@ -703,6 +862,40 @@ export default defineComponent({
 .refresh-btn { opacity: 0.95; }
 .utility-btn { opacity: 0.9; }
 .utility-menu { min-width: 260px; }
+
+.custom-order-box {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.custom-order-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.custom-order-item {
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.order-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 50%;
+  background: rgba(255, 213, 74, 0.2);
+}
+
+.order-actions {
+  display: flex;
+  gap: 2px;
+}
 
 /* Cards */
 .floating-card {
