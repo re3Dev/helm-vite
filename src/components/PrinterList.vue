@@ -147,6 +147,7 @@
               'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
             }"
             @click="toggleSelection(printer)"
+            @dblclick.stop="selectLockedPrinter(printer)"
           >
             <!-- Lock icon (top-right) -->
             <div class="lock-badge" v-if="isPrinterPrinting(printer)">
@@ -388,6 +389,7 @@
                 'locked-row': isPrinterLocked(printer)
               }"
               @click="toggleSelection(printer)"
+              @dblclick.stop="selectLockedPrinter(printer)"
             >
               <td>
                 <v-btn
@@ -803,6 +805,18 @@ export default defineComponent({
       }
     };
 
+    const selectLockedPrinter = (printer: Printer) => {
+      if (!isPrinterLocked(printer)) return;
+
+      const unlocked = new Set(unlockedWhilePrinting.value);
+      unlocked.add(printer.ip);
+      unlockedWhilePrinting.value = unlocked;
+
+      if (!selectedPrinters.value.includes(printer.ip)) {
+        selectedPrinters.value.push(printer.ip);
+      }
+    };
+
     const getTransientStatus = (printer: Printer) => {
       if (!selectedPrinters.value.includes(printer.ip)) return '';
       return printerTransientStatusByIp.value[printer.ip] || '';
@@ -977,6 +991,7 @@ export default defineComponent({
       refreshNow,
       selectedPrinters,
       toggleSelection,
+      selectLockedPrinter,
       getTransientStatus,
       selectedFileName,
       fileAvailabilityClass,
