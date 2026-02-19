@@ -133,6 +133,16 @@ export const scannerCidr = ref<string>(getInitialCidr())
 const selectedPrintFile = ref<string>('') // filename relative to gcodes root
 const lastUploadedFile = ref<string>('')
 
+// Printer address map: ip -> base_url (e.g. http://192.168.1.50:7125)
+export const printerBaseUrlByIp = ref<Record<string, string>>({})
+
+function resolvePrinterBase(printerRef: string): string {
+  const mapped = printerBaseUrlByIp.value[printerRef] || printerRef
+  if (mapped.startsWith('http://') || mapped.startsWith('https://')) return mapped
+  if (mapped.includes(':')) return `http://${mapped}`
+  return `http://${mapped}:7125`
+}
+
 
 
 function toOneFile(value: unknown): File | null {
@@ -232,7 +242,8 @@ async function uploadGcodeToPrinter(base: string, file: File, opts?: { path?: st
 }
 
 async function startPrintOnPrinter(base: string, filename: string) {
-  const url = `http://${base}/printer/print/start?filename=${encodeURIComponent(filename)}`
+  const targetBase = resolvePrinterBase(base)
+  const url = `${targetBase}/printer/print/start?filename=${encodeURIComponent(filename)}`
   const res = await fetch(url, { method: 'POST' })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
@@ -243,7 +254,8 @@ async function startPrintOnPrinter(base: string, filename: string) {
 
 async function pausePrintOnPrinter(base: string) {
   // Moonraker: /printer/print/pause
-  const res = await fetch(`http://${base}/printer/print/pause`, { method: 'POST' })
+  const targetBase = resolvePrinterBase(base)
+  const res = await fetch(`${targetBase}/printer/print/pause`, { method: 'POST' })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`Pause failed (${res.status}): ${text}`)
@@ -253,7 +265,8 @@ async function pausePrintOnPrinter(base: string) {
 
 async function stopPrintOnPrinter(base: string) {
   // Moonraker: /printer/print/cancel
-  const res = await fetch(`http://${base}/printer/print/cancel`, { method: 'POST' })
+  const targetBase = resolvePrinterBase(base)
+  const res = await fetch(`${targetBase}/printer/print/cancel`, { method: 'POST' })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`Stop failed (${res.status}): ${text}`)

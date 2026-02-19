@@ -146,7 +146,7 @@
                 <div class="file-path-container">
                   <strong>
                     <v-text style="color: white;">
-                      {{ printer.state_message === 'Printer is ready'
+                      {{ isPrinterPrinting(printer)
                         ? formatFileName(printer.file_path)
                         : 'Not Printing'
                       }}
@@ -345,8 +345,8 @@
               </td>
 
               <td class="text-truncate">
-                <span v-if="printer.state_message === 'Printer is ready'">
-                  {{ formatFileName(printer.file_path) }}
+                <span>
+                  {{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : 'Not Printing' }}
                 </span>
               </td>
             </tr>
@@ -361,7 +361,7 @@
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
-import { scannerCidr } from './commandService';
+import { scannerCidr, printerBaseUrlByIp } from './commandService';
 
 interface Printer {
   hostname: string;
@@ -418,9 +418,8 @@ export default defineComponent({
     };
 
     const hasStrongPrintingEvidence = (p: Printer) => {
-      const hasFile = typeof p.file_path === 'string' && p.file_path.trim().length > 0;
       const hasProgress = typeof p.print_progress === 'number' && p.print_progress > 0;
-      return rawIsPrinting(p) || hasFile || hasProgress;
+      return rawIsPrinting(p) || hasProgress;
     };
 
     const isPrinterPrinting = (p: Printer) => {
@@ -467,7 +466,7 @@ export default defineComponent({
 
       for (const [k, v] of Object.entries(incoming)) {
         if (v === null || v === undefined) continue;
-        if (typeof v === 'string' && v.trim().length === 0) continue;
+        if (typeof v === 'string' && v.trim().length === 0 && k !== 'file_path') continue;
         out[k] = v;
       }
 
@@ -495,7 +494,7 @@ export default defineComponent({
           : (c.lastKnownStateMessage ?? p.state_message);
 
       const stableFilePath =
-        (typeof p.file_path === 'string' && p.file_path.trim().length > 0)
+        (typeof p.file_path === 'string')
           ? p.file_path
           : (c.lastKnownFilePath ?? p.file_path);
 
@@ -505,12 +504,13 @@ export default defineComponent({
         typeof c.lastPrintingAt === 'number' && (now - c.lastPrintingAt) < PRINTING_GRACE_MS;
 
       const derived_printing = raw || wasRecentlyPrinting;
+      const visibleFilePath = derived_printing ? stableFilePath : '';
 
       return {
         ...p,
         status: stableStatus,
         state_message: stableStateMessage,
-        file_path: stableFilePath,
+        file_path: visibleFilePath,
         derived_printing,
       };
     };
@@ -587,6 +587,12 @@ export default defineComponent({
       }, []);
 
       printers.value = uniquePrinters.map(applyDerivedPrinting);
+
+      const nextBaseMap: Record<string, string> = {};
+      printers.value.forEach((printer) => {
+        if (printer.ip && printer.base_url) nextBaseMap[printer.ip] = printer.base_url;
+      });
+      printerBaseUrlByIp.value = nextBaseMap;
 
       const printingIps = new Set(printers.value.filter(isPrinterPrinting).map(p => p.ip));
       const nextUnlocked = new Set<string>();
