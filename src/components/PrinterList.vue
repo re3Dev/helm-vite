@@ -55,11 +55,45 @@
               <v-list-item-title>Sort Settings</v-list-item-title>
             </v-list-item>
 
-            <!-- Add more utilities later -->
+            <v-list-item @click="openNetworkSettings">
+              <template #prepend>
+                <v-icon color="cyan">mdi-wifi-cog</v-icon>
+              </template>
+              <v-list-item-title>Network Settings</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
       </div>
     </div>
+
+    <v-dialog v-model="showNetworkSettings" max-width="480">
+      <v-card color="background">
+        <v-card-title class="d-flex align-center">
+          <v-icon color="cyan" class="mr-2">mdi-wifi-cog</v-icon>
+          Network Settings
+        </v-card-title>
+
+        <v-card-text>
+          <div class="text-body-2 mb-4" style="opacity: 0.7;">Set the IP range to scan for printers on your network.</div>
+          <v-text-field
+            v-model="networkCidr"
+            label="Scanner CIDR"
+            placeholder="192.168.1.0/24"
+            hint="Enter CIDR notation (e.g. 192.168.1.0/24)"
+            persistent-hint
+            density="compact"
+            variant="outlined"
+            prepend-inner-icon="mdi-ip-network"
+          />
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="showNetworkSettings = false">Cancel</v-btn>
+          <v-btn variant="tonal" color="cyan" @click="saveNetworkSettings">Save &amp; Scan</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="showSortSettings" max-width="560">
       <v-card color="background">
@@ -464,7 +498,7 @@
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
-import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPrintFile } from './commandService';
+import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPrintFile, refreshFileListFromBackend } from './commandService';
 
 interface Printer {
   hostname: string;
@@ -506,6 +540,22 @@ export default defineComponent({
     const printers = ref<Printer[]>([]);
     const isLoading = ref(true);
     const showSortSettings = ref(false);
+    const showNetworkSettings = ref(false);
+    const networkCidr = ref(scannerCidr.value);
+
+    const openNetworkSettings = () => {
+      networkCidr.value = scannerCidr.value;
+      showNetworkSettings.value = true;
+    };
+
+    const saveNetworkSettings = () => {
+      const trimmed = networkCidr.value.trim();
+      if (!trimmed) return;
+      scannerCidr.value = trimmed;
+      localStorage.setItem('printerScannerCidr', trimmed);
+      refreshFileListFromBackend(trimmed);
+      showNetworkSettings.value = false;
+    };
     const sortMode = ref<SortMode>('dynamic');
     const customOrder = ref<string[]>([]);
 
@@ -1077,6 +1127,10 @@ export default defineComponent({
       printers,
       sortedPrinters,
       showSortSettings,
+      showNetworkSettings,
+      networkCidr,
+      openNetworkSettings,
+      saveNetworkSettings,
       sortMode,
       customOrderPrinters,
       moveCustomOrderUp,
