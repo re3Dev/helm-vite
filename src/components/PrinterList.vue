@@ -1065,22 +1065,31 @@ export default defineComponent({
     const restartFirmware = async () => {
       if (selectedPrinters.value.length === 0) return;
 
+      setTransientStatusForIps([...selectedPrinters.value], 'Firmware restart sent');
+
       const results = await Promise.all(selectedPrinters.value.map(async (ip) => {
+        const base = resolvePrinterBase(ip);
         try {
-          const res = await fetch(`http://${ip}/printer/gcode/script?script=M119`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
+          const res = await fetch(`${base}/printer/firmware_restart`, { method: 'POST' });
           if (!res.ok) throw new Error(`Failed for ${ip}`);
           return { ip, success: true };
-        } catch (e) {
-          return { ip, success: false };
+        } catch {
+          try {
+            // fallback: send FIRMWARE_RESTART via gcode script
+            const fallback = await fetch(`${base}/printer/gcode/script?script=${encodeURIComponent('FIRMWARE_RESTART')}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (!fallback.ok) throw new Error(`Fallback failed for ${ip}`);
+            return { ip, success: true };
+          } catch {
+            return { ip, success: false };
+          }
         }
       }));
 
-      const failed = results.filter(r => !r.success);
-      if (failed.length === 0) alert('M119 sent to all selected printers!');
-      else alert('Some printers failed: ' + failed.map(f => f.ip).join(', '));
+      const failedIps = results.filter(r => !r.success).map(r => r.ip);
+      if (failedIps.length) setTransientStatusForIps(failedIps, 'Firmware restart failed');
     };
 
     const resolvePrinterBase = (printerRef: string): string => {
