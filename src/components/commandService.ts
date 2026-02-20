@@ -348,7 +348,16 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
       script = `G91\nG1 ${command.move.axis}${dist} F6000\nG90`
     }
 
-    await Promise.all(
+    let moveLabel = ''
+    if (command.move.axis === 'XY') {
+      const [xDir, yDir] = command.move.dir as [1 | -1, 1 | -1]
+      moveLabel = `Move XY (${xDir > 0 ? '+' : ''}${xDir * step}, ${yDir > 0 ? '+' : ''}${yDir * step}mm)`
+    } else {
+      const dir = command.move.dir as 1 | -1
+      moveLabel = `Move ${command.move.axis} ${dir > 0 ? '+' : ''}${dir * step}mm`
+    }
+    setTransientStatus([...selectedPrinters.value], moveLabel)
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => {
         await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
           method: 'POST',
@@ -356,7 +365,7 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
         })
       })
     )
-    return
+    return { ok: true }
   }
 
   // Upload file (returns summary for UI)
@@ -366,6 +375,8 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
 
     const autoPrint = false
     const uploadPath = ''
+
+    setTransientStatus([...selectedPrinters.value], `Uploading ${file.name}...`)
 
     const results = await Promise.allSettled(
       selectedPrinters.value.map(async (base) => {
@@ -412,7 +423,8 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
       return { ok: false }
     }
 
-    const results = await Promise.allSettled(
+    setTransientStatus([...selectedPrinters.value], `${command.label}: ${parsed}°C`)
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => {
         const targetBase = resolvePrinterBase(base)
         await fetch(`${targetBase}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
@@ -421,31 +433,30 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
         })
       })
     )
-
-    const failed = results.filter(r => r.status === 'rejected').length
-    if (failed === 0) {
-      setTransientStatus([...selectedPrinters.value], `Temperature command sent (${command.label}: ${parsed}°C)`)
-    }
-    return { ok: failed === 0 }
+    return { ok: true }
   }
 
   // Dropdown: select file
   if (command.type === 'dropdown' && command.label === 'Select File') {
     const filename = String(value ?? '').trim()
     selectedPrintFile.value = filename
+    if (filename) setTransientStatus([...selectedPrinters.value], `File selected: ${filename}`)
     return
   }
 
   // Refresh file list
   if (command.type === 'button' && command.label === 'Refresh File List') {
-    await refreshFileListFromBackend(scannerCidr.value)
+    setTransientStatus([...selectedPrinters.value], 'Refreshing file list...')
+    const files = await refreshFileListFromBackend(scannerCidr.value)
+    setTransientStatus([...selectedPrinters.value], `File list refreshed (${files.length} file${files.length !== 1 ? 's' : ''})`)
     return
   }
 
   // Cooldown all heaters
   if (command.type === 'button' && command.label === 'Cooldown') {
     const script = 'M104 T0 S0\nM104 T1 S0\nM104 T2 S0\nM140 S0'
-    const results = await Promise.allSettled(
+    setTransientStatus([...selectedPrinters.value], 'Cooldown sent')
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => {
         const targetBase = resolvePrinterBase(base)
         await fetch(`${targetBase}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
@@ -454,11 +465,7 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
         })
       })
     )
-    const failed = results.filter(r => r.status === 'rejected').length
-    if (failed === 0) {
-      setTransientStatus([...selectedPrinters.value], 'Cooldown command sent')
-    }
-    return { ok: failed === 0 }
+    return { ok: true }
   }
 
   // Start / Pause / Stop print
@@ -469,40 +476,36 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
       return { ok: false }
     }
 
-    setTransientStatus([...selectedPrinters.value], 'Print job starting...')
-
-    const results = await Promise.allSettled(
+    setTransientStatus([...selectedPrinters.value], 'Starting print...')
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => startPrintOnPrinter(base, filename))
     )
-    const failed = results.filter(r => r.status === 'rejected').length
-    return { ok: failed === 0 }
+    return { ok: true }
   }
 
   if (command.type === 'button' && command.label === 'Pause Print') {
-    setTransientStatus([...selectedPrinters.value], 'Pausing print job...')
-
-    const results = await Promise.allSettled(
+    setTransientStatus([...selectedPrinters.value], 'Pausing print...')
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => pausePrintOnPrinter(base))
     )
-    const failed = results.filter(r => r.status === 'rejected').length
-    return { ok: failed === 0 }
+    return { ok: true }
   }
 
   if (command.type === 'button' && command.label === 'Stop Print') {
-    setTransientStatus([...selectedPrinters.value], 'Stopping print job...')
-
-    const results = await Promise.allSettled(
+    setTransientStatus([...selectedPrinters.value], 'Stopping print...')
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => stopPrintOnPrinter(base))
     )
-    const failed = results.filter(r => r.status === 'rejected').length
-    return { ok: failed === 0 }
+    return { ok: true }
   }
 
   // G-code terminal
   if (command.type === 'gcode-input' && typeof value === 'string' && value.trim() !== '') {
-    await Promise.all(
+    const trimmed = value.trim()
+    setTransientStatus([...selectedPrinters.value], `G-code: ${trimmed}`)
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => {
-        await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(value)}`, {
+        await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(trimmed)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         })
@@ -514,7 +517,8 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
   // mapped gcode buttons (left for future)
   const gcode = gcodeCommandMap[command.label]
   if (gcode) {
-    await Promise.all(
+    setTransientStatus([...selectedPrinters.value], command.label)
+    await Promise.allSettled(
       selectedPrinters.value.map(async (base) => {
         await fetch(`http://${base}/printer/gcode/script?script=${encodeURIComponent(gcode)}`, {
           method: 'POST',
@@ -522,7 +526,7 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
         })
       })
     )
-    return
+    return { ok: true }
   }
 
   // fallback

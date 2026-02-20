@@ -249,8 +249,8 @@
                     </template>
 
                     <template v-else-if="isPrinterBusy(printer)">
-                      <v-icon>mdi-timer-sand</v-icon>
-                      BUSY
+                      <v-icon class="text-orange">mdi-timer-sand</v-icon>
+                      <span class="text-orange">BUSY</span>
                     </template>
 
                     <template v-else-if="isPrinterPrinting(printer)">
@@ -423,7 +423,8 @@
                   {{ getTransientStatus(printer) }}
                 </span>
                 <span v-else>
-                  {{ isPrinterBusy(printer) ? 'Busy' : printer.status }}
+                  <span v-if="isPrinterBusy(printer)" class="text-orange">Busy</span>
+                  <span v-else>{{ printer.status }}</span>
                 </span>
               </td>
 
@@ -530,7 +531,10 @@ export default defineComponent({
 
     const isPrinterBusy = (p: Printer) => {
       const s = normalizeStatus(p.status);
-      return s === 'busy' || s.includes('busy');
+      if (s === 'busy' || s.includes('busy')) return true;
+      // status=printing with no file means a G-code script is running, not a print job
+      if (s === 'printing' && !(typeof p.file_path === 'string' && p.file_path.trim().length > 0)) return true;
+      return false;
     };
 
     const heaterState = (current?: number | null, target?: number | null): 'off' | 'on' | 'heating' => {
@@ -551,15 +555,17 @@ export default defineComponent({
     const rawIsPrinting = (p: Printer) => {
       const s = normalizeStatus(p.status);
       if (s !== 'printing') return false;
-      return true;
+      // Must have an actual file to be considered printing (not just running a G-code script)
+      return typeof p.file_path === 'string' && p.file_path.trim().length > 0;
     };
 
     const hasStrongPrintingEvidence = (p: Printer) => {
+      const hasFile = typeof p.file_path === 'string' && p.file_path.trim().length > 0;
       const hasProgress =
         typeof p.print_progress === 'number' &&
         p.print_progress > 0 &&
         p.print_progress < 1;
-      return rawIsPrinting(p) || hasProgress;
+      return rawIsPrinting(p) || (hasProgress && hasFile);
     };
 
     const isPrinterPrinting = (p: Printer) => {
@@ -811,18 +817,21 @@ export default defineComponent({
         if (printingIps.has(ip)) nextUnlocked.add(ip);
       });
       unlockedWhilePrinting.value = nextUnlocked;
-
-      selectedPrinters.value = selectedPrinters.value.filter(ip => {
-        const p = printers.value.find(x => x.ip === ip);
-        return !p || !isPrinterLocked(p);
-      });
     };
 
     const toggleSelection = (printer: Printer) => {
-      if (isPrinterLocked(printer)) return;
-
       const ip = printer.ip;
-      if (selectedPrinters.value.includes(ip)) {
+      const isSelected = selectedPrinters.value.includes(ip);
+
+      // Locked printers can be deselected but not newly selected by a click
+      if (isPrinterLocked(printer)) {
+        if (isSelected) {
+          selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== ip);
+        }
+        return;
+      }
+
+      if (isSelected) {
         selectedPrinters.value = selectedPrinters.value.filter((selected) => selected !== ip);
       } else {
         selectedPrinters.value.push(ip);
@@ -1208,6 +1217,7 @@ export default defineComponent({
 
 .text-yellow { color: yellow; }
 .text-cyan { color: #52d9ff; }
+.text-orange { color: #ff9800; }
 .text-green { color: green; }
 .text-grey { color: grey; }
 .text-red { color: red; }
