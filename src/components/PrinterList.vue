@@ -16,19 +16,17 @@
       </div>
 
       <div class="top-bar-right">
-        <!-- ✅ Refresh button (moved to right) -->
         <v-btn
-          variant="tonal"
-          color="yellow"
+          variant="outlined"
+          color="red"
           size="small"
-          class="refresh-btn"
-          @click="refreshNow"
-          :loading="isRefreshing"
-          :disabled="isLoading || isRefreshing"
-          title="Refresh printer list"
+          class="estop-btn"
+          :disabled="selectedPrinters.length === 0"
+          @click="emergencyStopSelected"
+          title="Emergency stop selected printers"
         >
-          <v-icon start>mdi-refresh</v-icon>
-          Refresh
+          <v-icon start>mdi-alert-octagon</v-icon>
+          Emergency Stop
         </v-btn>
 
         <!-- Utilities dropdown -->
@@ -421,7 +419,7 @@
               <td>{{ printer.hostname }}</td>
               <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
               <td>
-                <span v-if="getTransientStatus(printer)" class="text-yellow">
+                <span v-if="getTransientStatus(printer)" :class="transientStatusClass(printer)">
                   {{ getTransientStatus(printer) }}
                 </span>
                 <span v-else>
@@ -514,7 +512,6 @@ export default defineComponent({
     const sortMode = ref<SortMode>('dynamic');
     const customOrder = ref<string[]>([]);
 
-    const isRefreshing = ref(false);
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
     const cacheByIp = ref<Record<string, PrinterCache>>({});
     const selectedFileAvailabilityByIp = ref<Record<string, FileAvailability>>({});
@@ -584,6 +581,7 @@ export default defineComponent({
 
     let fetchInterval: number | null = null;
     let fetchInFlight = false;
+    const statusTimers = new Map<string, number>();
 
     const byNameThenIp = (a: Printer, b: Printer) => {
       const ah = String(a.hostname || '');
@@ -750,16 +748,6 @@ export default defineComponent({
       }
     };
 
-    const refreshNow = async () => {
-      if (isRefreshing.value) return;
-      try {
-        isRefreshing.value = true;
-        await fetchPrinters({ force: true });
-      } finally {
-        isRefreshing.value = false;
-      }
-    };
-
     const updatePrinters = async (newData: Printer[]) => {
       const updatedPrinters = [...printers.value];
 
@@ -860,8 +848,27 @@ export default defineComponent({
 
     const transientStatusClass = (printer: Printer) => {
       const msg = getTransientStatus(printer).toLowerCase();
+      if (msg.includes('emergency stop')) return 'text-red';
       if (msg.includes('temperature') || msg.includes('cooldown')) return 'text-cyan';
       return 'text-yellow';
+    };
+
+    const setTransientStatusForIps = (ips: string[], message: string, ttlMs = 8_000) => {
+      if (!ips.length) return;
+      const next = { ...printerTransientStatusByIp.value };
+      ips.forEach((ip) => {
+        next[ip] = message;
+        const prev = statusTimers.get(ip);
+        if (typeof prev === 'number') clearTimeout(prev);
+        const timer = window.setTimeout(() => {
+          const cur = { ...printerTransientStatusByIp.value };
+          delete cur[ip];
+          printerTransientStatusByIp.value = cur;
+          statusTimers.delete(ip);
+        }, ttlMs);
+        statusTimers.set(ip, timer);
+      });
+      printerTransientStatusByIp.value = next;
     };
 
     const getFileAvailability = (printer: Printer): FileAvailability => {
@@ -996,6 +1003,8 @@ export default defineComponent({
     onBeforeUnmount(() => {
       fileAvailabilityRun++;
       if (fetchInterval) clearInterval(fetchInterval);
+      statusTimers.forEach((timer) => clearTimeout(timer));
+      statusTimers.clear();
     });
 
     const restartFirmware = async () => {
@@ -1019,6 +1028,45 @@ export default defineComponent({
       else alert('Some printers failed: ' + failed.map(f => f.ip).join(', '));
     };
 
+    const resolvePrinterBase = (printerRef: string): string => {
+      const mapped = printerBaseUrlByIp.value[printerRef] || printerRef;
+      if (mapped.startsWith('http://') || mapped.startsWith('https://')) return mapped;
+      if (mapped.includes(':')) return `http://${mapped}`;
+      return `http://${mapped}:7125`;
+    };
+
+    const emergencyStopSelected = async () => {
+      if (selectedPrinters.value.length === 0) return;
+
+      const results = await Promise.all(
+        selectedPrinters.value.map(async (ip) => {
+          const base = resolvePrinterBase(ip);
+          try {
+            const res = await fetch(`${base}/printer/emergency_stop`, { method: 'POST' });
+            if (!res.ok) throw new Error(`ESTOP failed (${res.status})`);
+            return { ip, success: true };
+          } catch {
+            try {
+              const fallback = await fetch(`${base}/printer/gcode/script?script=${encodeURIComponent('M112')}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              if (!fallback.ok) throw new Error(`M112 fallback failed (${fallback.status})`);
+              return { ip, success: true };
+            } catch {
+              return { ip, success: false };
+            }
+          }
+        })
+      );
+
+      const failed = results.filter(r => !r.success);
+      const okIps = results.filter(r => r.success).map(r => r.ip);
+      const failedIps = failed.map(f => f.ip);
+      if (okIps.length) setTransientStatusForIps(okIps, 'Emergency stop sent');
+      if (failedIps.length) setTransientStatusForIps(failedIps, 'Emergency stop failed');
+    };
+
     return {
       viewType,
       printers,
@@ -1029,8 +1077,6 @@ export default defineComponent({
       moveCustomOrderUp,
       moveCustomOrderDown,
       isLoading,
-      isRefreshing,
-      refreshNow,
       selectedPrinters,
       toggleSelection,
       selectLockedPrinter,
@@ -1042,6 +1088,7 @@ export default defineComponent({
       fileAvailabilityLabel,
       formatFileName,
       restartFirmware,
+      emergencyStopSelected,
       isPrinterBusy,
       heaterStateClass,
       isPrinterPrinting,
@@ -1070,7 +1117,14 @@ export default defineComponent({
 .top-bar-left { justify-self: start; }
 .top-bar-center { justify-self: center; }
 
-/* right side now has refresh + utilities */
+.estop-btn {
+  text-transform: none;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  box-shadow: 0 0 0 1px rgba(244, 67, 54, 0.25) inset;
+}
+
+/* right side utilities */
 .top-bar-right {
   justify-self: end;
   display: flex;
@@ -1078,7 +1132,6 @@ export default defineComponent({
   gap: 8px;
 }
 
-.refresh-btn { opacity: 0.95; }
 .utility-btn { opacity: 0.9; }
 .utility-menu { min-width: 260px; }
 

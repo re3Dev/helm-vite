@@ -94,10 +94,10 @@ export const commandGroups = ref<
     icon: 'mdi-thermometer',
     open: false,
     commands: [
-      { type: 'number', label: 'Set E0 Temp', min: 0, max: 120, default: 60, unit: '°C' },
-      { type: 'number', label: 'Set E1 Temp', min: 0, max: 300, default: 200, unit: '°C' },
-      { type: 'number', label: 'Set E2 Temp', min: 0, max: 300, default: 200, unit: '°C' },
-      { type: 'number', label: 'Set Bed Temp', min: 0, max: 120, default: 60, unit: '°C' },
+      { type: 'number', label: 'Set E0 Temp', min: 0, max: 120, default: 0, unit: '°C' },
+      { type: 'number', label: 'Set E1 Temp', min: 0, max: 300, default: 0, unit: '°C' },
+      { type: 'number', label: 'Set E2 Temp', min: 0, max: 300, default: 0, unit: '°C' },
+      { type: 'number', label: 'Set Bed Temp', min: 0, max: 120, default: 0, unit: '°C' },
       { type: 'button', label: 'Cooldown', icon: 'mdi-snowflake', color: 'blue', variant: 'outlined' }
     ]
   }
