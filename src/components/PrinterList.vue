@@ -33,7 +33,7 @@
         <v-menu location="bottom end" offset="8">
           <template #activator="{ props }">
             <v-btn v-bind="props" icon variant="text" class="utility-btn" :title="'Utilities'">
-              <v-icon>mdi-dots-vertical</v-icon>
+              <v-icon color="yellow">mdi-cog</v-icon>
             </v-btn>
           </template>
 
