@@ -97,17 +97,8 @@ export const commandGroups = ref<
       { type: 'number', label: 'Set E0 Temp', min: 0, max: 120, default: 60, unit: '°C' },
       { type: 'number', label: 'Set E1 Temp', min: 0, max: 300, default: 200, unit: '°C' },
       { type: 'number', label: 'Set E2 Temp', min: 0, max: 300, default: 200, unit: '°C' },
-      { type: 'number', label: 'Set Bed Temp', min: 0, max: 120, default: 60, unit: '°C' }
-    ]
-  },
-  {
-    title: 'Material',
-    icon: 'mdi-flask',
-    open: false,
-    commands: [
-      { type: 'dropdown', label: 'Select Material', options: ['PLA', 'PETG', 'ABS', 'TPU'] },
-      { type: 'button', label: 'Load Filament' },
-      { type: 'button', label: 'Unload Filament' }
+      { type: 'number', label: 'Set Bed Temp', min: 0, max: 120, default: 60, unit: '°C' },
+      { type: 'button', label: 'Cooldown', icon: 'mdi-snowflake', color: 'blue', variant: 'outlined' }
     ]
   }
 ])
@@ -316,6 +307,18 @@ const gcodeCommandMap: Record<string, string> = {
   'Home All Axes': 'G28'
 }
 
+function temperatureScriptForLabel(label: string, value: number): string | null {
+  const temp = Number(value)
+  if (!Number.isFinite(temp)) return null
+
+  if (label === 'Set E0 Temp') return `M104 T0 S${temp}`
+  if (label === 'Set E1 Temp') return `M104 T1 S${temp}`
+  if (label === 'Set E2 Temp') return `M104 T2 S${temp}`
+  if (label === 'Set Bed Temp') return `M140 S${temp}`
+
+  return null
+}
+
 export const runCommand = async (command: CommandConfig, value?: any) => {
   // Step size toggle buttons
   if (typeof command.stepSize === 'number') {
@@ -386,6 +389,43 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
     return { ok: failed === 0, total, success, failed }
   }
 
+  // Numeric controls (temperature)
+  if (command.type === 'number') {
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed)) {
+      console.warn(`Invalid numeric value for ${command.label}:`, value)
+      return { ok: false }
+    }
+
+    if (typeof command.min === 'number' && parsed < command.min) {
+      console.warn(`${command.label} below min (${command.min})`)
+      return { ok: false }
+    }
+    if (typeof command.max === 'number' && parsed > command.max) {
+      console.warn(`${command.label} above max (${command.max})`)
+      return { ok: false }
+    }
+
+    const script = temperatureScriptForLabel(command.label, parsed)
+    if (!script) {
+      console.warn(`No numeric command mapping for: ${command.label}`)
+      return { ok: false }
+    }
+
+    const results = await Promise.allSettled(
+      selectedPrinters.value.map(async (base) => {
+        const targetBase = resolvePrinterBase(base)
+        await fetch(`${targetBase}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+      })
+    )
+
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { ok: failed === 0 }
+  }
+
   // Dropdown: select file
   if (command.type === 'dropdown' && command.label === 'Select File') {
     const filename = String(value ?? '').trim()
@@ -397,6 +437,22 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
   if (command.type === 'button' && command.label === 'Refresh File List') {
     await refreshFileListFromBackend(scannerCidr.value)
     return
+  }
+
+  // Cooldown all heaters
+  if (command.type === 'button' && command.label === 'Cooldown') {
+    const script = 'M104 T0 S0\nM104 T1 S0\nM104 T2 S0\nM140 S0'
+    const results = await Promise.allSettled(
+      selectedPrinters.value.map(async (base) => {
+        const targetBase = resolvePrinterBase(base)
+        await fetch(`${targetBase}/printer/gcode/script?script=${encodeURIComponent(script)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+      })
+    )
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { ok: failed === 0 }
   }
 
   // Start / Pause / Stop print

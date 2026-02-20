@@ -299,29 +299,35 @@
               <div class="temperature-container">
                 <div class="extruder-temps" :class="{ horizontal: !printer.extruder2_temperature }">
                   <div class="temp-reading" :class="{ pellet: printer.extruder2_temperature }">
-                    <v-icon
-                      :class="{
-                        'text-blue': printer.extruder_temperature < 60,
-                        'text-yellow': printer.extruder_temperature >= 60
-                      }"
-                      class="temp-icon"
-                    >
-                      {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
-                    </v-icon>
+                    <div class="temp-icon-wrap">
+                      <v-icon
+                        :class="{
+                          'text-blue': printer.extruder_temperature < 60,
+                          'text-yellow': printer.extruder_temperature >= 60
+                        }"
+                        class="temp-icon"
+                      >
+                        {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
+                      </v-icon>
+                      <span class="heater-indicator" :class="heaterStateClass(printer.extruder_temperature, printer.extruder_target)"></span>
+                    </div>
                     <span class="temp-label"></span>
                     <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
                   </div>
 
                   <div class="temp-reading" :class="{ pellet: printer.extruder2_temperature }">
-                    <v-icon
-                      :class="{
-                        'text-blue': printer.extruder1_temperature < 60,
-                        'text-yellow': printer.extruder1_temperature >= 60
-                      }"
-                      class="temp-icon"
-                    >
-                      {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
-                    </v-icon>
+                    <div class="temp-icon-wrap">
+                      <v-icon
+                        :class="{
+                          'text-blue': printer.extruder1_temperature < 60,
+                          'text-yellow': printer.extruder1_temperature >= 60
+                        }"
+                        class="temp-icon"
+                      >
+                        {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
+                      </v-icon>
+                      <span class="heater-indicator" :class="heaterStateClass(printer.extruder1_temperature, printer.extruder1_target)"></span>
+                    </div>
                     <span class="temp-label"></span>
                     <span class="temp-value">{{ Math.round(printer.extruder1_temperature) }}°C</span>
                   </div>
@@ -332,29 +338,35 @@
                   :class="{ pellet: printer.extruder2_temperature }"
                   v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined"
                 >
-                  <v-icon
-                    :class="{
-                      'text-blue': printer.extruder2_temperature < 60,
-                      'text-yellow': printer.extruder2_temperature >= 60
-                    }"
-                    class="temp-icon"
-                  >
-                    mdi-printer-3d-nozzle-outline
-                  </v-icon>
+                  <div class="temp-icon-wrap">
+                    <v-icon
+                      :class="{
+                        'text-blue': printer.extruder2_temperature < 60,
+                        'text-yellow': printer.extruder2_temperature >= 60
+                      }"
+                      class="temp-icon"
+                    >
+                      mdi-printer-3d-nozzle-outline
+                    </v-icon>
+                    <span class="heater-indicator" :class="heaterStateClass(printer.extruder2_temperature, printer.extruder2_target)"></span>
+                  </div>
                   <span class="temp-label"></span>
                   <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
                 </div>
 
                 <div class="temp-reading" :class="{ pellet: printer.extruder2_temperature }">
-                  <v-icon
-                    :class="{
-                      'text-blue': printer.heater_bed_temperature < 40,
-                      'text-yellow': printer.heater_bed_temperature >= 40
-                    }"
-                    class="temp-icon"
-                  >
-                    mdi-radiator
-                  </v-icon>
+                  <div class="temp-icon-wrap">
+                    <v-icon
+                      :class="{
+                        'text-blue': printer.heater_bed_temperature < 40,
+                        'text-yellow': printer.heater_bed_temperature >= 40
+                      }"
+                      class="temp-icon"
+                    >
+                      mdi-radiator
+                    </v-icon>
+                    <span class="heater-indicator" :class="heaterStateClass(printer.heater_bed_temperature, printer.heater_bed_target)"></span>
+                  </div>
                   <span class="temp-label"></span>
                   <span class="temp-value">{{ Math.round(printer.heater_bed_temperature) }}°C</span>
                 </div>
@@ -467,9 +479,13 @@ interface Printer {
   ui_url: string;
   status: string;
   extruder_temperature: number;
+  extruder_target?: number;
   extruder1_temperature: number;
+  extruder1_target?: number;
   extruder2_temperature: number;
+  extruder2_target?: number;
   heater_bed_temperature: number;
+  heater_bed_target?: number;
   print_progress: number;
   state_message: string;
   file_path: string;
@@ -509,7 +525,7 @@ export default defineComponent({
     const SORT_ORDER_KEY = 'printerListCustomOrder';
 
     const PRINTING_GRACE_MS = 4_000;
-    const POLL_INTERVAL_MS = 2_000;
+    const POLL_INTERVAL_MS = 1_000;
 
     const normalizeStatus = (s?: string | null) => (s ?? '').trim().toLowerCase();
     const isReady = (p: Printer) => normalizeStatus(p.status) === 'ready';
@@ -518,6 +534,21 @@ export default defineComponent({
     const isPrinterBusy = (p: Printer) => {
       const s = normalizeStatus(p.status);
       return s === 'busy' || s.includes('busy');
+    };
+
+    const heaterState = (current?: number | null, target?: number | null): 'off' | 'on' | 'heating' => {
+      const t = Number(target ?? 0);
+      const c = Number(current ?? 0);
+      if (!Number.isFinite(t) || t <= 0) return 'off';
+      if (Number.isFinite(c) && c < (t - 2)) return 'heating';
+      return 'on';
+    };
+
+    const heaterStateClass = (current?: number | null, target?: number | null) => {
+      const state = heaterState(current, target);
+      if (state === 'heating') return 'heater-heating';
+      if (state === 'on') return 'heater-on';
+      return 'heater-off';
     };
 
     const rawIsPrinting = (p: Printer) => {
@@ -552,6 +583,7 @@ export default defineComponent({
     };
 
     let fetchInterval: number | null = null;
+    let fetchInFlight = false;
 
     const byNameThenIp = (a: Printer, b: Printer) => {
       const ah = String(a.hostname || '');
@@ -702,6 +734,8 @@ export default defineComponent({
     };
 
     const fetchPrinters = async (opts?: { force?: boolean }) => {
+      if (fetchInFlight) return;
+      fetchInFlight = true;
       try {
         const force = !!opts?.force;
         const cidr = scannerCidr.value;
@@ -711,6 +745,8 @@ export default defineComponent({
         isLoading.value = false;
       } catch (error) {
         console.error('Failed to fetch devices:', error);
+      } finally {
+        fetchInFlight = false;
       }
     };
 
@@ -1000,6 +1036,7 @@ export default defineComponent({
       formatFileName,
       restartFirmware,
       isPrinterBusy,
+      heaterStateClass,
       isPrinterPrinting,
       isPrinterLocked,
       togglePrinterLock,
@@ -1218,6 +1255,28 @@ a:active { color: blue; }
   padding: 1px 0;
 }
 .temp-icon { font-size: 18px !important; }
+.temp-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.heater-indicator {
+  position: absolute;
+  right: -6px;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+}
+.heater-off { background: #9e9e9e; }
+.heater-on { background: #4caf50; }
+.heater-heating {
+  background: #ffb300;
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.8);
+}
 .temp-label { font-weight: bold; color: #ffffff; }
 .temp-value { font-size: 0.9rem; font-weight: bold; }
 

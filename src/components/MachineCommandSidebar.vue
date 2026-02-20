@@ -225,6 +225,48 @@
                   </div>
                 </template>
 
+                <!-- TEMPERATURE -->
+                <template v-else-if="group.title === 'Temperature'">
+                  <div class="temp-wrap">
+                    <div v-for="cmd in tempCommands(group.commands)" :key="cmd.label" class="temp-row">
+                      <v-text-field
+                        v-model="tempValues[cmd.label]"
+                        :label="cmd.label"
+                        type="number"
+                        :min="cmd.min"
+                        :max="cmd.max"
+                        :suffix="cmd.unit"
+                        density="compact"
+                        hide-details
+                        class="sidebar-input temp-input"
+                        @keyup.enter="setTemperature(cmd)"
+                      />
+
+                      <v-btn
+                        class="temp-set-btn"
+                        color="yellow"
+                        variant="tonal"
+                        @click="setTemperature(cmd)"
+                      >
+                        Set
+                      </v-btn>
+                    </div>
+
+                    <v-btn
+                      v-for="cmd in tempActionCommands(group.commands)"
+                      :key="cmd.label"
+                      block
+                      class="temp-cooldown-btn"
+                      :color="cmd.color || 'blue'"
+                      :variant="cmd.variant || 'outlined'"
+                      @click="runCommand(cmd)"
+                    >
+                      <v-icon start v-if="cmd.icon">{{ cmd.icon }}</v-icon>
+                      {{ cmd.label }}
+                    </v-btn>
+                  </div>
+                </template>
+
                 <!-- EVERYTHING ELSE -->
                 <template v-else>
                   <v-list class="sidebar-list">
@@ -441,6 +483,39 @@ function shortLabel(label) {
   return label
 }
 
+/** Temperature helpers */
+const tempValues = ref({})
+
+function tempCommands(commands) {
+  return (commands || []).filter(c => c.type === 'number')
+}
+
+function tempActionCommands(commands) {
+  return (commands || []).filter(c => c.type === 'button')
+}
+
+function setTemperature(cmd) {
+  const raw = tempValues.value?.[cmd.label]
+  const fallback = typeof cmd.default === 'number' ? cmd.default : undefined
+  const value = raw === '' || raw === undefined || raw === null ? fallback : raw
+  if (value === undefined) return
+  runCommand(cmd, value)
+}
+
+function seedTemperatureValues(groups) {
+  const next = { ...tempValues.value }
+  ;(groups || []).forEach(group => {
+    if (group?.title !== 'Temperature') return
+    ;(group.commands || []).forEach(cmd => {
+      if (cmd?.type !== 'number') return
+      if (next[cmd.label] === undefined) {
+        next[cmd.label] = cmd.default ?? ''
+      }
+    })
+  })
+  tempValues.value = next
+}
+
 /** Sidebar width & collapse */
 const sidebarWidth = ref(320)
 const isCollapsed = ref(false)
@@ -526,6 +601,8 @@ onMounted(() => {
   }).catch(err => {
     console.error('[Sidebar] Error loading gcode files:', err)
   })
+
+  seedTemperatureValues(props.groups)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', handleMouseMove)
@@ -979,4 +1056,10 @@ function toggleCollapse() {
 }
 .terminal-actions{ display: flex; justify-content: flex-end; gap: 8px; }
 .terminal-send{ min-width: 92px; border-radius: 12px; }
+
+.temp-wrap{ display: flex; flex-direction: column; gap: 10px; }
+.temp-row{ display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.temp-input{ min-width: 0; }
+.temp-set-btn{ height: 40px; min-width: 64px; border-radius: 12px; }
+.temp-cooldown-btn{ border-radius: 12px; text-transform: none; }
 </style>

@@ -178,6 +178,7 @@ HEALTH_SNAPSHOT: Dict[str, Any] = {
 }
 
 DISCOVERY_CACHE_TTL_S = 5.0
+DEVICES_CACHE_TTL_S = 0.25
 DISCOVERY_MAX_WORKERS = 48
 WARM_SWEEP_WORKERS = 24
 WARM_SWEEP_COOLDOWN_S = 30.0
@@ -518,9 +519,13 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
 
         # Temps (may not exist on all printers; guard with .get)
         extruder_temperature = extruder_data["result"]["status"].get("extruder", {}).get("temperature")
+        extruder_target = extruder_data["result"]["status"].get("extruder", {}).get("target")
         extruder1_temperature = extruder1_data["result"]["status"].get("extruder1", {}).get("temperature")
+        extruder1_target = extruder1_data["result"]["status"].get("extruder1", {}).get("target")
         extruder2_temperature = extruder2_data["result"]["status"].get("extruder2", {}).get("temperature")
+        extruder2_target = extruder2_data["result"]["status"].get("extruder2", {}).get("target")
         heater_bed_temperature = heater_bed_data["result"]["status"].get("heater_bed", {}).get("temperature")
+        heater_bed_target = heater_bed_data["result"]["status"].get("heater_bed", {}).get("target")
 
         with device_list_lock:
             if hostname in processed_hostnames:
@@ -536,9 +541,13 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
                 "state_message": state_message,
                 "status": status,
                 "extruder_temperature": extruder_temperature,
+                "extruder_target": extruder_target,
                 "extruder1_temperature": extruder1_temperature,
+                "extruder1_target": extruder1_target,
                 "extruder2_temperature": extruder2_temperature,
+                "extruder2_target": extruder2_target,
                 "heater_bed_temperature": heater_bed_temperature,
+                "heater_bed_target": heater_bed_target,
                 "print_progress": print_progress,
                 "file_path": file_path,
                 "thumbnail_url": thumbnail_url
@@ -563,14 +572,22 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
 
     fetch_printer_details(base, ip, mac, devices_list, processed_hostnames)
 
-def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, Any]]:
+def discover_devices(
+    cidr: str,
+    warm: bool,
+    ports: List[int],
+    cache_ttl_s: Optional[float] = None,
+    force: bool = False,
+) -> List[Dict[str, Any]]:
     t0 = time.time()
+    ttl = DISCOVERY_CACHE_TTL_S if cache_ttl_s is None else max(0.0, float(cache_ttl_s))
     cache_key = (str(cidr), tuple(sorted(int(p) for p in ports)), bool(warm))
 
-    with discovery_cache_lock:
-        cached = discovery_cache.get(cache_key)
-        if cached and (time.time() - float(cached.get("ts", 0.0)) <= DISCOVERY_CACHE_TTL_S):
-            return copy.deepcopy(cached.get("devices", []))
+    if not force and ttl > 0:
+        with discovery_cache_lock:
+            cached = discovery_cache.get(cache_key)
+            if cached and (time.time() - float(cached.get("ts", 0.0)) <= ttl):
+                return copy.deepcopy(cached.get("devices", []))
 
     try:
         my_ip = get_my_ipv4()
@@ -1353,6 +1370,7 @@ def get_devices_api():
     logger.info(f"[/api/devices] Using CIDR: {cidr}")
     
     warm = request.args.get("warm", "0") != "0"
+    force = request.args.get("force", "0") == "1"
     ports_arg = request.args.get("ports", "")
     ports = [7125, 80, 4408]
 
@@ -1362,7 +1380,13 @@ def get_devices_api():
         except ValueError:
             return jsonify({"error": "Invalid ports param. Use e.g. ?ports=7125,80,4408"}), 400
 
-    devices_list = discover_devices(cidr=cidr, warm=warm, ports=ports)
+    devices_list = discover_devices(
+        cidr=cidr,
+        warm=warm,
+        ports=ports,
+        cache_ttl_s=DEVICES_CACHE_TTL_S,
+        force=force,
+    )
     u = current_user()
     devices_list = filter_devices_for_user(devices_list, u)
     return jsonify(devices_list)
