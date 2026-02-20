@@ -307,7 +307,6 @@
                       >
                         {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
                       </v-icon>
-                      <span class="heater-indicator" :class="heaterStateClass(printer.extruder_temperature, printer.extruder_target)"></span>
                     </div>
                     <span class="temp-label"></span>
                     <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
@@ -324,7 +323,6 @@
                       >
                         {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
                       </v-icon>
-                      <span class="heater-indicator" :class="heaterStateClass(printer.extruder1_temperature, printer.extruder1_target)"></span>
                     </div>
                     <span class="temp-label"></span>
                     <span class="temp-value">{{ Math.round(printer.extruder1_temperature) }}°C</span>
@@ -346,7 +344,6 @@
                     >
                       mdi-printer-3d-nozzle-outline
                     </v-icon>
-                    <span class="heater-indicator" :class="heaterStateClass(printer.extruder2_temperature, printer.extruder2_target)"></span>
                   </div>
                   <span class="temp-label"></span>
                   <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
@@ -363,7 +360,6 @@
                     >
                       mdi-radiator
                     </v-icon>
-                    <span class="heater-indicator" :class="heaterStateClass(printer.heater_bed_temperature, printer.heater_bed_target)"></span>
                   </div>
                   <span class="temp-label"></span>
                   <span class="temp-value">{{ Math.round(printer.heater_bed_temperature) }}°C</span>
@@ -1331,22 +1327,6 @@ a:active { color: blue; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.heater-indicator {
-  position: absolute;
-  right: -6px;
-  top: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
-}
-.heater-off { background: #9e9e9e; }
-.heater-on { background: #4caf50; }
-.heater-heating {
-  background: #ffb300;
-  box-shadow: 0 0 8px rgba(255, 179, 0, 0.8);
 }
 .temp-label { font-weight: bold; color: #ffffff; }
 .temp-value { font-size: 0.9rem; font-weight: bold; }
