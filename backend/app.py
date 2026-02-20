@@ -41,6 +41,8 @@ import re
 import socket
 import ipaddress
 import time
+import copy
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict, Any, Callable
 from functools import wraps
@@ -174,6 +176,17 @@ HEALTH_SNAPSHOT: Dict[str, Any] = {
     "last_discovery_ms": None,
     "last_error": None,
 }
+
+DISCOVERY_CACHE_TTL_S = 5.0
+DISCOVERY_MAX_WORKERS = 48
+WARM_SWEEP_WORKERS = 24
+WARM_SWEEP_COOLDOWN_S = 30.0
+
+discovery_cache_lock = threading.Lock()
+discovery_cache: Dict[Tuple[str, Tuple[int, ...], bool], Dict[str, Any]] = {}
+
+warm_sweep_lock = threading.Lock()
+last_warm_sweep_ts: Dict[str, float] = {}
 
 def ensure_data_dir() -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -342,28 +355,54 @@ def get_my_ipv4() -> str:
 
 def ping_once(ip: str, timeout_ms: int = 150) -> None:
     """
-    Fire-and-forget ping to warm Windows neighbor/ARP cache.
+    Single ping used to warm Windows neighbor/ARP cache.
     """
     try:
-        subprocess.Popen(
+        subprocess.run(
             ["ping", "-n", "1", "-w", str(timeout_ms), ip],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=max(1.0, (timeout_ms / 1000.0) + 0.25),
         )
+    except subprocess.TimeoutExpired:
+        pass
     except Exception:
         pass
 
+def should_run_warm_sweep(cidr: str) -> bool:
+    """
+    Avoid running full warm sweep too frequently for the same CIDR.
+    """
+    now = time.time()
+    with warm_sweep_lock:
+        last = float(last_warm_sweep_ts.get(cidr, 0.0))
+        if now - last < WARM_SWEEP_COOLDOWN_S:
+            return False
+        last_warm_sweep_ts[cidr] = now
+        return True
+
 def warm_neighbor_table(cidr: str, limit: Optional[int] = None) -> None:
     """
-    Ping-sweep (lightweight) to populate arp -a. Limit can reduce load.
+    Ping-sweep (bounded concurrency) to populate arp -a.
+    Limit can reduce load.
     """
     net = ipaddress.ip_network(cidr, strict=False)
-    count = 0
-    for host in net.hosts():
-        ping_once(str(host))
-        count += 1
-        if limit is not None and count >= limit:
-            break
+    hosts = [str(h) for h in net.hosts()]
+    if limit is not None:
+        hosts = hosts[:max(0, int(limit))]
+
+    if not hosts:
+        return
+
+    workers = min(WARM_SWEEP_WORKERS, len(hosts))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(ping_once, ip) for ip in hosts]
+        for fut in as_completed(futures):
+            try:
+                fut.result()
+            except Exception:
+                pass
 
 def parse_arp_a() -> List[Tuple[str, str]]:
     """
@@ -526,6 +565,13 @@ def probe_and_collect(ip: str, mac: str, ports: List[int], devices_list, process
 
 def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, Any]]:
     t0 = time.time()
+    cache_key = (str(cidr), tuple(sorted(int(p) for p in ports)), bool(warm))
+
+    with discovery_cache_lock:
+        cached = discovery_cache.get(cache_key)
+        if cached and (time.time() - float(cached.get("ts", 0.0)) <= DISCOVERY_CACHE_TTL_S):
+            return copy.deepcopy(cached.get("devices", []))
+
     try:
         my_ip = get_my_ipv4()
         logger.info("My IP: %s", my_ip)
@@ -533,13 +579,17 @@ def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, 
         logger.info("Probe ports: %s", ports)
 
         if warm:
-            logger.info("Warming neighbor table (ping sweep)...")
-            warm_neighbor_table(cidr, limit=None)
+            if should_run_warm_sweep(cidr):
+                logger.info("Warming neighbor table (ping sweep)...")
+                warm_neighbor_table(cidr, limit=None)
+            else:
+                logger.info("Skipping warm sweep (cooldown active) for CIDR %s", cidr)
 
         arp_entries = parse_arp_a()
         logger.info("arp -a entries: %d", len(arp_entries))
 
         # Filter ARP entries to only those in the specified CIDR
+        net = None
         try:
             net = ipaddress.ip_network(cidr, strict=False)
             filtered_entries = []
@@ -555,21 +605,46 @@ def discover_devices(cidr: str, warm: bool, ports: List[int]) -> List[Dict[str, 
             logger.warning("Failed to parse CIDR %s, using all ARP entries", cidr)
             filtered_entries = arp_entries
 
+        # Build probe targets using ARP + active host probing for manageable subnets.
+        probe_map: Dict[str, str] = {ip: mac for ip, mac in filtered_entries if ip != my_ip}
+
+        if net is not None and int(net.num_addresses) <= 1024:
+            logger.info("Adding active CIDR host probe for %s (size=%s)", cidr, int(net.num_addresses))
+            for host in net.hosts():
+                ip = str(host)
+                if ip != my_ip and ip not in probe_map:
+                    probe_map[ip] = ""
+        elif len(probe_map) == 0 and net is not None:
+            logger.info("No ARP entries in CIDR %s; falling back to active CIDR probe", cidr)
+            for host in net.hosts():
+                ip = str(host)
+                if ip != my_ip:
+                    probe_map[ip] = ""
+
         devices_list: List[Dict[str, Any]] = []
         processed_hostnames = set()
-        threads = []
 
-        for ip, mac in filtered_entries:
-            if ip == my_ip:
-                continue
-            t = threading.Thread(target=probe_and_collect, args=(ip, mac, ports, devices_list, processed_hostnames))
-            t.start()
-            threads.append(t)
-
-        for t in threads:
-            t.join()
+        probe_targets = list(probe_map.items())
+        if probe_targets:
+            workers = min(DISCOVERY_MAX_WORKERS, len(probe_targets))
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [
+                    pool.submit(probe_and_collect, ip, mac, ports, devices_list, processed_hostnames)
+                    for ip, mac in probe_targets
+                ]
+                for fut in as_completed(futures):
+                    try:
+                        fut.result()
+                    except Exception:
+                        pass
 
         logger.info("Printers found: %d", len(devices_list))
+
+        with discovery_cache_lock:
+            discovery_cache[cache_key] = {
+                "ts": time.time(),
+                "devices": copy.deepcopy(devices_list),
+            }
 
         # ✅ health snapshot on success
         try:
@@ -1277,7 +1352,7 @@ def get_devices_api():
     logger.info(f"[/api/devices] Request args: {dict(request.args)}")
     logger.info(f"[/api/devices] Using CIDR: {cidr}")
     
-    warm = request.args.get("warm", "1") != "0"
+    warm = request.args.get("warm", "0") != "0"
     ports_arg = request.args.get("ports", "")
     ports = [7125, 80, 4408]
 
@@ -1305,13 +1380,13 @@ def api_gcodes():
 
     Query params mirror /api/devices:
       ?cidr=192.168.1.0/24
-      ?warm=1
+    ?warm=0
       ?ports=7125,80,4408
     """
     logger.info(f"[/api/gcodes] Request args: {dict(request.args)}")
     
     cidr = request.args.get("cidr", "192.168.1.0/24")
-    warm = request.args.get("warm", "1") != "0"
+    warm = request.args.get("warm", "0") != "0"
     ports_arg = request.args.get("ports", "")
     ports = [7125, 80, 4408]
     
@@ -1375,7 +1450,7 @@ def api_gcodes():
 @require_auth
 def history_aggregate():
     cidr = request.args.get("cidr", "192.168.1.0/24")
-    warm = request.args.get("warm", "1") != "0"
+    warm = request.args.get("warm", "0") != "0"
     ports_arg = request.args.get("ports", "")
     ports = [7125, 80, 4408]
     if ports_arg.strip():
