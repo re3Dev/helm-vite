@@ -182,46 +182,6 @@
                       </div>
                     </div>
 
-                    <div class="terminal-wrap">
-                      <div class="terminal-title">
-                        <v-icon size="18">mdi-console</v-icon>
-                        <span>G-code Terminal</span>
-                      </div>
-
-                      <v-textarea
-                        v-model="terminalText[gIdx]"
-                        auto-grow
-                        rows="2"
-                        max-rows="6"
-                        density="compact"
-                        placeholder="Enter G-code (examples: M105, M119, G28, PAUSE)"
-                        hide-details
-                        class="terminal-box sidebar-input"
-                      />
-
-                      <div class="terminal-actions">
-                        <v-btn
-                          class="terminal-send"
-                          size="small"
-                          color="grey"
-                          variant="outlined"
-                          :disabled="!terminalText[gIdx] || !terminalText[gIdx].trim()"
-                          @click="sendTerminal(gIdx, group.commands)"
-                        >
-                          Send
-                        </v-btn>
-
-                        <v-btn
-                          class="terminal-clear"
-                          size="small"
-                          color="grey"
-                          variant="text"
-                          @click="terminalText[gIdx] = ''"
-                        >
-                          Clear
-                        </v-btn>
-                      </div>
-                    </div>
                   </div>
                 </template>
 
@@ -332,6 +292,52 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
+            <!-- G-code Terminal Panel -->
+            <v-expansion-panel class="sidebar-panel">
+              <v-expansion-panel-title class="sidebar-panel-title">
+                <v-icon color="yellow">mdi-console</v-icon>&nbsp;
+                G-code Terminal
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text class="sidebar-panel-text">
+                <div class="terminal-wrap">
+                  <v-textarea
+                    v-model="terminalText['_standalone']"
+                    auto-grow
+                    rows="3"
+                    max-rows="8"
+                    density="compact"
+                    placeholder="Enter G-code (e.g. M105, M119, G28, PAUSE)"
+                    hide-details
+                    class="terminal-box sidebar-input"
+                  />
+
+                  <div class="terminal-actions">
+                    <v-btn
+                      class="terminal-send"
+                      size="small"
+                      color="grey"
+                      variant="outlined"
+                      :disabled="!terminalText['_standalone'] || !terminalText['_standalone'].trim()"
+                      @click="sendTerminal('_standalone', printGroupCommands)"
+                    >
+                      Send
+                    </v-btn>
+
+                    <v-btn
+                      class="terminal-clear"
+                      size="small"
+                      color="grey"
+                      variant="text"
+                      @click="terminalText['_standalone'] = ''"
+                    >
+                      Clear
+                    </v-btn>
+                  </div>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
             <!-- Settings Panel -->
             <v-expansion-panel class="sidebar-panel">
               <v-expansion-panel-title class="sidebar-panel-title">
@@ -389,7 +395,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, defineProps } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, defineProps } from 'vue'
 import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles, scannerCidr, selectedPrintFile } from './commandService.ts'
 
 const props = defineProps({
@@ -563,6 +569,11 @@ async function uploadPickedFile(cmd, gIdx) {
 
 /** Terminal */
 const terminalText = ref({})
+
+const printGroupCommands = computed(() => {
+  return props.groups.find(g => g.title === 'Print')?.commands || []
+})
+
 function findTerminalCommand(commands) {
   return (commands || []).find(c => c.type === 'gcode-input' && c.label === 'G-code Terminal')
 }
