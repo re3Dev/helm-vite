@@ -74,7 +74,7 @@
     <div class="toolbar-rail" aria-hidden="true"></div>
   </v-app-bar>
 
-  <v-main>
+  <v-main class="layout-main">
     <div class="layout-container" :class="{ 'auth-layout': isAuthRoute }">
       <!-- ✅ Left sidebar hidden on auth routes -->
       <div v-if="!isAuthRoute" ref="sidebarWrap" class="sidebar-wrap">
@@ -82,7 +82,10 @@
       </div>
 
       <div class="main-content" :class="{ 'auth-main': isAuthRoute }">
-        <router-view />
+        <router-view v-if="isAuthRoute" />
+        <div v-else class="main-scroll">
+          <router-view />
+        </div>
       </div>
 
       <!-- ✅ Right utility sidebar hidden on auth routes -->
@@ -512,7 +515,8 @@ onBeforeUnmount(() => {
   transition: background-color 140ms ease;
 }
 .account-btn:hover{
-  background: rgba(255,255,255,0.06);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 /* =========================
@@ -523,24 +527,63 @@ onBeforeUnmount(() => {
   display: flex;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar-wrap{
   display: block; /* wrapper is for measuring width */
+  flex: 0 0 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .right-wrap{
   display: block; /* wrapper is for measuring width */
+  flex: 0 0 auto;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .main-content{
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;  /* ✅ important: allows flex shrink with side rails */
-  overflow: auto;
-  padding: 16px;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
+  justify-content: flex-start;
+  align-items: stretch;
   height: 100%;
+}
+
+.main-scroll{
+  flex: 1;
+  max-width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  display: block;
+}
+
+.main-scroll > *{
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+.layout-main{
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout-main :deep(.v-main__scroller){
+  overflow: hidden !important;
 }
 
 /* ✅ auth routes: remove padding and let login center nicely */

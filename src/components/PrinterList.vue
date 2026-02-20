@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="fill-height">
+  <v-container fluid class="printer-list-root">
     <!-- Top bar: centered view toggle + utilities on right -->
     <div class="top-bar">
       <div class="top-bar-left"></div>
@@ -1403,5 +1403,12 @@ a:active { color: blue; }
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.printer-list-root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  overflow-x: hidden;
 }
 </style>
