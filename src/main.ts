@@ -11,6 +11,9 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
 
+// i18n
+import i18n from './i18n'
+
 // Root component
 import App from './App.vue'
 
@@ -48,6 +51,7 @@ const vuetify = createVuetify({
 })
 
 createApp(App)
-  .use(router)     // ✅ THIS WAS MISSING
+  .use(router)
   .use(vuetify)
+  .use(i18n)
   .mount('#app')

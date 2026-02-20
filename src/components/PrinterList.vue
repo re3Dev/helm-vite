@@ -23,16 +23,16 @@
           class="estop-btn"
           :disabled="selectedPrinters.length === 0"
           @click="emergencyStopSelected"
-          title="Emergency stop selected printers"
+          :title="$t('controls.emergencyStop')"
         >
           <v-icon start>mdi-alert-octagon</v-icon>
-          Emergency Stop
+          {{ $t('controls.emergencyStop') }}
         </v-btn>
 
         <!-- Utilities dropdown -->
         <v-menu location="bottom end" offset="8">
           <template #activator="{ props }">
-            <v-btn v-bind="props" icon variant="text" class="utility-btn" :title="'Utilities'">
+            <v-btn v-bind="props" icon variant="text" class="utility-btn" :title="$t('utilities.title')">
               <v-icon color="yellow">mdi-cog</v-icon>
             </v-btn>
           </template>
@@ -42,9 +42,9 @@
               <template #prepend>
                 <v-icon color="red">mdi-restart</v-icon>
               </template>
-              <v-list-item-title>Firmware Restart (Selected)</v-list-item-title>
+              <v-list-item-title>{{ $t('controls.firmwareRestart') }}</v-list-item-title>
               <v-list-item-subtitle v-if="selectedPrinters.length === 0">
-                Select at least one printer
+                {{ $t('controls.selectAtLeastOne') }}
               </v-list-item-subtitle>
             </v-list-item>
 
@@ -52,14 +52,21 @@
               <template #prepend>
                 <v-icon color="yellow">mdi-sort</v-icon>
               </template>
-              <v-list-item-title>Sort Settings</v-list-item-title>
+              <v-list-item-title>{{ $t('sort.menuItem') }}</v-list-item-title>
             </v-list-item>
 
             <v-list-item @click="openNetworkSettings">
               <template #prepend>
                 <v-icon color="cyan">mdi-wifi-cog</v-icon>
               </template>
-              <v-list-item-title>Network Settings</v-list-item-title>
+              <v-list-item-title>{{ $t('network.menuItem') }}</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item @click="showLanguageSettings = true">
+              <template #prepend>
+                <v-icon color="green">mdi-translate</v-icon>
+              </template>
+              <v-list-item-title>{{ $t('language.menuItem') }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -70,16 +77,16 @@
       <v-card color="background">
         <v-card-title class="d-flex align-center">
           <v-icon color="cyan" class="mr-2">mdi-wifi-cog</v-icon>
-          Network Settings
+          {{ $t('network.title') }}
         </v-card-title>
 
         <v-card-text>
-          <div class="text-body-2 mb-4" style="opacity: 0.7;">Set the IP range to scan for printers on your network.</div>
+          <div class="text-body-2 mb-4" style="opacity: 0.7;">{{ $t('network.description') }}</div>
           <v-text-field
             v-model="networkCidr"
-            label="Scanner CIDR"
-            placeholder="192.168.1.0/24"
-            hint="Enter CIDR notation (e.g. 192.168.1.0/24)"
+            :label="$t('network.cidrLabel')"
+            :placeholder="$t('network.cidrPlaceholder')"
+            :hint="$t('network.cidrHint')"
             persistent-hint
             density="compact"
             variant="outlined"
@@ -89,8 +96,33 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="showNetworkSettings = false">Cancel</v-btn>
-          <v-btn variant="tonal" color="cyan" @click="saveNetworkSettings">Save &amp; Scan</v-btn>
+          <v-btn variant="text" @click="showNetworkSettings = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn variant="tonal" color="cyan" @click="saveNetworkSettings">{{ $t('network.saveAndScan') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="showLanguageSettings" max-width="360">
+      <v-card color="background">
+        <v-card-title class="d-flex align-center">
+          <v-icon color="green" class="mr-2">mdi-translate</v-icon>
+          {{ $t('language.title') }}
+        </v-card-title>
+
+        <v-card-text>
+          <v-radio-group v-model="currentLocale" density="compact">
+            <v-radio
+              v-for="loc in SUPPORTED_LOCALES"
+              :key="loc.code"
+              :value="loc.code"
+              :label="loc.label"
+            />
+          </v-radio-group>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="tonal" color="green" @click="showLanguageSettings = false">{{ $t('common.done') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -99,18 +131,18 @@
       <v-card color="background">
         <v-card-title class="d-flex align-center">
           <v-icon color="yellow" class="mr-2">mdi-sort</v-icon>
-          Printer Sort Settings
+          {{ $t('sort.title') }}
         </v-card-title>
 
         <v-card-text>
           <v-radio-group v-model="sortMode" density="compact">
-            <v-radio value="dynamic" label="Dynamic (non-printing first, printing last)"></v-radio>
-            <v-radio value="alphabetical" label="Alphabetical (static)"></v-radio>
-            <v-radio value="custom" label="Custom order (static)"></v-radio>
+            <v-radio value="dynamic" :label="$t('sort.dynamic')"></v-radio>
+            <v-radio value="alphabetical" :label="$t('sort.alphabetical')"></v-radio>
+            <v-radio value="custom" :label="$t('sort.custom')"></v-radio>
           </v-radio-group>
 
           <div v-if="sortMode === 'custom'" class="custom-order-box">
-            <div class="text-caption mb-2">Move printers to set display order:</div>
+            <div class="text-caption mb-2">{{ $t('sort.moveToSetOrder') }}</div>
             <v-list density="compact" class="custom-order-list">
               <v-list-item
                 v-for="(printer, idx) in customOrderPrinters"
@@ -153,7 +185,7 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="tonal" color="yellow" @click="showSortSettings = false">Done</v-btn>
+          <v-btn variant="tonal" color="yellow" @click="showSortSettings = false">{{ $t('common.done') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -190,7 +222,7 @@
                 color="grey"
                 class="lock-btn"
                 @click.stop="togglePrinterLock(printer)"
-                :title="isPrinterLocked(printer) ? 'Unlock to allow selection' : 'Lock selection'"
+                :title="isPrinterLocked(printer) ? $t('printerList.lock.unlock') : $t('printerList.lock.lock')"
               >
                 <v-icon :color="isPrinterLocked(printer) ? 'yellow' : 'green'">
                   {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
@@ -213,7 +245,7 @@
                   {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
                 </v-icon>
                 <span style="margin-left: 8px;">
-                  <strong>{{ printer.modelType || 'Unknown Model' }}</strong>
+                  <strong>{{ printer.modelType || $t('printerList.unknownModel') }}</strong>
                   <br />
                   <span class="printer-ip">
                     <v-icon small color="green" style="vertical-align: middle; margin-right: 4px;">mdi-wifi</v-icon>{{ printer.ip }}
@@ -251,7 +283,7 @@
                     <v-text style="color: white;">
                       {{ isPrinterPrinting(printer)
                         ? formatFileName(printer.file_path)
-                        : 'Not Printing'
+                        : $t('printerList.notPrinting')
                       }}
                     </v-text>
                   </strong>
@@ -279,31 +311,31 @@
                   >
                     <template v-if="printer.state_message !== 'Printer is ready'">
                       <v-icon class="text-red">mdi-alert-circle</v-icon>
-                      <span class="text-red">ERROR</span>
+                      <span class="text-red">{{ $t('printerList.status.error') }}</span>
                     </template>
 
                     <template v-else-if="isPrinterBusy(printer)">
                       <v-icon class="text-orange">mdi-timer-sand</v-icon>
-                      <span class="text-orange">BUSY</span>
+                      <span class="text-orange">{{ $t('printerList.status.busy') }}</span>
                     </template>
 
                     <template v-else-if="isPrinterPrinting(printer)">
                       <v-icon>mdi-printer-3d-nozzle</v-icon>
-                      PRINTING
+                      {{ $t('printerList.status.printing') }}
                     </template>
 
                     <template v-else-if="isReady(printer)">
                       <v-icon>mdi-home</v-icon>
-                      HOMED
+                      {{ $t('printerList.status.homed') }}
                     </template>
 
                     <template v-else-if="isIdle(printer)">
                       <v-icon>mdi-engine-off</v-icon>
-                      DISENGAGED
+                      {{ $t('printerList.status.disengaged') }}
                     </template>
 
                     <template v-else>
-                      Status Unknown
+                      {{ $t('printerList.status.unknown') }}
                     </template>
                   </span>
                 </div>
@@ -412,11 +444,11 @@
           <thead>
             <tr>
               <th style="width: 4%"></th>
-              <th style="width: 20%">Hostname</th>
-              <th style="width: 15%">Type</th>
-              <th style="width: 15%">Status</th>
-              <th style="width: 15%">Progress</th>
-              <th style="width: 31%">Print File</th>
+              <th style="width: 20%">{{ $t('printerList.columns.hostname') }}</th>
+              <th style="width: 15%">{{ $t('printerList.columns.type') }}</th>
+              <th style="width: 15%">{{ $t('printerList.columns.status') }}</th>
+              <th style="width: 15%">{{ $t('printerList.columns.progress') }}</th>
+              <th style="width: 31%">{{ $t('printerList.columns.printFile') }}</th>
             </tr>
           </thead>
 
@@ -438,7 +470,7 @@
                   size="x-small"
                   variant="text"
                   @click.stop="togglePrinterLock(printer)"
-                  :title="isPrinterLocked(printer) ? 'Unlock to allow selection' : 'Lock selection'"
+                  :title="isPrinterLocked(printer) ? $t('printerList.lock.unlock') : $t('printerList.lock.lock')"
                 >
                   <v-icon :color="isPrinterLocked(printer) ? 'yellow' : 'green'">
                     {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
@@ -447,13 +479,13 @@
               </td>
 
               <td>{{ printer.hostname }}</td>
-              <td>{{ printer.extruder2_temperature ? 'Pellet' : 'Filament' }}</td>
+              <td>{{ printer.extruder2_temperature ? $t('printerList.printerType.pellet') : $t('printerList.printerType.filament') }}</td>
               <td>
                 <span v-if="getTransientStatus(printer)" :class="transientStatusClass(printer)">
                   {{ getTransientStatus(printer) }}
                 </span>
                 <span v-else>
-                  <span v-if="isPrinterBusy(printer)" class="text-orange">Busy</span>
+                  <span v-if="isPrinterBusy(printer)" class="text-orange">{{ $t('printerList.status.busy') }}</span>
                   <span v-else>{{ printer.status }}</span>
                 </span>
               </td>
@@ -480,7 +512,7 @@
 
               <td class="text-truncate">
                 <span>
-                  {{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : 'Not Printing' }}
+                  {{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : $t('printerList.notPrinting') }}
                 </span>
                 <div v-if="selectedFileName" :class="['list-file-availability', fileAvailabilityClass(printer)]">
                   {{ fileAvailabilityLabel(printer) }}
@@ -496,9 +528,12 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { selectedPrinters } from '../store/printerStore';
 import { apiFetch } from '../api';
 import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPrintFile, refreshFileListFromBackend } from './commandService';
+import { SUPPORTED_LOCALES } from '../i18n';
+import type { LocaleCode } from '../i18n';
 
 interface Printer {
   hostname: string;
@@ -537,10 +572,20 @@ type FileAvailability = 'checking' | 'exists' | 'missing' | 'error';
 export default defineComponent({
   name: 'PrinterGrid',
   setup() {
+    const { locale, t } = useI18n();
+    const currentLocale = computed<LocaleCode>({
+      get: () => locale.value as LocaleCode,
+      set: (val: LocaleCode) => {
+        locale.value = val;
+        localStorage.setItem('helm-locale', val);
+      },
+    });
+
     const printers = ref<Printer[]>([]);
     const isLoading = ref(true);
     const showSortSettings = ref(false);
     const showNetworkSettings = ref(false);
+    const showLanguageSettings = ref(false);
     const networkCidr = ref(scannerCidr.value);
 
     const openNetworkSettings = () => {
@@ -949,10 +994,10 @@ export default defineComponent({
 
     const fileAvailabilityLabel = (printer: Printer) => {
       const s = getFileAvailability(printer);
-      if (s === 'exists') return 'Selected file found';
-      if (s === 'missing') return 'Selected file missing';
-      if (s === 'error') return 'Cannot verify selected file';
-      return 'Checking selected file...';
+      if (s === 'exists') return t('printerList.file.found');
+      if (s === 'missing') return t('printerList.file.missing');
+      if (s === 'error') return t('printerList.file.cannotVerify');
+      return t('printerList.file.checking');
     };
 
     const checkFileExistsOnPrinter = async (baseUrl: string, filename: string): Promise<FileAvailability> => {
@@ -1164,6 +1209,10 @@ export default defineComponent({
       togglePrinterLock,
       isReady,
       isIdle,
+      showLanguageSettings,
+      currentLocale,
+      SUPPORTED_LOCALES,
+      t,
     };
   },
 });

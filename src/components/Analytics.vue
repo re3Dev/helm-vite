@@ -1,11 +1,11 @@
-<template>
+﻿<template>
   <v-container fluid class="analytics-root">
     <!-- Header -->
     <div class="analytics-header">
       <div>
-        <div class="page-title">Analytics</div>
+        <div class="page-title">{{ $t('analytics.title') }}</div>
         <div class="page-subtitle">
-          Fleet usage, print history, and calibration summaries.
+          {{ $t('analytics.subtitle') }}
         </div>
       </div>
 
@@ -18,7 +18,7 @@
           :loading="loadingAny"
         >
           <v-icon start>mdi-refresh</v-icon>
-          Refresh
+          {{ $t('common.refresh') }}
         </v-btn>
       </div>
     </div>
@@ -26,57 +26,57 @@
     <!-- Top summary stats -->
     <div class="metrics-grid">
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Fleet</div>
+        <div class="metric-label">{{ $t('analytics.metrics.fleet') }}</div>
         <div class="metric-value">
           <template v-if="loadingPrinters">—</template>
           <template v-else>{{ printers.length }}</template>
         </div>
-        <div class="metric-footnote">Printers discovered</div>
+        <div class="metric-footnote">{{ $t('analytics.metrics.fleetFootnote') }}</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Printing Now</div>
+        <div class="metric-label">{{ $t('analytics.metrics.printingNow') }}</div>
         <div class="metric-value">
           <template v-if="loadingPrinters">—</template>
           <template v-else>{{ printingNowCount }}</template>
         </div>
-        <div class="metric-footnote">Actively printing</div>
+        <div class="metric-footnote">{{ $t('analytics.metrics.printingNowFootnote') }}</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Total Prints</div>
+        <div class="metric-label">{{ $t('analytics.metrics.totalPrints') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
           <template v-else>{{ historyAgg?.fleet?.total_jobs ?? '—' }}</template>
         </div>
-        <div class="metric-footnote">Across all printers</div>
+        <div class="metric-footnote">{{ $t('analytics.metrics.acrossAll') }}</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Total Print Time</div>
+        <div class="metric-label">{{ $t('analytics.metrics.totalPrintTime') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
           <template v-else>{{ humanDuration(historyAgg?.fleet?.total_print_time) }}</template>
         </div>
-        <div class="metric-footnote">Across all printers</div>
+        <div class="metric-footnote">{{ $t('analytics.metrics.acrossAll') }}</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Total Time (incl paused)</div>
+        <div class="metric-label">{{ $t('analytics.metrics.totalTimeIncPaused') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
           <template v-else>{{ humanDuration(historyAgg?.fleet?.total_time) }}</template>
         </div>
-        <div class="metric-footnote">Work time + paused</div>
+        <div class="metric-footnote">{{ $t('analytics.metrics.workTimePaused') }}</div>
       </v-card>
 
       <v-card class="metric-card" color="#181B20">
-        <div class="metric-label">Filament Used</div>
+        <div class="metric-label">{{ $t('analytics.metrics.filamentUsed') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
           <template v-else>{{ fmtMeters(historyAgg?.fleet?.total_filament_used) }}</template>
         </div>
-        <div class="metric-footnote">Total (converted from mm)</div>
+        <div class="metric-footnote">{{ $t('analytics.metrics.filamentFootnote') }}</div>
       </v-card>
     </div>
 
@@ -84,9 +84,9 @@
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Time Breakdown by Status (Fleet)</div>
+          <div class="section-title">{{ $t('analytics.timeBreakdown.title') }}</div>
           <div class="section-sub">
-            Share of total print time spent on completed, cancelled/shutdown, and error jobs.
+            {{ $t('analytics.timeBreakdown.sub') }}
           </div>
         </div>
       </div>
@@ -96,7 +96,7 @@
       </template>
 
       <template v-else-if="!fleetMetrics">
-        <div class="empty">No fleet metrics available yet.</div>
+        <div class="empty">{{ $t('analytics.timeBreakdown.empty') }}</div>
       </template>
 
       <template v-else>
@@ -109,22 +109,22 @@
 
         <div class="legend">
           <div class="legend-item">
-            <span class="dot completed" /> Completed:
+            <span class="dot completed" /> {{ $t('analytics.timeBreakdown.completed') }}
             <strong>{{ fleetCounts.completed ?? 0 }}</strong>
             · {{ pct(fleetTimeH.completed) }} ({{ humanDurationHr(fleetTimeH.completed) }})
           </div>
           <div class="legend-item">
-            <span class="dot cancelled" /> Cancelled / Shutdown:
+            <span class="dot cancelled" /> {{ $t('analytics.timeBreakdown.cancelled') }}
             <strong>{{ fleetCounts.cancelled ?? 0 }}</strong>
             · {{ pct(fleetTimeH.cancelled) }} ({{ humanDurationHr(fleetTimeH.cancelled) }})
           </div>
           <div class="legend-item">
-            <span class="dot error" /> Error:
+            <span class="dot error" /> {{ $t('analytics.timeBreakdown.error') }}
             <strong>{{ fleetCounts.error ?? 0 }}</strong>
             · {{ pct(fleetTimeH.error) }} ({{ humanDurationHr(fleetTimeH.error) }})
           </div>
           <div class="legend-item">
-            <span class="dot other" /> Other:
+            <span class="dot other" /> {{ $t('analytics.timeBreakdown.other') }}
             <strong>{{ fleetCounts.other ?? 0 }}</strong>
             · {{ pct(fleetTimeH.other) }} ({{ humanDurationHr(fleetTimeH.other) }})
           </div>
@@ -141,9 +141,9 @@
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Print Hours by Month (Fleet)</div>
+          <div class="section-title">{{ $t('analytics.hoursChart.title') }}</div>
           <div class="section-sub">
-            Relative print hours in each recorded month (scaled to the busiest period).
+            {{ $t('analytics.hoursChart.sub') }}
           </div>
         </div>
       </div>
@@ -153,7 +153,7 @@
       </template>
 
       <template v-else-if="!fleetPeriods.length || fleetMaxPeriodHours <= 0">
-        <div class="empty">No period breakdown available yet.</div>
+        <div class="empty">{{ $t('analytics.hoursChart.empty') }}</div>
       </template>
 
       <template v-else>
@@ -181,7 +181,7 @@
           </div>
 
           <div class="chart-caption">
-            Taller bars indicate months with more accumulated print time.
+            {{ $t('analytics.hoursChart.caption') }}
           </div>
         </div>
       </template>
@@ -191,9 +191,9 @@
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Fleet Leaderboards</div>
+          <div class="section-title">{{ $t('analytics.leaderboards.title') }}</div>
           <div class="section-sub">
-            “Biggest” stats across the whole fleet.
+            {{ $t('analytics.leaderboards.sub') }}
           </div>
         </div>
       </div>
@@ -203,13 +203,13 @@
       </template>
 
       <template v-else-if="!historyAgg?.by_printer?.length">
-        <div class="empty">No printer history totals available yet.</div>
+        <div class="empty">{{ $t('analytics.leaderboards.empty') }}</div>
       </template>
 
       <template v-else>
         <div class="metrics-grid" style="margin-top: 4px;">
           <v-card class="metric-card" color="#181B20">
-            <div class="metric-label">Longest Job</div>
+            <div class="metric-label">{{ $t('analytics.leaderboards.longestJob') }}</div>
             <div class="metric-value">{{ humanDuration(fleetLongestJobSeconds) }}</div>
             <div class="metric-footnote">
               <strong>{{ fleetLongestJobPrinter || '—' }}</strong>
@@ -218,7 +218,7 @@
           </v-card>
 
           <v-card class="metric-card" color="#181B20">
-            <div class="metric-label">Most Print Time</div>
+            <div class="metric-label">{{ $t('analytics.leaderboards.mostPrintTime') }}</div>
             <div class="metric-value">{{ humanDuration(topByPrintTimeSeconds) }}</div>
             <div class="metric-footnote">
               <strong>{{ topByPrintTimePrinter || '—' }}</strong>
@@ -226,7 +226,7 @@
           </v-card>
 
           <v-card class="metric-card" color="#181B20">
-            <div class="metric-label">Most Prints</div>
+            <div class="metric-label">{{ $t('analytics.leaderboards.mostPrints') }}</div>
             <div class="metric-value">{{ topByPrintCount }}</div>
             <div class="metric-footnote">
               <strong>{{ topByPrintCountPrinter || '—' }}</strong>
@@ -240,9 +240,9 @@
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Per-Printer History Totals</div>
+          <div class="section-title">{{ $t('analytics.perPrinter.title') }}</div>
           <div class="section-sub">
-            From Moonraker job totals on each device.
+            {{ $t('analytics.perPrinter.sub') }}
           </div>
         </div>
       </div>
@@ -252,7 +252,7 @@
       </template>
 
       <template v-else-if="!historyAgg?.by_printer?.length">
-        <div class="empty">No per-printer totals available yet.</div>
+        <div class="empty">{{ $t('analytics.perPrinter.empty') }}</div>
       </template>
 
       <template v-else>
@@ -298,15 +298,15 @@
     <v-card class="section-card" color="#181B20">
       <div class="section-head">
         <div>
-          <div class="section-title">Calibration Profiles</div>
+          <div class="section-title">{{ $t('analytics.calibration.title') }}</div>
           <div class="section-sub">
-            Grouped by machine + material, with left/right extruder tuned values.
+            {{ $t('analytics.calibration.sub') }}
           </div>
         </div>
 
         <div class="pill-row">
           <div class="pill">
-            <span class="pill-label">Profiles</span>
+            <span class="pill-label">{{ $t('analytics.calibration.profilesLabel') }}</span>
             <span class="pill-value">{{ profileCount }}</span>
           </div>
         </div>
@@ -317,7 +317,7 @@
       </template>
 
       <template v-else-if="!profileGroups.length">
-        <div class="empty">No calibration profiles found.</div>
+        <div class="empty">{{ $t('analytics.calibration.empty') }}</div>
       </template>
 
       <template v-else>
@@ -331,50 +331,50 @@
               <div>
                 <div class="profile-name">{{ g.machine }}</div>
                 <div class="profile-tagline">
-                  Material: <strong>{{ g.material }}</strong>
-                  · Extruders:
-                  {{ g.left ? 'Left' : '—' }}/{{ g.right ? 'Right' : '—' }}
+                  {{ $t('analytics.calibration.material') }} <strong>{{ g.material }}</strong>
+                  · {{ $t('analytics.calibration.extruders') }}
+                  {{ g.left ? $t('analytics.calibration.leftLabel') : '—' }}/{{ g.right ? $t('analytics.calibration.rightLabel') : '—' }}
                 </div>
               </div>
 
               <div class="profile-header-right">
                 <div class="pill pill-material" v-if="g.material">
-                  <span class="pill-label">Material</span>
+                  <span class="pill-label">{{ $t('analytics.calibration.materialLabel') }}</span>
                   <span class="pill-value">{{ g.material }}</span>
                 </div>
               </div>
             </div>
 
             <div class="profile-extruders">
-              <div class="extruder-slot">
-                <div class="slot-title">Left Extruder</div>
+                <div class="extruder-slot">
+                <div class="slot-title">{{ $t('analytics.calibration.leftExtruder') }}</div>
                 <template v-if="g.left">
                   <div class="slot-subtitle">{{ (g.left.extruder || 'left') }}</div>
 
                   <div class="slot-meta">
                     <div class="pill pill-hot">
-                      <span class="pill-label">Nozzle</span>
+                      <span class="pill-label">{{ $t('analytics.calibration.nozzle') }}</span>
                       <span class="pill-value">{{ fmtTemp(g.left.hotend) }}</span>
                     </div>
                     <div class="pill pill-bed">
-                      <span class="pill-label">Bed</span>
+                      <span class="pill-label">{{ $t('analytics.calibration.bed') }}</span>
                       <span class="pill-value">{{ fmtTemp(g.left.bed) }}</span>
                     </div>
                   </div>
 
                   <div class="kv-rows">
                     <div class="kv-row">
-                      <div class="kv-label">Flow Multiplier</div>
+                      <div class="kv-label">{{ $t('analytics.calibration.flowMultiplier') }}</div>
                       <div class="kv-val mono">{{ fmtNum(g.left.flow, 3) }}</div>
                     </div>
                     <div class="kv-row">
-                      <div class="kv-label">Pressure Advance (K)</div>
+                      <div class="kv-label">{{ $t('analytics.calibration.pressureAdvance') }}</div>
                       <div class="kv-val mono">{{ fmtNum(g.left.pressure_advance, 4) }}</div>
                     </div>
                   </div>
 
                   <div class="slot-updated" v-if="lastUpdated(g.left)">
-                    Last updated: {{ formatDateShort(lastUpdated(g.left)!) }}
+                    {{ $t('analytics.calibration.lastUpdated') }} {{ formatDateShort(lastUpdated(g.left)!) }}
                   </div>
 
                   <div class="slot-notes" v-if="notesText(g.left)">
@@ -382,39 +382,39 @@
                   </div>
                 </template>
                 <template v-else>
-                  <div class="slot-empty">No left extruder profile saved yet.</div>
+                  <div class="slot-empty">{{ $t('analytics.calibration.noLeftProfile') }}</div>
                 </template>
               </div>
 
               <div class="extruder-slot">
-                <div class="slot-title">Right Extruder</div>
+                <div class="slot-title">{{ $t('analytics.calibration.rightExtruder') }}</div>
                 <template v-if="g.right">
                   <div class="slot-subtitle">{{ (g.right.extruder || 'right') }}</div>
 
                   <div class="slot-meta">
                     <div class="pill pill-hot">
-                      <span class="pill-label">Nozzle</span>
+                      <span class="pill-label">{{ $t('analytics.calibration.nozzle') }}</span>
                       <span class="pill-value">{{ fmtTemp(g.right.hotend) }}</span>
                     </div>
                     <div class="pill pill-bed">
-                      <span class="pill-label">Bed</span>
+                      <span class="pill-label">{{ $t('analytics.calibration.bed') }}</span>
                       <span class="pill-value">{{ fmtTemp(g.right.bed) }}</span>
                     </div>
                   </div>
 
                   <div class="kv-rows">
                     <div class="kv-row">
-                      <div class="kv-label">Flow Multiplier</div>
+                      <div class="kv-label">{{ $t('analytics.calibration.flowMultiplier') }}</div>
                       <div class="kv-val mono">{{ fmtNum(g.right.flow, 3) }}</div>
                     </div>
                     <div class="kv-row">
-                      <div class="kv-label">Pressure Advance (K)</div>
+                      <div class="kv-label">{{ $t('analytics.calibration.pressureAdvance') }}</div>
                       <div class="kv-val mono">{{ fmtNum(g.right.pressure_advance, 4) }}</div>
                     </div>
                   </div>
 
                   <div class="slot-updated" v-if="lastUpdated(g.right)">
-                    Last updated: {{ formatDateShort(lastUpdated(g.right)!) }}
+                    {{ $t('analytics.calibration.lastUpdated') }} {{ formatDateShort(lastUpdated(g.right)!) }}
                   </div>
 
                   <div class="slot-notes" v-if="notesText(g.right)">
@@ -422,7 +422,7 @@
                   </div>
                 </template>
                 <template v-else>
-                  <div class="slot-empty">No right extruder profile saved yet.</div>
+                  <div class="slot-empty">{{ $t('analytics.calibration.noRightProfile') }}</div>
                 </template>
               </div>
             </div>
@@ -440,6 +440,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 type Printer = {
   hostname: string;
@@ -518,6 +519,7 @@ type HistoryAggResponse = {
 };
 
 const errorMsg = ref<string>('');
+const { t } = useI18n();
 
 const printers = ref<Printer[]>([]);
 const profiles = ref<CalibrationProfile[]>([]);
@@ -602,16 +604,16 @@ const historyTableRows = computed(() => {
   });
 });
 
-const historyHeaders = [
-  { title: 'Printer', key: 'hostname' },
-  { title: 'OK', key: 'ok' },
-  { title: 'Total Prints', key: 'total_jobs' },
-  { title: 'Print Time', key: 'total_print_time' },
-  { title: 'Total Time', key: 'total_time' },
-  { title: 'Filament', key: 'total_filament_used' },
-  { title: 'Longest Job', key: 'longest_job' },
-  { title: 'Error', key: 'error' },
-] as const;
+const historyHeaders = computed(() => [
+  { title: t('analytics.perPrinter.colPrinter'), key: 'hostname' },
+  { title: t('analytics.perPrinter.colOk'), key: 'ok' },
+  { title: t('analytics.perPrinter.colTotalPrints'), key: 'total_jobs' },
+  { title: t('analytics.perPrinter.colPrintTime'), key: 'total_print_time' },
+  { title: t('analytics.perPrinter.colTotalTime'), key: 'total_time' },
+  { title: t('analytics.perPrinter.colFilament'), key: 'total_filament_used' },
+  { title: t('analytics.perPrinter.colLongestJob'), key: 'longest_job' },
+  { title: t('analytics.perPrinter.colError'), key: 'error' },
+]);
 
 // ---- Top by print time
 const topByPrintTimeRow = computed(() => {
@@ -721,8 +723,8 @@ const unescapeHex = (str?: string) => {
 
 const notesText = (p: CalibrationProfile) => {
   const bits: string[] = [];
-  if (p.flow_notes) bits.push(`Flow: ${unescapeHex(p.flow_notes)}`);
-  if (p.pressure_advance_notes) bits.push(`PA: ${unescapeHex(p.pressure_advance_notes)}`);
+  if (p.flow_notes) bits.push(`${t('analytics.calibration.flowNote')} ${unescapeHex(p.flow_notes)}`);
+  if (p.pressure_advance_notes) bits.push(`${t('analytics.calibration.paNote')} ${unescapeHex(p.pressure_advance_notes)}`);
   return bits.join(' · ');
 };
 
@@ -1201,3 +1203,4 @@ onMounted(() => {
   margin-top: 2px;
 }
 </style>
+

@@ -8,7 +8,7 @@
     <div v-show="!collapsed" class="rail-drawer">
       <div class="rail-header fancy">
         <div class="rail-header-content">
-          <div class="rail-title">Utilities</div>
+          <div class="rail-title">{{ $t('utilities.title') }}</div>
 
           <v-btn
             icon
@@ -16,7 +16,7 @@
             size="small"
             class="rail-close"
             @click="$emit('toggle')"
-            title="Collapse utilities"
+            :title="$t('rightBar.collapse')"
           >
             <v-icon>mdi-chevron-right</v-icon>
           </v-btn>
@@ -28,7 +28,7 @@
         <div class="glass-card">
           <div class="card-title">
             <v-icon size="18" color="yellow">mdi-note-text</v-icon>
-            <span>Notes</span>
+            <span>{{ $t('rightBar.notes') }}</span>
 
             <v-spacer />
 
@@ -37,7 +37,7 @@
               size="x-small"
               variant="text"
               class="mini-icon"
-              :title="apiOk ? 'Saved' : 'Offline (local only)'"
+              :title="apiOk ? $t('rightBar.saved') : $t('rightBar.offline')"
             >
               <v-icon :color="apiOk ? 'green' : 'grey'">
                 {{ apiOk ? 'mdi-cloud-check-outline' : 'mdi-cloud-off-outline' }}
@@ -45,14 +45,14 @@
             </v-btn>
           </div>
 
-          <div class="card-sub">Quick notes that persist.</div>
+          <div class="card-sub">{{ $t('rightBar.notesSub') }}</div>
 
           <div class="note-entry">
             <v-text-field
               v-model="newNote"
               density="compact"
               hide-details
-              placeholder="Add a note…"
+              :placeholder="$t('rightBar.notePlaceholder')"
               class="sidebar-input"
               @keyup.enter="addNote()"
             />
@@ -64,13 +64,13 @@
               class="add-btn"
               @click="addNote()"
               :disabled="!newNote.trim()"
-              title="Add note"
+              :title="$t('rightBar.addNote')"
             >
               <v-icon>mdi-plus</v-icon>
             </v-btn>
           </div>
 
-          <div v-if="notes.length === 0" class="empty-hint">No notes yet.</div>
+          <div v-if="notes.length === 0" class="empty-hint">{{ $t('rightBar.noNotes') }}</div>
 
           <div v-else class="note-list">
             <div v-for="n in notes" :key="n.id" class="note-item">
@@ -84,7 +84,7 @@
                   variant="text"
                   class="mini-icon"
                   @click="deleteNote(n.id)"
-                  title="Delete note"
+                  :title="$t('rightBar.deleteNote')"
                 >
                   <v-icon>mdi-delete-outline</v-icon>
                 </v-btn>
@@ -97,23 +97,23 @@
         <div class="glass-card">
           <div class="card-title">
             <v-icon size="18" color="yellow">mdi-format-list-checks</v-icon>
-            <span>Tasks</span>
+            <span>{{ $t('rightBar.tasks') }}</span>
 
             <v-spacer />
 
-            <div class="task-count" :title="`${openTasks} open / ${tasks.length} total`">
-              {{ openTasks }} open
+            <div class="task-count" :title="$t('rightBar.openTasksTitle', { open: openTasks, total: tasks.length })">
+              {{ $t('rightBar.openTasks', { n: openTasks }) }}
             </div>
           </div>
 
-          <div class="card-sub">Small checklist that persists.</div>
+          <div class="card-sub">{{ $t('rightBar.tasksSub') }}</div>
 
           <div class="task-entry">
             <v-text-field
               v-model="newTask"
               density="compact"
               hide-details
-              placeholder="Add a task…"
+              :placeholder="$t('rightBar.taskPlaceholder')"
               class="sidebar-input"
               @keyup.enter="addTask()"
             />
@@ -125,13 +125,13 @@
               class="add-btn"
               @click="addTask()"
               :disabled="!newTask.trim()"
-              title="Add task"
+              :title="$t('rightBar.addTask')"
             >
               <v-icon>mdi-plus</v-icon>
             </v-btn>
           </div>
 
-          <div v-if="tasks.length === 0" class="empty-hint">No tasks yet.</div>
+          <div v-if="tasks.length === 0" class="empty-hint">{{ $t('rightBar.noTasks') }}</div>
 
           <div v-else class="task-list">
             <div
@@ -159,7 +159,7 @@
                 variant="text"
                 class="mini-icon"
                 @click="deleteTask(t.id)"
-                title="Delete task"
+                :title="$t('rightBar.deleteTask')"
               >
                 <v-icon>mdi-delete-outline</v-icon>
               </v-btn>
@@ -174,7 +174,7 @@
                 @click="clearCompleted()"
               >
                 <v-icon start>mdi-broom</v-icon>
-                Clear completed
+                {{ $t('rightBar.clearCompleted') }}
               </v-btn>
             </div>
           </div>
@@ -184,7 +184,7 @@
         <div class="glass-card">
           <div class="card-title">
             <v-icon size="18" color="yellow">mdi-text-long</v-icon>
-            <span>Scratchpad</span>
+            <span>{{ $t('rightBar.scratchpad') }}</span>
           </div>
 
           <v-textarea
@@ -194,7 +194,7 @@
             rows="2"
             max-rows="8"
             hide-details
-            placeholder="Anything… (autosaves)"
+            :placeholder="$t('rightBar.scratchpadPlaceholder')"
             class="notes sidebar-input"
           />
         </div>
@@ -207,7 +207,7 @@
       class="rail-toggle square yellow-accent"
       icon
       @click="$emit('toggle')"
-      title="Open utilities"
+      :title="$t('rightBar.expand')"
     >
       <v-icon>mdi-chevron-left</v-icon>
     </v-btn>

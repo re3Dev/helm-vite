@@ -1,0 +1,328 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "done": "Done",
+    "save": "Save",
+    "set": "Set",
+    "close": "Close",
+    "send": "Send",
+    "clear": "Clear",
+    "upload": "Upload",
+    "refresh": "Refresh",
+    "select": "Select",
+    "loading": "Loading...",
+    "unknown": "Unknown",
+    "error": "Error",
+    "success": "Success",
+    "yes": "Yes",
+    "no": "No"
+  },
+
+  "language": {
+    "title": "Language",
+    "menuItem": "Language"
+  },
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "login": "Login",
+    "logout": "Logout"
+  },
+
+  "auth": {
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign In",
+    "loginBtn": "Login",
+    "pinTab": "PIN",
+    "adminTab": "Admin",
+    "pinLabel": "PIN",
+    "autoLogin": "Auto-login on this computer (admin)",
+    "invalidCredentials": "Invalid username or password"
+  },
+
+  "printerList": {
+    "title": "Printers",
+    "viewGrid": "Grid view",
+    "viewList": "List view",
+    "notPrinting": "Not Printing",
+    "unknownModel": "Unknown Model",
+
+    "status": {
+      "printing": "PRINTING",
+      "busy": "BUSY",
+      "homed": "HOMED",
+      "disengaged": "DISENGAGED",
+      "error": "ERROR",
+      "unknown": "Status Unknown"
+    },
+
+    "heater": {
+      "off": "Off",
+      "on": "On",
+      "heating": "Heating"
+    },
+
+    "file": {
+      "found": "Selected file found",
+      "missing": "Selected file missing",
+      "cannotVerify": "Cannot verify selected file",
+      "checking": "Checking selected file..."
+    },
+
+    "lock": {
+      "unlock": "Unlock to allow selection",
+      "lock": "Lock selection"
+    },
+
+    "columns": {
+      "hostname": "Hostname",
+      "type": "Type",
+      "status": "Status",
+      "progress": "Progress",
+      "printFile": "Print File"
+    },
+
+    "printerType": {
+      "pellet": "Pellet",
+      "filament": "Filament"
+    }
+  },
+
+  "controls": {
+    "emergencyStop": "Emergency Stop",
+    "emergencyStopSent": "Emergency stop sent",
+    "emergencyStopFailed": "Emergency stop failed",
+
+    "firmwareRestart": "Firmware Restart (Selected)",
+    "firmwareRestartSent": "Firmware restart sent",
+    "firmwareRestartFailed": "Firmware restart failed",
+    "selectAtLeastOne": "Select at least one printer"
+  },
+
+  "sort": {
+    "title": "Printer Sort Settings",
+    "menuItem": "Sort Settings",
+    "dynamic": "Dynamic (non-printing first, printing last)",
+    "alphabetical": "Alphabetical (static)",
+    "custom": "Custom order (static)",
+    "moveToSetOrder": "Move printers to set display order:"
+  },
+
+  "network": {
+    "title": "Network Settings",
+    "menuItem": "Network Settings",
+    "description": "Set the IP range to scan for printers on your network.",
+    "cidrLabel": "Scanner CIDR",
+    "cidrPlaceholder": "192.168.1.0/24",
+    "cidrHint": "Enter CIDR notation (e.g. 192.168.1.0/24)",
+    "saveAndScan": "Save & Scan"
+  },
+
+  "sidebar": {
+    "title": "Printer Control",
+    "collapse": "Collapse printer control",
+    "expand": "Open printer control",
+    "groups": {
+      "print": "Print",
+      "movement": "Movement",
+      "temperature": "Temperature"
+    }
+  },
+
+  "print": {
+    "start": "Start",
+    "pause": "Pause",
+    "stop": "Stop",
+    "startPrint": "Start Print",
+    "pausePrint": "Pause Print",
+    "stopPrint": "Stop Print",
+    "selectFile": "Select File",
+    "uploadFile": "Upload File",
+    "refreshFileList": "Refresh File List",
+
+    "starting": "Starting print...",
+    "pausing": "Pausing print...",
+    "stopping": "Stopping print...",
+    "started": "Print started",
+    "paused": "Print paused",
+    "stopped": "Print stopped",
+    "startFailed": "Start print failed",
+    "pauseFailed": "Pause failed",
+    "stopFailed": "Stop failed",
+
+    "uploading": "Uploading {filename}...",
+    "uploaded": "Uploaded: {filename}",
+    "uploadFailed": "Upload failed: {filename}",
+    "uploadSuccessful": "Upload successful ({success}/{total})",
+    "uploadIncomplete": "Upload incomplete ({success}/{total})",
+
+    "refreshing": "Refreshing file list...",
+    "refreshed": "File list refreshed ({count} file) | File list refreshed ({count} files)",
+    "fileSelected": "File selected: {filename}",
+
+    "readyUpload": "Ready: {filename}"
+  },
+
+  "movement": {
+    "homeAllAxes": "Home All Axes",
+    "stepSize": "{size}mm",
+    "moveX": "Move X {dir}{dist}mm",
+    "moveY": "Move Y {dir}{dist}mm",
+    "moveZ": "Move Z {dir}{dist}mm",
+    "moveXY": "Move XY ({x}, {y}mm)"
+  },
+
+  "temperature": {
+    "setE0": "Set E0 Temp",
+    "setE1": "Set E1 Temp",
+    "setE2": "Set E2 Temp",
+    "setBed": "Set Bed Temp",
+    "cooldown": "Cooldown",
+    "cooldownSent": "Cooldown sent",
+    "cooldownFailed": "Cooldown failed",
+    "commandSent": "{label}: {temp}°C",
+    "commandFailed": "{label} failed"
+  },
+
+  "terminal": {
+    "title": "G-code Terminal",
+    "placeholder": "Enter G-code (e.g. M105, M119, G28, PAUSE)",
+    "send": "Send",
+    "clear": "Clear",
+    "sent": "G-code: {command}",
+    "failed": "G-code failed: {command}"
+  },
+
+  "utilities": {
+    "title": "Utilities"
+  },
+
+  "admin": {
+    "title": "Admin \u2022 Users",
+    "subtitle": "Create PIN users and assign which printer hostnames they can see.",
+    "addUser": "Add user",
+    "nameLabel": "Name",
+    "namePlaceholder": "Operator 1",
+    "createUser": "Create user",
+    "pinHint": "PIN must be digits (3\u20138).",
+    "usersTitle": "Users",
+    "printersLabel": "Printers:",
+    "noPrinters": "None",
+    "noUsers": "No users found",
+    "assignTitle": "Assign printers",
+    "selectUser": "Select a user on the left to assign printers.",
+    "adminAccess": "Admin always has access to all printers.",
+    "assignFor": "Assign printer hostnames for:",
+    "filterPrinters": "Filter printers",
+    "noPrintersFound": "No printers found"
+  },
+
+  "rightBar": {
+    "collapse": "Collapse utilities",
+    "expand": "Open utilities",
+    "notes": "Notes",
+    "notesSub": "Quick notes that persist.",
+    "notePlaceholder": "Add a note\u2026",
+    "addNote": "Add note",
+    "noNotes": "No notes yet.",
+    "deleteNote": "Delete note",
+    "saved": "Saved",
+    "offline": "Offline (local only)",
+    "tasks": "Tasks",
+    "tasksSub": "Small checklist that persists.",
+    "taskPlaceholder": "Add a task\u2026",
+    "addTask": "Add task",
+    "noTasks": "No tasks yet.",
+    "deleteTask": "Delete task",
+    "openTasks": "{n} open",
+    "openTasksTitle": "{open} open / {total} total",
+    "clearCompleted": "Clear completed",
+    "scratchpad": "Scratchpad",
+    "scratchpadPlaceholder": "Anything\u2026 (autosaves)"
+  },
+
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Fleet usage, print history, and calibration summaries.",
+
+    "metrics": {
+      "fleet": "Fleet",
+      "fleetFootnote": "Printers discovered",
+      "printingNow": "Printing Now",
+      "printingNowFootnote": "Actively printing",
+      "totalPrints": "Total Prints",
+      "acrossAll": "Across all printers",
+      "totalPrintTime": "Total Print Time",
+      "totalTimeIncPaused": "Total Time (incl paused)",
+      "workTimePaused": "Work time + paused",
+      "filamentUsed": "Filament Used",
+      "filamentFootnote": "Total (converted from mm)"
+    },
+
+    "timeBreakdown": {
+      "title": "Time Breakdown by Status (Fleet)",
+      "sub": "Share of total print time spent on completed, cancelled/shutdown, and error jobs.",
+      "empty": "No fleet metrics available yet.",
+      "completed": "Completed:",
+      "cancelled": "Cancelled / Shutdown:",
+      "error": "Error:",
+      "other": "Other:",
+      "lastPrint": "Last recorded print:"
+    },
+
+    "hoursChart": {
+      "title": "Print Hours by Month (Fleet)",
+      "sub": "Relative print hours in each recorded month (scaled to the busiest period).",
+      "empty": "No period breakdown available yet.",
+      "caption": "Taller bars indicate months with more accumulated print time."
+    },
+
+    "leaderboards": {
+      "title": "Fleet Leaderboards",
+      "sub": "\"Biggest\" stats across the whole fleet.",
+      "empty": "No printer history totals available yet.",
+      "longestJob": "Longest Job",
+      "mostPrintTime": "Most Print Time",
+      "mostPrints": "Most Prints"
+    },
+
+    "perPrinter": {
+      "title": "Per-Printer History Totals",
+      "sub": "From Moonraker job totals on each device.",
+      "empty": "No per-printer totals available yet.",
+      "colPrinter": "Printer",
+      "colOk": "OK",
+      "colTotalPrints": "Total Prints",
+      "colPrintTime": "Print Time",
+      "colTotalTime": "Total Time",
+      "colFilament": "Filament",
+      "colLongestJob": "Longest Job",
+      "colError": "Error"
+    },
+
+    "calibration": {
+      "title": "Calibration Profiles",
+      "sub": "Grouped by machine + material, with left/right extruder tuned values.",
+      "empty": "No calibration profiles found.",
+      "profilesLabel": "Profiles",
+      "material": "Material:",
+      "materialLabel": "Material",
+      "extruders": "Extruders:",
+      "leftLabel": "Left",
+      "rightLabel": "Right",
+      "leftExtruder": "Left Extruder",
+      "rightExtruder": "Right Extruder",
+      "nozzle": "Nozzle",
+      "bed": "Bed",
+      "flowMultiplier": "Flow Multiplier",
+      "pressureAdvance": "Pressure Advance (K)",
+      "lastUpdated": "Last updated:",
+      "noLeftProfile": "No left extruder profile saved yet.",
+      "noRightProfile": "No right extruder profile saved yet.",
+      "flowNote": "Flow:",
+      "paNote": "PA:"
+    }
+  }
+}

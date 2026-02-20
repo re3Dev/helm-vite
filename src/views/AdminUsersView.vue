@@ -2,15 +2,15 @@
   <v-container fluid>
     <div class="d-flex align-center justify-space-between mb-4">
       <div>
-        <h2 class="text-h5">Admin • Users</h2>
+        <h2 class="text-h5">{{ $t('admin.title') }}</h2>
         <div class="text-body-2 text-medium-emphasis">
-          Create PIN users and assign which printer hostnames they can see.
+          {{ $t('admin.subtitle') }}
         </div>
       </div>
 
       <v-btn variant="tonal" @click="refreshAll" :loading="loading">
         <v-icon start>mdi-refresh</v-icon>
-        Refresh
+        {{ $t('common.refresh') }}
       </v-btn>
     </div>
 
@@ -18,7 +18,7 @@
     <v-card class="mb-4" color="surface" variant="elevated">
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" color="primary">mdi-account-plus</v-icon>
-        Add user
+        {{ $t('admin.addUser') }}
       </v-card-title>
 
       <v-card-text>
@@ -26,8 +26,8 @@
           <v-col cols="12" md="5">
             <v-text-field
               v-model="newName"
-              label="Name"
-              placeholder="Operator 1"
+              :label="$t('admin.nameLabel')"
+              :placeholder="$t('admin.namePlaceholder')"
               density="comfortable"
               variant="outlined"
               hide-details
@@ -37,7 +37,7 @@
           <v-col cols="12" md="3">
             <v-text-field
               v-model="newPin"
-              label="PIN"
+              :label="$t('auth.pinLabel')"
               placeholder="1234"
               density="comfortable"
               variant="outlined"
@@ -53,11 +53,11 @@
               @click="createUser"
             >
               <v-icon start>mdi-account-plus</v-icon>
-              Create user
+              {{ $t('admin.createUser') }}
             </v-btn>
 
             <div class="ml-3 text-caption text-medium-emphasis">
-              PIN must be digits (3–8).
+              {{ $t('admin.pinHint') }}
             </div>
           </v-col>
         </v-row>
@@ -90,7 +90,7 @@
         <v-card color="surface" variant="elevated">
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2" color="primary">mdi-account-multiple</v-icon>
-            Users
+            {{ $t('admin.usersTitle') }}
           </v-card-title>
 
           <v-divider />
@@ -121,10 +121,10 @@
                 </v-list-item-title>
 
                 <v-list-item-subtitle>
-                  Printers:
+                  {{ $t('admin.printersLabel') }}
                   {{
                     ((u.printers?.length ?? 0) === 0)
-                      ? 'None'
+                      ? $t('admin.noPrinters')
                       : (u.printers?.length ?? 0)
                   }}
                 </v-list-item-subtitle>
@@ -141,7 +141,7 @@
               </v-list-item>
 
               <v-list-item v-if="users.length === 0">
-                <v-list-item-title>No users found</v-list-item-title>
+                <v-list-item-title>{{ $t('admin.noUsers') }}</v-list-item-title>
               </v-list-item>
             </v-list>
 
@@ -164,7 +164,7 @@
           <v-card-title class="d-flex align-center justify-space-between">
             <div class="d-flex align-center">
               <v-icon class="mr-2" color="primary">mdi-printer-3d</v-icon>
-              Assign printers
+              {{ $t('admin.assignTitle') }}
             </div>
 
             <v-btn
@@ -174,7 +174,7 @@
               @click="savePrinters"
             >
               <v-icon start>mdi-content-save</v-icon>
-              Save
+              {{ $t('common.save') }}
             </v-btn>
           </v-card-title>
 
@@ -187,7 +187,7 @@
               variant="tonal"
               density="comfortable"
             >
-              Select a user on the left to assign printers.
+              {{ $t('admin.selectUser') }}
             </v-alert>
 
             <template v-else>
@@ -197,18 +197,18 @@
                 variant="tonal"
                 density="comfortable"
               >
-                Admin always has access to all printers.
+                {{ $t('admin.adminAccess') }}
               </v-alert>
 
               <template v-else>
                 <div class="text-body-2 mb-2">
-                  Assign printer hostnames for:
+                  {{ $t('admin.assignFor') }}
                   <strong>{{ selectedUser.name || selectedUser.id }}</strong>
                 </div>
 
                 <v-text-field
                   v-model="printerFilter"
-                  label="Filter printers"
+                  :label="$t('admin.filterPrinters')"
                   variant="outlined"
                   density="comfortable"
                   hide-details
@@ -235,7 +235,7 @@
                   </v-list-item>
 
                   <v-list-item v-if="filteredDevices.length === 0">
-                    <v-list-item-title>No printers found</v-list-item-title>
+                    <v-list-item-title>{{ $t('admin.noPrintersFound') }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
 

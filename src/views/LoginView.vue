@@ -2,30 +2,30 @@
   <v-container class="py-8" style="max-width:520px">
     <v-card>
       <v-tabs v-model="tab" grow>
-        <v-tab value="pin">PIN</v-tab>
-        <v-tab value="admin">Admin</v-tab>
+        <v-tab value="pin">{{ $t('auth.pinTab') }}</v-tab>
+        <v-tab value="admin">{{ $t('auth.adminTab') }}</v-tab>
       </v-tabs>
 
       <v-card-text>
         <div v-if="tab==='pin'">
           <v-text-field
             v-model="pin"
-            label="PIN"
+            :label="$t('auth.pinLabel')"
             inputmode="numeric"
             autocomplete="one-time-code"
           />
         </div>
 
         <div v-else>
-          <v-text-field v-model="username" label="Username" autocomplete="username" />
-          <v-text-field v-model="password" label="Password" type="password" autocomplete="current-password" />
+          <v-text-field v-model="username" :label="$t('auth.username')" autocomplete="username" />
+          <v-text-field v-model="password" :label="$t('auth.password')" type="password" autocomplete="current-password" />
 
           <v-checkbox
             v-model="autoLoginEnabled"
             class="mt-2"
             density="compact"
             hide-details
-            label="Auto-login on this computer (admin)"
+            :label="$t('auth.autoLogin')"
             @update:modelValue="persistAutoLogin"
           />
         </div>
@@ -37,7 +37,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn :loading="loading" color="primary" @click="login">Login</v-btn>
+        <v-btn :loading="loading" color="primary" @click="login">{{ $t('auth.loginBtn') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>

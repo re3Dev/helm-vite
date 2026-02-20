@@ -15,12 +15,12 @@
               size="small"
               class="header-close header-close-left"
               @click="toggleCollapse"
-              title="Collapse printer control"
+              :title="$t('sidebar.collapse')"
             >
               <v-icon>mdi-chevron-left</v-icon>
             </v-btn>
 
-            <div class="header-title header-title-right">Printer Control</div>
+            <div class="header-title header-title-right">{{ $t('sidebar.title') }}</div>
           </div>
         </div>
 
@@ -30,7 +30,7 @@
             <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx" class="sidebar-panel">
               <v-expansion-panel-title class="sidebar-panel-title">
                 <v-icon color="yellow">{{ group.icon }}</v-icon>&nbsp;
-                {{ group.title }}
+                {{ tGroup(group.title) }}
               </v-expansion-panel-title>
 
               <v-expansion-panel-text class="sidebar-panel-text">
@@ -122,7 +122,7 @@
                           ref="gcodeAutocomplete"
                           v-if="printSelectCommand(group.commands)"
                           v-model="selectedPrintFile"
-                          :label="printSelectCommand(group.commands).label"
+                          :label="$t('print.selectFile')"
                           :items="gcodeFiles"
                           density="compact"
                           hide-details
@@ -149,7 +149,7 @@
                     <div class="print-upload">
                       <v-file-input
                         v-if="printUploadCommand(group.commands)"
-                        :label="printUploadCommand(group.commands).label"
+                        :label="$t('print.uploadFile')"
                         :accept="printUploadCommand(group.commands).accept?.join(',')"
                         :color="printUploadCommand(group.commands).color"
                         prepend-icon="mdi-upload"
@@ -170,7 +170,7 @@
                         class="primary-action"
                       >
                         <v-icon start>mdi-cloud-upload</v-icon>
-                        Upload
+                        {{ $t('common.upload') }}
                       </v-btn>
 
                       <div
@@ -191,7 +191,7 @@
                     <div v-for="cmd in tempCommands(group.commands)" :key="cmd.label" class="temp-row">
                       <v-text-field
                         v-model="tempValues[cmd.label]"
-                        :label="cmd.label"
+                        :label="tLabel(cmd.label)"
                         type="number"
                         :min="cmd.min"
                         :max="cmd.max"
@@ -208,7 +208,7 @@
                         variant="tonal"
                         @click="setTemperature(cmd)"
                       >
-                        Set
+                        {{ $t('common.set') }}
                       </v-btn>
                     </div>
 
@@ -222,7 +222,7 @@
                       @click="runCommand(cmd)"
                     >
                       <v-icon start v-if="cmd.icon">{{ cmd.icon }}</v-icon>
-                      {{ cmd.label }}
+                      {{ tLabel(cmd.label) }}
                     </v-btn>
                   </div>
                 </template>
@@ -283,7 +283,7 @@
                           @click="runCommand(cmd, gcodeInputs[gIdx]); gcodeInputs[gIdx] = ''"
                           class="list-btn"
                         >
-                          Send
+                          {{ $t('common.send') }}
                         </v-btn>
                       </template>
                     </v-list-item>
@@ -296,7 +296,7 @@
             <v-expansion-panel class="sidebar-panel">
               <v-expansion-panel-title class="sidebar-panel-title">
                 <v-icon color="yellow">mdi-console</v-icon>&nbsp;
-                G-code Terminal
+                {{ $t('terminal.title') }}
               </v-expansion-panel-title>
 
               <v-expansion-panel-text class="sidebar-panel-text">
@@ -307,7 +307,7 @@
                     rows="3"
                     max-rows="8"
                     density="compact"
-                    placeholder="Enter G-code (e.g. M105, M119, G28, PAUSE)"
+                    :placeholder="$t('terminal.placeholder')"
                     hide-details
                     class="terminal-box sidebar-input"
                   />
@@ -321,7 +321,7 @@
                       :disabled="!terminalText['_standalone'] || !terminalText['_standalone'].trim()"
                       @click="sendTerminal('_standalone', printGroupCommands)"
                     >
-                      Send
+                      {{ $t('common.send') }}
                     </v-btn>
 
                     <v-btn
@@ -331,7 +331,7 @@
                       variant="text"
                       @click="terminalText['_standalone'] = ''"
                     >
-                      Clear
+                      {{ $t('common.clear') }}
                     </v-btn>
                   </div>
                 </div>
@@ -351,7 +351,7 @@
         class="rail-toggle square yellow-accent"
         icon
         @click="toggleCollapse"
-        title="Open printer control"
+        :title="$t('sidebar.expand')"
       >
         <v-icon>mdi-chevron-right</v-icon>
       </v-btn>
@@ -361,7 +361,39 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, defineProps } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { runCommand, selectedStepSize, refreshFileListFromBackend, gcodeFiles, scannerCidr, selectedPrintFile } from './commandService.ts'
+
+const { t } = useI18n()
+
+/** Translate group titles (keeps internal keys unchanged for conditional logic) */
+const GROUP_TITLE_KEYS = {
+  'Print': 'sidebar.groups.print',
+  'Movement': 'sidebar.groups.movement',
+  'Temperature': 'sidebar.groups.temperature',
+}
+function tGroup(title) {
+  return GROUP_TITLE_KEYS[title] ? t(GROUP_TITLE_KEYS[title]) : title
+}
+
+/** Translate command labels */
+const CMD_LABEL_KEYS = {
+  'Start Print':       'print.startPrint',
+  'Pause Print':       'print.pausePrint',
+  'Stop Print':        'print.stopPrint',
+  'Select File':       'print.selectFile',
+  'Upload File':       'print.uploadFile',
+  'Refresh File List': 'print.refreshFileList',
+  'Set E0 Temp':       'temperature.setE0',
+  'Set E1 Temp':       'temperature.setE1',
+  'Set E2 Temp':       'temperature.setE2',
+  'Set Bed Temp':      'temperature.setBed',
+  'Cooldown':          'temperature.cooldown',
+  'Home All Axes':     'movement.homeAllAxes',
+}
+function tLabel(label) {
+  return CMD_LABEL_KEYS[label] ? t(CMD_LABEL_KEYS[label]) : label
+}
 
 const props = defineProps({
   groups: { type: Array, default: () => [] }
@@ -423,9 +455,9 @@ function printRefreshCommand(commands) {
   return (commands || []).find(c => c.type === 'button' && c.label === 'Refresh File List')
 }
 function shortLabel(label) {
-  if (label === 'Start Print') return 'Start'
-  if (label === 'Pause Print') return 'Pause'
-  if (label === 'Stop Print') return 'Stop'
+  if (label === 'Start Print') return t('print.start')
+  if (label === 'Pause Print') return t('print.pause')
+  if (label === 'Stop Print') return t('print.stop')
   return label
 }
 
@@ -486,24 +518,24 @@ function onFilePicked(gIdx, val) {
   const file = normalizeFile(val)
   pendingFiles.value[gIdx] = file
   uploadState.value[gIdx] = file
-    ? { loading: false, ok: undefined, msg: `Ready: ${file.name}` }
+    ? { loading: false, ok: undefined, msg: t('print.readyUpload', { filename: file.name }) }
     : { loading: false, ok: undefined, msg: '' }
 }
 async function uploadPickedFile(cmd, gIdx) {
   const file = pendingFiles.value[gIdx]
   if (!file) return
 
-  uploadState.value[gIdx] = { loading: true, ok: undefined, msg: 'Uploading…' }
+  uploadState.value[gIdx] = { loading: true, ok: undefined, msg: t('print.uploading', { filename: file.name }) }
 
   try {
     const result = await runCommand(cmd, file)
     if (result?.ok) {
-      uploadState.value[gIdx] = { loading: false, ok: true, msg: `Upload successful (${result.success}/${result.total})` }
+      uploadState.value[gIdx] = { loading: false, ok: true, msg: t('print.uploadSuccessful', { success: result.success, total: result.total }) }
     } else {
-      uploadState.value[gIdx] = { loading: false, ok: false, msg: `Upload incomplete (${result?.success ?? 0}/${result?.total ?? 0})` }
+      uploadState.value[gIdx] = { loading: false, ok: false, msg: t('print.uploadIncomplete', { success: result?.success ?? 0, total: result?.total ?? 0 }) }
     }
   } catch (e) {
-    uploadState.value[gIdx] = { loading: false, ok: false, msg: `Upload failed: ${e?.message ?? e}` }
+    uploadState.value[gIdx] = { loading: false, ok: false, msg: t('print.uploadFailed', { filename: file?.name ?? '' }) }
   }
 }
 
