@@ -280,7 +280,7 @@
                 <div class="status-sub">
                   <span
                     v-if="getTransientStatus(printer)"
-                    class="text-yellow"
+                    :class="transientStatusClass(printer)"
                   >
                     <v-icon>mdi-progress-clock</v-icon>
                     {{ getTransientStatus(printer) }}
@@ -858,6 +858,12 @@ export default defineComponent({
       return printerTransientStatusByIp.value[printer.ip] || '';
     };
 
+    const transientStatusClass = (printer: Printer) => {
+      const msg = getTransientStatus(printer).toLowerCase();
+      if (msg.includes('temperature') || msg.includes('cooldown')) return 'text-cyan';
+      return 'text-yellow';
+    };
+
     const getFileAvailability = (printer: Printer): FileAvailability => {
       if (!selectedFileName.value) return 'checking';
       return selectedFileAvailabilityByIp.value[printer.ip] || 'checking';
@@ -1029,6 +1035,7 @@ export default defineComponent({
       toggleSelection,
       selectLockedPrinter,
       getTransientStatus,
+      transientStatusClass,
       selectedFileName,
       fileAvailabilityClass,
       fileAvailabilityIcon,
@@ -1147,6 +1154,7 @@ export default defineComponent({
 .locked-row { opacity: 0.7; }
 
 .text-yellow { color: yellow; }
+.text-cyan { color: #52d9ff; }
 .text-green { color: green; }
 .text-grey { color: grey; }
 .text-red { color: red; }

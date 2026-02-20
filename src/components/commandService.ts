@@ -423,6 +423,9 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
     )
 
     const failed = results.filter(r => r.status === 'rejected').length
+    if (failed === 0) {
+      setTransientStatus([...selectedPrinters.value], `Temperature command sent (${command.label}: ${parsed}°C)`)
+    }
     return { ok: failed === 0 }
   }
 
@@ -452,6 +455,9 @@ export const runCommand = async (command: CommandConfig, value?: any) => {
       })
     )
     const failed = results.filter(r => r.status === 'rejected').length
+    if (failed === 0) {
+      setTransientStatus([...selectedPrinters.value], 'Cooldown command sent')
+    }
     return { ok: failed === 0 }
   }
 
