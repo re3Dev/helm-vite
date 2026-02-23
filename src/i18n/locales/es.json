@@ -1,0 +1,295 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "done": "Listo",
+    "save": "Guardar",
+    "set": "Aplicar",
+    "close": "Cerrar",
+    "send": "Enviar",
+    "clear": "Limpiar",
+    "upload": "Subir",
+    "refresh": "Actualizar",
+    "select": "Seleccionar",
+    "loading": "Cargando…",
+    "unknown": "Desconocido",
+    "error": "Error",
+    "success": "Éxito",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "language": {
+    "title": "Idioma",
+    "menuItem": "Idioma"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "admin": "Admin",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "username": "Usuario",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "loginBtn": "Entrar",
+    "pinTab": "PIN",
+    "adminTab": "Admin",
+    "pinLabel": "PIN",
+    "autoLogin": "Inicio de sesión automático en este equipo (admin)",
+    "invalidCredentials": "Usuario o contraseña incorrectos"
+  },
+  "printerList": {
+    "title": "Impresoras",
+    "viewGrid": "Vista cuadrícula",
+    "viewList": "Vista lista",
+    "notPrinting": "Sin imprimir",
+    "unknownModel": "Modelo desconocido",
+    "status": {
+      "printing": "IMPRIMIENDO",
+      "busy": "OCUPADA",
+      "homed": "EN ORIGEN",
+      "disengaged": "DESENGANCHADA",
+      "error": "ERROR",
+      "unknown": "Estado desconocido"
+    },
+    "heater": {
+      "off": "Apagado",
+      "on": "Encendido",
+      "heating": "Calentando"
+    },
+    "file": {
+      "found": "Archivo seleccionado encontrado",
+      "missing": "Archivo seleccionado no encontrado",
+      "cannotVerify": "No se puede verificar el archivo",
+      "checking": "Verificando archivo…"
+    },
+    "lock": {
+      "unlock": "Desbloquear para permitir selección",
+      "lock": "Bloquear selección"
+    },
+    "columns": {
+      "hostname": "Host",
+      "type": "Tipo",
+      "status": "Estado",
+      "progress": "Progreso",
+      "printFile": "Archivo de impresión"
+    },
+    "printerType": {
+      "pellet": "Pellet",
+      "filament": "Filamento"
+    }
+  },
+  "controls": {
+    "emergencyStop": "Parada de emergencia",
+    "emergencyStopSent": "Parada de emergencia enviada",
+    "emergencyStopFailed": "Error en parada de emergencia",
+    "firmwareRestart": "Reiniciar firmware (seleccionadas)",
+    "firmwareRestartSent": "Reinicio de firmware enviado",
+    "firmwareRestartFailed": "Error al reiniciar firmware",
+    "selectAtLeastOne": "Seleccione al menos una impresora"
+  },
+  "sort": {
+    "title": "Ordenar impresoras",
+    "menuItem": "Ajustes de orden",
+    "dynamic": "Dinámico (sin imprimir primero, imprimiendo al final)",
+    "alphabetical": "Alfabético (estático)",
+    "custom": "Orden personalizado (estático)",
+    "moveToSetOrder": "Mover impresoras para definir el orden de visualización:"
+  },
+  "network": {
+    "title": "Ajustes de red",
+    "menuItem": "Ajustes de red",
+    "description": "Configure el rango IP para buscar impresoras en la red.",
+    "cidrLabel": "CIDR del escaner",
+    "cidrPlaceholder": "192.168.1.0/24",
+    "cidrHint": "Introduzca notación CIDR (p. ej. 192.168.1.0/24)",
+    "saveAndScan": "Guardar y escanear"
+  },
+  "sidebar": {
+    "title": "Control de impresora",
+    "collapse": "Colapsar control de impresora",
+    "expand": "Abrir control de impresora",
+    "groups": {
+      "print": "Impresión",
+      "movement": "Movimiento",
+      "temperature": "Temperatura"
+    }
+  },
+  "print": {
+    "start": "Iniciar",
+    "pause": "Pausar",
+    "stop": "Detener",
+    "startPrint": "Iniciar impresión",
+    "pausePrint": "Pausar impresión",
+    "stopPrint": "Detener impresión",
+    "selectFile": "Seleccionar archivo",
+    "uploadFile": "Subir archivo",
+    "refreshFileList": "Actualizar lista",
+    "starting": "Iniciando impresión…",
+    "pausing": "Pausando impresión…",
+    "stopping": "Deteniendo…",
+    "started": "Impresión iniciada",
+    "paused": "Impresión pausada",
+    "stopped": "Impresión detenida",
+    "startFailed": "Error al iniciar impresión",
+    "pauseFailed": "Error al pausar",
+    "stopFailed": "Error al detener",
+    "uploading": "Subiendo {filename}…",
+    "uploaded": "Subido: {filename}",
+    "uploadFailed": "Error al subir: {filename}",
+    "uploadSuccessful": "Subida correcta ({success}/{total})",
+    "uploadIncomplete": "Subida incompleta ({success}/{total})",
+    "refreshing": "Actualizando lista…",
+    "refreshed": "Lista actualizada ({count} archivo) | Lista actualizada ({count} archivos)",
+    "fileSelected": "Archivo seleccionado: {filename}",
+    "readyUpload": "Listo: {filename}"
+  },
+  "movement": {
+    "homeAllAxes": "Origen todos los ejes",
+    "stepSize": "{size} mm",
+    "moveX": "Mover X {dir}{dist} mm",
+    "moveY": "Mover Y {dir}{dist} mm",
+    "moveZ": "Mover Z {dir}{dist} mm",
+    "moveXY": "Mover XY ({x}, {y} mm)"
+  },
+  "temperature": {
+    "setE0": "Ajustar temp. E0",
+    "setE1": "Ajustar temp. E1",
+    "setE2": "Ajustar temp. E2",
+    "setBed": "Ajustar temp. cama",
+    "cooldown": "Enfriar",
+    "cooldownSent": "Enfriamiento enviado",
+    "cooldownFailed": "Error al enfriar",
+    "commandSent": "{label}: {temp}°C",
+    "commandFailed": "Error en {label}"
+  },
+  "terminal": {
+    "title": "Terminal G-code",
+    "placeholder": "Introduzca G-code (p. ej. M105, M119, G28, PAUSE)",
+    "send": "Enviar",
+    "clear": "Limpiar",
+    "sent": "G-code: {command}",
+    "failed": "Error en G-code: {command}"
+  },
+  "utilities": {
+    "title": "Utilidades"
+  },
+  "admin": {
+    "title": "Admin • Usuarios",
+    "subtitle": "Cree usuarios PIN y asigne qué impresoras pueden ver.",
+    "addUser": "Añadir usuario",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Operador 1",
+    "createUser": "Crear usuario",
+    "pinHint": "El PIN debe ser numérico (3–8 dígitos).",
+    "usersTitle": "Usuarios",
+    "printersLabel": "Impresoras:",
+    "noPrinters": "Ninguna",
+    "noUsers": "No se encontraron usuarios",
+    "assignTitle": "Asignar impresoras",
+    "selectUser": "Seleccione un usuario a la izquierda para asignar impresoras.",
+    "adminAccess": "El admin siempre tiene acceso a todas las impresoras.",
+    "assignFor": "Asignar impresoras para:",
+    "filterPrinters": "Filtrar impresoras",
+    "noPrintersFound": "No se encontraron impresoras"
+  },
+  "rightBar": {
+    "collapse": "Colapsar utilidades",
+    "expand": "Abrir utilidades",
+    "notes": "Notas",
+    "notesSub": "Notas rápidas persistentes.",
+    "notePlaceholder": "Añadir una nota…",
+    "addNote": "Añadir nota",
+    "noNotes": "Sin notas.",
+    "deleteNote": "Eliminar nota",
+    "saved": "Guardado",
+    "offline": "Sin conexión (solo local)",
+    "tasks": "Tareas",
+    "tasksSub": "Lista de verificación persistente.",
+    "taskPlaceholder": "Añadir una tarea…",
+    "addTask": "Añadir tarea",
+    "noTasks": "Sin tareas.",
+    "deleteTask": "Eliminar tarea",
+    "openTasks": "{n} abiertas",
+    "openTasksTitle": "{open} abiertas / {total} en total",
+    "clearCompleted": "Limpiar completadas",
+    "scratchpad": "Borrador",
+    "scratchpadPlaceholder": "Cualquier cosa… (guardado automático)"
+  },
+  "analytics": {
+    "title": "Analítica",
+    "subtitle": "Uso de la flota, historial de impresión y perfiles de calibración.",
+    "metrics": {
+      "fleet": "Flota",
+      "fleetFootnote": "Impresoras detectadas",
+      "printingNow": "Imprimiendo ahora",
+      "printingNowFootnote": "Impresión activa",
+      "totalPrints": "Impresiones totales",
+      "acrossAll": "En todas las impresoras",
+      "totalPrintTime": "Tiempo total de impresión",
+      "totalTimeIncPaused": "Tiempo total (pausas incluidas)",
+      "workTimePaused": "Trabajo + pausa",
+      "filamentUsed": "Filamento usado",
+      "filamentFootnote": "Total (convertido desde mm)"
+    },
+    "timeBreakdown": {
+      "title": "Desglose de tiempo por estado (flota)",
+      "sub": "Parte del tiempo de impresión en trabajos completados, cancelados/detenidos y con error.",
+      "empty": "Aún no hay métricas de flota disponibles.",
+      "completed": "Completados:",
+      "cancelled": "Cancelados / Detenidos:",
+      "error": "Error:",
+      "other": "Otro:",
+      "lastPrint": "Última impresión registrada:"
+    },
+    "hoursChart": {
+      "title": "Horas de impresión por mes (flota)",
+      "sub": "Horas de impresión relativas por mes registrado (escaladas al período más ocupado).",
+      "empty": "Aún no hay desglose por período.",
+      "caption": "Las barras más altas indican meses con más tiempo de impresión acumulado."
+    },
+    "leaderboards": {
+      "title": "Clasificación de la flota",
+      "sub": "Las estadísticas «máximas» de toda la flota.",
+      "empty": "Aún no hay totales de historial disponibles.",
+      "longestJob": "Trabajo más largo",
+      "mostPrintTime": "Más tiempo de impresión",
+      "mostPrints": "Más impresiones"
+    },
+    "perPrinter": {
+      "title": "Totales por impresora",
+      "sub": "Datos de totales de trabajos Moonraker en cada dispositivo.",
+      "empty": "Aún no hay totales por impresora.",
+      "colPrinter": "Impresora",
+      "colOk": "OK",
+      "colTotalPrints": "Impresiones totales",
+      "colPrintTime": "Tiempo de impresión",
+      "colTotalTime": "Tiempo total",
+      "colFilament": "Filamento",
+      "colLongestJob": "Trabajo más largo",
+      "colError": "Error"
+    },
+    "calibration": {
+      "title": "Perfiles de calibración",
+      "sub": "Agrupados por máquina + material, con valores ajustados izquierda/derecha.",
+      "empty": "No se encontraron perfiles de calibración.",
+      "profilesLabel": "Perfiles",
+      "material": "Material:",
+      "materialLabel": "Material",
+      "extruders": "Extrusores:",
+      "leftLabel": "Izquierdo",
+      "rightLabel": "Derecho",
+      "leftExtruder": "Extrusor izquierdo",
+      "rightExtruder": "Extrusor derecho",
+      "nozzle": "Boquilla",
+      "bed": "Cama",
+      "flowMultiplier": "Multiplicador de flujo",
+      "pressureAdvance": "Avance de presión (K)",
+      "lastUpdated": "Última actualización:",
+      "noLeftProfile": "No hay perfil de extrusor izquierdo guardado.",
+      "noRightProfile": "No hay perfil de extrusor derecho guardado.",
+      "flowNote": "Flujo:",
+      "paNote": "AP:"
+    }
+  }
+}

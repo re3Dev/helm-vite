@@ -1,12 +1,14 @@
 import { createI18n } from 'vue-i18n'
 import en from './locales/en.json'
 import fr from './locales/fr.json'
+import es from './locales/es.json'
 
 export type MessageSchema = typeof en
 
 export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'English' },
   { code: 'fr', label: 'Français' },
+  { code: 'es', label: 'Español' },
 ] as const
 
 export type LocaleCode = (typeof SUPPORTED_LOCALES)[number]['code']
@@ -20,6 +22,7 @@ const i18n = createI18n<[MessageSchema], LocaleCode>({
   messages: {
     en,
     fr,
+    es,
   },
 })
 
