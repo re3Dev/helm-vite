@@ -65,7 +65,13 @@ device_list_lock = threading.Lock()
 # Simple auth + user storage
 # ---------------------------
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+# When bundled as a one-file PyInstaller exe, __file__ points to the temp
+# _MEIPASS extraction folder (deleted on exit).  Use sys.executable instead
+# so that data/ is written next to the .exe on disk.
+import sys as _sys
+_APP_DIR = os.path.dirname(_sys.executable) if getattr(_sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
+
+DATA_DIR = os.path.join(_APP_DIR, "data")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 
 # ---------------------------
