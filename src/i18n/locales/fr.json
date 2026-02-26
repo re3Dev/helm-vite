@@ -176,7 +176,7 @@
   },
   "admin": {
     "title": "Admin • Utilisateurs",
-    "subtitle": "Créez des utilisateurs PIN et assignez les imprimantes visibles.",
+    "subtitle": "Créez des utilisateurs avec code PIN et assignez-les aux imprimantes visibles.",
     "addUser": "Ajouter un utilisateur",
     "nameLabel": "Nom",
     "namePlaceholder": "Opérateur 1",

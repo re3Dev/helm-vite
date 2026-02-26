@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "id": "admin",
+      "role": "admin",
+      "username": "admin",
+      "password": "admin",
+      "printers": [
+        "*"
+      ],
+      "created_at": "2026-02-24T16:20:57.502540"
+    }
+  ]
+}
