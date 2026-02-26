@@ -48,7 +48,7 @@
       "printing": "IMPRIMIENDO",
       "busy": "OCUPADA",
       "homed": "EN ORIGEN",
-      "disengaged": "DESENGANCHADA",
+      "disengaged": "LIBERADO",
       "error": "ERROR",
       "unknown": "Estado desconocido"
     },
