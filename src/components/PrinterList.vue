@@ -235,9 +235,54 @@
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
       <v-sheet class="grid-container" :class="`layout-${cardLayout}`" color="background">
         <template v-if="isLoading">
-          <v-card v-for="n in 12" :key="n" color="#181B20" class="pa-3 floating-card">
-            <v-skeleton-loader type="heading, divider, heading, list-item, subtitle, image" :loading="true" />
-          </v-card>
+          <!-- Compact skeletons -->
+          <template v-if="cardLayout === 'compact'">
+            <v-card v-for="n in 18" :key="n" color="#181B20" class="pa-2 floating-card compact-card">
+              <v-skeleton-loader type="text, text" :loading="true" />
+            </v-card>
+          </template>
+          <!-- Detailed skeletons -->
+          <template v-else-if="cardLayout === 'detailed'">
+            <v-card v-for="n in 8" :key="n" color="#181B20" class="pa-3 floating-card detailed-card">
+              <!-- Header: hostname + subtitle row -->
+              <div class="skel-bone" style="height: 20px; width: 45%; border-radius: 4px;"></div>
+              <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                <div class="skel-bone" style="height: 12px; width: 12px; border-radius: 50%;"></div>
+                <div class="skel-bone" style="height: 12px; width: 30%; border-radius: 4px;"></div>
+                <div class="skel-bone" style="height: 10px; width: 20%; border-radius: 4px; opacity: 0.5;"></div>
+              </div>
+              <v-divider color="yellow" :thickness="1" class="my-2"></v-divider>
+              <!-- Two-column body -->
+              <div class="detailed-body">
+                <div class="detailed-left">
+                  <!-- Status line -->
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <div class="skel-bone" style="height: 14px; width: 14px; border-radius: 50%;"></div>
+                    <div class="skel-bone" style="height: 14px; width: 55%; border-radius: 4px;"></div>
+                  </div>
+                  <!-- Progress bar -->
+                  <div class="skel-bone" style="height: 20px; width: 100%; border-radius: 4px; margin-top: 8px;"></div>
+                  <!-- File name -->
+                  <div class="skel-bone" style="height: 13px; width: 75%; border-radius: 4px; margin-top: 4px;"></div>
+                </div>
+                <div class="detailed-right">
+                  <div class="detailed-temp-grid">
+                    <div v-for="t in 3" :key="t" class="detailed-temp-item">
+                      <div class="skel-bone" style="height: 20px; width: 20px; border-radius: 50%;"></div>
+                      <div class="skel-bone" style="height: 14px; width: 50px; border-radius: 4px;"></div>
+                      <div class="skel-bone" style="height: 16px; width: 42px; border-radius: 4px; margin-left: auto;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </v-card>
+          </template>
+          <!-- Default skeletons -->
+          <template v-else>
+            <v-card v-for="n in 12" :key="n" color="#181B20" class="pa-3 floating-card">
+              <v-skeleton-loader type="heading, divider, list-item-two-line, ossein, chip, list-item-three-line" :loading="true" />
+            </v-card>
+          </template>
         </template>
 
         <template v-else>
@@ -1912,6 +1957,15 @@ a:active { color: blue; }
 }
 .detailed-card {
   border-radius: 14px !important;
+}
+.skel-bone {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.5s infinite;
+}
+@keyframes skel-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 .detailed-header {
   display: flex;
