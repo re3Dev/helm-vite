@@ -195,6 +195,22 @@
     "failed": "G-code failed: {command}"
   },
 
+  "cardLayout": {
+    "title": "Card Layout",
+    "menuItem": "Card Layout",
+    "description": "Choose how printer cards appear in grid view.",
+    "options": {
+      "default": "Default",
+      "compact": "Compact",
+      "detailed": "Detailed"
+    },
+    "hints": {
+      "default": "Balanced view with status and temps",
+      "compact": "Minimal cards, fits more on screen",
+      "detailed": "Two-column cards with heater states"
+    }
+  },
+
   "utilities": {
     "title": "Utilities"
   },

@@ -139,9 +139,12 @@ const isActive = (path: string) => {
 /** ---------------------------
  * ✅ Right bar state
  * --------------------------- */
-const rightCollapsed = ref(false)
+const rightCollapsed = ref(localStorage.getItem('sidebarRightCollapsed') === 'true')
 const rightWidth = ref(300)
-const toggleRight = () => (rightCollapsed.value = !rightCollapsed.value)
+const toggleRight = () => {
+  rightCollapsed.value = !rightCollapsed.value
+  localStorage.setItem('sidebarRightCollapsed', String(rightCollapsed.value))
+}
 
 /** ---------------------------
  * ✅ Main-content-center alignment logic (NOW accounts for left + right)

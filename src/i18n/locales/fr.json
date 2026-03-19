@@ -171,6 +171,22 @@
     "sent": "G-code : {command}",
     "failed": "Échec G-code : {command}"
   },
+  "cardLayout": {
+    "title": "Disposition des cartes",
+    "menuItem": "Disposition des cartes",
+    "description": "Choisissez l'apparence des cartes d'imprimante en vue grille.",
+    "options": {
+      "default": "Par défaut",
+      "compact": "Compact",
+      "detailed": "Détaillé"
+    },
+    "hints": {
+      "default": "Vue équilibrée avec état et températures",
+      "compact": "Cartes minimales, plus à l'écran",
+      "detailed": "Cartes à deux colonnes avec état des chauffages"
+    }
+  },
+
   "utilities": {
     "title": "Utilitaires"
   },

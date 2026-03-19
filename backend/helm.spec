@@ -23,6 +23,8 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+import platform
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -32,6 +34,6 @@ exe = EXE(
     name="Helm",
     debug=False,
     strip=False,
-    upx=True,
+    upx=platform.system() == "Windows",  # UPX not available on macOS
     console=True,   # set False later if you want no console window
 )

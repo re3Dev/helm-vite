@@ -68,6 +68,13 @@
               </template>
               <v-list-item-title>{{ $t('language.menuItem') }}</v-list-item-title>
             </v-list-item>
+
+            <v-list-item @click="showLayoutSettings = true">
+              <template #prepend>
+                <v-icon color="purple">mdi-card-multiple-outline</v-icon>
+              </template>
+              <v-list-item-title>{{ $t('cardLayout.menuItem') }}</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
       </div>
@@ -123,6 +130,40 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="tonal" color="green" @click="showLanguageSettings = false">{{ $t('common.done') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="showLayoutSettings" max-width="480">
+      <v-card color="background">
+        <v-card-title class="d-flex align-center">
+          <v-icon color="purple" class="mr-2">mdi-card-multiple-outline</v-icon>
+          {{ $t('cardLayout.title') }}
+        </v-card-title>
+
+        <v-card-text>
+          <div class="text-body-2 mb-4" style="opacity: 0.7;">{{ $t('cardLayout.description') }}</div>
+
+          <div class="layout-options">
+            <div
+              v-for="opt in ['default', 'compact', 'detailed']"
+              :key="opt"
+              class="layout-option"
+              :class="{ 'layout-option-active': cardLayout === opt }"
+              @click="setCardLayout(opt)"
+            >
+              <v-icon size="32" class="mb-2">
+                {{ opt === 'default' ? 'mdi-card-outline' : opt === 'compact' ? 'mdi-view-grid-compact' : 'mdi-card-text-outline' }}
+              </v-icon>
+              <div class="text-subtitle-2">{{ $t(`cardLayout.options.${opt}`) }}</div>
+              <div class="text-caption" style="opacity: 0.6;">{{ $t(`cardLayout.hints.${opt}`) }}</div>
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="tonal" color="purple" @click="showLayoutSettings = false">{{ $t('common.done') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -192,7 +233,7 @@
 
     <!-- GRID VIEW -->
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
-      <v-sheet class="grid-container" color="background">
+      <v-sheet class="grid-container" :class="`layout-${cardLayout}`" color="background">
         <template v-if="isLoading">
           <v-card v-for="n in 12" :key="n" color="#181B20" class="pa-3 floating-card">
             <v-skeleton-loader type="heading, divider, heading, list-item, subtitle, image" :loading="true" />
@@ -200,19 +241,276 @@
         </template>
 
         <template v-else>
-          <v-card
-            v-for="printer in sortedPrinters"
-            :key="printer.ip"
-            color="#181B20"
-            class="pa-3 floating-card"
-            :class="{
-              'selected-card': selectedPrinters.includes(printer.ip),
-              'locked-card': isPrinterLocked(printer),
-              'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
-            }"
-            @click="toggleSelection(printer)"
-            @dblclick.stop="selectLockedPrinter(printer)"
-          >
+
+          <!-- ==================== COMPACT LAYOUT ==================== -->
+          <template v-if="cardLayout === 'compact'">
+            <v-card
+              v-for="printer in sortedPrinters"
+              :key="printer.ip"
+              color="#181B20"
+              class="pa-2 floating-card compact-card"
+              :class="{
+                'selected-card': selectedPrinters.includes(printer.ip),
+                'locked-card': isPrinterLocked(printer),
+                'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
+              }"
+              @click="toggleSelection(printer)"
+              @dblclick.stop="selectLockedPrinter(printer)"
+            >
+              <div class="compact-top-row">
+                <span class="compact-status-dot"
+                  :class="{
+                    'dot-printing': isPrinterPrinting(printer) && printer.state_message === 'Printer is ready',
+                    'dot-ready': isReady(printer) && !isPrinterPrinting(printer),
+                    'dot-idle': isIdle(printer),
+                    'dot-error': printer.state_message !== 'Printer is ready',
+                    'dot-busy': isPrinterBusy(printer)
+                  }"
+                ></span>
+                <a :href="printer.ui_url" target="_blank" class="compact-hostname">{{ printer.hostname }}</a>
+                <v-btn
+                  v-if="isPrinterPrinting(printer)"
+                  icon
+                  size="x-small"
+                  variant="text"
+                  class="compact-lock-btn"
+                  @click.stop="togglePrinterLock(printer)"
+                >
+                  <v-icon size="14" :color="isPrinterLocked(printer) ? 'yellow' : 'green'">
+                    {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
+                  </v-icon>
+                </v-btn>
+              </div>
+
+              <v-progress-linear
+                v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
+                :model-value="printer.print_progress * 100"
+                color="#FFBD00"
+                :height="6"
+                class="mt-1"
+                rounded
+                bg-color="#BCBEC0"
+                bg-opacity="0.4"
+              />
+
+              <div class="compact-temps">
+                <span class="compact-temp" :class="{ 'text-yellow': printer.extruder_temperature >= 60, 'text-blue': printer.extruder_temperature < 60 }">
+                  <v-icon size="12">{{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}</v-icon>{{ Math.round(printer.extruder_temperature) }}°
+                </span>
+                <span class="compact-temp" :class="{ 'text-yellow': printer.extruder1_temperature >= 60, 'text-blue': printer.extruder1_temperature < 60 }">
+                  <v-icon size="12">{{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}</v-icon>{{ Math.round(printer.extruder1_temperature) }}°
+                </span>
+                <span v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined" class="compact-temp" :class="{ 'text-yellow': printer.extruder2_temperature >= 60, 'text-blue': printer.extruder2_temperature < 60 }">
+                  <v-icon size="12">mdi-printer-3d-nozzle-outline</v-icon>{{ Math.round(printer.extruder2_temperature) }}°
+                </span>
+                <span class="compact-temp" :class="{ 'text-yellow': printer.heater_bed_temperature >= 40, 'text-blue': printer.heater_bed_temperature < 40 }">
+                  <v-icon size="12">mdi-radiator</v-icon>{{ Math.round(printer.heater_bed_temperature) }}°
+                </span>
+              </div>
+            </v-card>
+          </template>
+
+          <!-- ==================== DETAILED LAYOUT ==================== -->
+          <template v-else-if="cardLayout === 'detailed'">
+            <v-card
+              v-for="printer in sortedPrinters"
+              :key="printer.ip"
+              color="#181B20"
+              class="pa-3 floating-card detailed-card"
+              :class="{
+                'selected-card': selectedPrinters.includes(printer.ip),
+                'locked-card': isPrinterLocked(printer),
+                'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
+              }"
+              @click="toggleSelection(printer)"
+              @dblclick.stop="selectLockedPrinter(printer)"
+            >
+              <!-- Lock icon (top-right) -->
+              <div class="lock-badge" v-if="isPrinterPrinting(printer)">
+                <v-btn
+                  icon size="x-small" variant="tonal" color="grey" class="lock-btn"
+                  @click.stop="togglePrinterLock(printer)"
+                  :title="isPrinterLocked(printer) ? $t('printerList.lock.unlock') : $t('printerList.lock.lock')"
+                >
+                  <v-icon :color="isPrinterLocked(printer) ? 'yellow' : 'green'">
+                    {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
+                  </v-icon>
+                </v-btn>
+              </div>
+
+              <!-- Header: hostname + model in one row -->
+              <div class="detailed-header">
+                <div>
+                  <v-card-title class="text-h6 pa-0">
+                    <a :href="printer.ui_url" target="_blank">{{ printer.hostname }}</a>
+                  </v-card-title>
+                  <div class="detailed-model-row">
+                    <v-icon size="16" :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
+                      {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-movie-roll' }}
+                    </v-icon>
+                    <span class="ml-1">{{ printer.modelType || $t('printerList.unknownModel') }}</span>
+                    <span class="detailed-ip">
+                      <v-icon size="12" color="green" class="ml-2">mdi-wifi</v-icon>{{ printer.ip }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <v-divider color="yellow" :thickness="1" class="my-2"></v-divider>
+
+              <!-- Two-column body -->
+              <div class="detailed-body">
+                <!-- Left: status + progress + file -->
+                <div class="detailed-left">
+                  <div class="status-container">
+                    <span
+                      :class="{
+                        'text-yellow': isPrinterPrinting(printer) && printer.state_message === 'Printer is ready',
+                        'text-green': isReady(printer),
+                        'text-grey': isIdle(printer),
+                        'text-red': printer.state_message !== 'Printer is ready',
+                      }"
+                    >
+                      <template v-if="printer.state_message !== 'Printer is ready'">
+                        <v-icon class="text-red">mdi-alert-circle</v-icon>
+                        <span class="text-red">{{ $t('printerList.status.error') }}</span>
+                      </template>
+                      <template v-else-if="isPrinterBusy(printer)">
+                        <v-icon class="text-orange">mdi-timer-sand</v-icon>
+                        <span class="text-orange">{{ $t('printerList.status.busy') }}</span>
+                      </template>
+                      <template v-else-if="isPrinterPrinting(printer)">
+                        <v-icon>mdi-printer-3d-nozzle</v-icon>
+                        {{ $t('printerList.status.printing') }}
+                      </template>
+                      <template v-else-if="isReady(printer)">
+                        <v-icon>mdi-home</v-icon>
+                        {{ $t('printerList.status.homed') }}
+                      </template>
+                      <template v-else-if="isIdle(printer)">
+                        <v-icon>mdi-engine-off</v-icon>
+                        {{ $t('printerList.status.disengaged') }}
+                      </template>
+                      <template v-else>{{ $t('printerList.status.unknown') }}</template>
+                    </span>
+                  </div>
+
+                  <div class="status-sub">
+                    <span v-if="getTransientStatus(printer)" :class="transientStatusClass(printer)">
+                      <v-icon>mdi-progress-clock</v-icon>
+                      {{ getTransientStatus(printer) }}
+                    </span>
+                    <span v-else-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)" class="text-red">
+                      <v-icon>mdi-alert-circle</v-icon>
+                      {{ printer.state_message }}
+                    </span>
+                  </div>
+
+                  <div class="progress-slot mt-2">
+                    <v-progress-linear
+                      v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
+                      :model-value="printer.print_progress * 100"
+                      color="#FFBD00"
+                      :height="20"
+                      :striped="true"
+                      bg-color="#BCBEC0"
+                      bg-opacity="0.8"
+                    >
+                      <strong style="color: black;">{{ (printer.print_progress * 100).toFixed(0) }}%</strong>
+                    </v-progress-linear>
+                  </div>
+
+                  <div class="file-slot mt-1">
+                    <div class="file-path-container">
+                      <strong style="color: white;">
+                        {{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : $t('printerList.notPrinting') }}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div v-if="selectedFileName" class="file-availability-row">
+                    <span :class="['file-availability-badge', fileAvailabilityClass(printer)]">
+                      <v-icon size="14">{{ fileAvailabilityIcon(printer) }}</v-icon>
+                      {{ fileAvailabilityLabel(printer) }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Right: temperature gauges -->
+                <div class="detailed-right">
+                  <div class="detailed-temp-grid">
+                    <div class="detailed-temp-item">
+                      <v-icon size="20" :class="{ 'text-blue': printer.extruder_temperature < 60, 'text-yellow': printer.extruder_temperature >= 60 }">
+                        {{ printer.extruder2_temperature ? 'mdi-filter' : 'mdi-printer-3d-nozzle-outline' }}
+                      </v-icon>
+                      <div class="detailed-temp-vals">
+                        <span class="temp-value">{{ Math.round(printer.extruder_temperature) }}°C</span>
+                        <span v-if="printer.extruder_target" class="detailed-temp-target">→ {{ Math.round(printer.extruder_target) }}°</span>
+                      </div>
+                      <span class="detailed-heater-badge" :class="heaterStateClass(printer.extruder_temperature, printer.extruder_target)">
+                        {{ $t(`printerList.heater.${heaterStateClass(printer.extruder_temperature, printer.extruder_target).replace('heater-', '')}`) }}
+                      </span>
+                    </div>
+
+                    <div class="detailed-temp-item">
+                      <v-icon size="20" :class="{ 'text-blue': printer.extruder1_temperature < 60, 'text-yellow': printer.extruder1_temperature >= 60 }">
+                        {{ printer.extruder2_temperature ? 'mdi-screw-machine-flat-top' : 'mdi-printer-3d-nozzle-outline' }}
+                      </v-icon>
+                      <div class="detailed-temp-vals">
+                        <span class="temp-value">{{ Math.round(printer.extruder1_temperature) }}°C</span>
+                        <span v-if="printer.extruder1_target" class="detailed-temp-target">→ {{ Math.round(printer.extruder1_target) }}°</span>
+                      </div>
+                      <span class="detailed-heater-badge" :class="heaterStateClass(printer.extruder1_temperature, printer.extruder1_target)">
+                        {{ $t(`printerList.heater.${heaterStateClass(printer.extruder1_temperature, printer.extruder1_target).replace('heater-', '')}`) }}
+                      </span>
+                    </div>
+
+                    <div class="detailed-temp-item" v-if="printer.extruder2_temperature !== null && printer.extruder2_temperature !== undefined">
+                      <v-icon size="20" :class="{ 'text-blue': printer.extruder2_temperature < 60, 'text-yellow': printer.extruder2_temperature >= 60 }">
+                        mdi-printer-3d-nozzle-outline
+                      </v-icon>
+                      <div class="detailed-temp-vals">
+                        <span class="temp-value">{{ Math.round(printer.extruder2_temperature) }}°C</span>
+                        <span v-if="printer.extruder2_target" class="detailed-temp-target">→ {{ Math.round(printer.extruder2_target) }}°</span>
+                      </div>
+                      <span class="detailed-heater-badge" :class="heaterStateClass(printer.extruder2_temperature, printer.extruder2_target)">
+                        {{ $t(`printerList.heater.${heaterStateClass(printer.extruder2_temperature, printer.extruder2_target).replace('heater-', '')}`) }}
+                      </span>
+                    </div>
+
+                    <div class="detailed-temp-item">
+                      <v-icon size="20" :class="{ 'text-blue': printer.heater_bed_temperature < 40, 'text-yellow': printer.heater_bed_temperature >= 40 }">
+                        mdi-radiator
+                      </v-icon>
+                      <div class="detailed-temp-vals">
+                        <span class="temp-value">{{ Math.round(printer.heater_bed_temperature) }}°C</span>
+                        <span v-if="printer.heater_bed_target" class="detailed-temp-target">→ {{ Math.round(printer.heater_bed_target) }}°</span>
+                      </div>
+                      <span class="detailed-heater-badge" :class="heaterStateClass(printer.heater_bed_temperature, printer.heater_bed_target)">
+                        {{ $t(`printerList.heater.${heaterStateClass(printer.heater_bed_temperature, printer.heater_bed_target).replace('heater-', '')}`) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </v-card>
+          </template>
+
+          <!-- ==================== DEFAULT LAYOUT ==================== -->
+          <template v-else>
+            <v-card
+              v-for="printer in sortedPrinters"
+              :key="printer.ip"
+              color="#181B20"
+              class="pa-3 floating-card"
+              :class="{
+                'selected-card': selectedPrinters.includes(printer.ip),
+                'locked-card': isPrinterLocked(printer),
+                'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
+              }"
+              @click="toggleSelection(printer)"
+              @dblclick.stop="selectLockedPrinter(printer)"
+            >
             <!-- Lock icon (top-right) -->
             <div class="lock-badge" v-if="isPrinterPrinting(printer)">
               <v-btn
@@ -433,6 +731,7 @@
               </div>
             </v-card-text>
           </v-card>
+          </template>
         </template>
       </v-sheet>
     </v-card>
@@ -603,6 +902,15 @@ export default defineComponent({
     };
     const sortMode = ref<SortMode>('dynamic');
     const customOrder = ref<string[]>([]);
+
+    type CardLayout = 'default' | 'compact' | 'detailed';
+    const CARD_LAYOUT_KEY = 'printerCardLayout';
+    const cardLayout = ref<CardLayout>(
+      (localStorage.getItem(CARD_LAYOUT_KEY) as CardLayout) || 'default'
+    );
+    const showLayoutSettings = ref(false);
+    const setCardLayout = (val: string) => { cardLayout.value = val as CardLayout; };
+    watch(cardLayout, (val) => localStorage.setItem(CARD_LAYOUT_KEY, val));
 
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
     const cacheByIp = ref<Record<string, PrinterCache>>({});
@@ -1212,6 +1520,9 @@ export default defineComponent({
       showLanguageSettings,
       currentLocale,
       SUPPORTED_LOCALES,
+      cardLayout,
+      showLayoutSettings,
+      setCardLayout,
       t,
     };
   },
@@ -1512,5 +1823,167 @@ a:active { color: blue; }
   max-width: 100%;
   margin: 0;
   overflow-x: hidden;
+}
+
+/* ==================== LAYOUT PICKER DIALOG ==================== */
+.layout-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.layout-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 8px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.layout-option:hover {
+  border-color: rgba(186, 104, 200, 0.5);
+  background: rgba(186, 104, 200, 0.08);
+}
+.layout-option-active {
+  border-color: #BA68C8 !important;
+  background: rgba(186, 104, 200, 0.15) !important;
+}
+
+/* ==================== COMPACT LAYOUT ==================== */
+.layout-compact {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+  gap: 12px !important;
+}
+.compact-card {
+  border-radius: 10px !important;
+  min-height: unset !important;
+  height: auto !important;
+}
+.compact-top-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.compact-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: grey;
+}
+.dot-printing { background: #FFBD00; box-shadow: 0 0 6px #FFBD00; }
+.dot-ready { background: #4CAF50; }
+.dot-idle { background: #9E9E9E; }
+.dot-error { background: #F44336; box-shadow: 0 0 6px #F44336; }
+.dot-busy { background: #FF9800; }
+.compact-hostname {
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.compact-lock-btn {
+  flex-shrink: 0;
+  height: 20px !important;
+  width: 20px !important;
+  min-width: 20px !important;
+}
+.compact-temps {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+.compact-temp {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ==================== DETAILED LAYOUT ==================== */
+.layout-detailed {
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important;
+  gap: 24px !important;
+}
+.detailed-card {
+  border-radius: 14px !important;
+}
+.detailed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.detailed-model-row {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+.detailed-ip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+.detailed-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 4px;
+}
+.detailed-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detailed-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.detailed-temp-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+}
+.detailed-temp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.detailed-temp-vals {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 1;
+}
+.detailed-temp-target {
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+.detailed-heater-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.heater-off { color: #9E9E9E; background: rgba(158, 158, 158, 0.15); }
+.heater-on { color: #FF9800; background: rgba(255, 152, 0, 0.15); }
+.heater-heating { color: #FF5722; background: rgba(255, 87, 34, 0.15); animation: pulse-heat 1.2s ease-in-out infinite; }
+@keyframes pulse-heat {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 </style>

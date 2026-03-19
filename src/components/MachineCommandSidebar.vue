@@ -496,7 +496,7 @@ function seedTemperatureValues(groups) {
 
 /** Sidebar width & collapse */
 const sidebarWidth = ref(320)
-const isCollapsed = ref(false)
+const isCollapsed = ref(localStorage.getItem('sidebarLeftCollapsed') === 'true')
 let isResizing = false
 let lastWidth = sidebarWidth.value
 
@@ -600,6 +600,7 @@ function toggleCollapse() {
     lastWidth = sidebarWidth.value
     isCollapsed.value = true
   }
+  localStorage.setItem('sidebarLeftCollapsed', String(isCollapsed.value))
 }
 </script>
 

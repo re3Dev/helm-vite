@@ -171,6 +171,22 @@
     "sent": "G-code: {command}",
     "failed": "Error en G-code: {command}"
   },
+  "cardLayout": {
+    "title": "Diseño de tarjeta",
+    "menuItem": "Diseño de tarjeta",
+    "description": "Elige cómo aparecen las tarjetas de impresora en la vista de cuadrícula.",
+    "options": {
+      "default": "Predeterminado",
+      "compact": "Compacto",
+      "detailed": "Detallado"
+    },
+    "hints": {
+      "default": "Vista equilibrada con estado y temperaturas",
+      "compact": "Tarjetas mínimas, más en pantalla",
+      "detailed": "Tarjetas de dos columnas con estado de calentadores"
+    }
+  },
+
   "utilities": {
     "title": "Utilidades"
   },
