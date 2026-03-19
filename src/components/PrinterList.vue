@@ -906,7 +906,7 @@ export default defineComponent({
     type CardLayout = 'default' | 'compact' | 'detailed';
     const CARD_LAYOUT_KEY = 'printerCardLayout';
     const cardLayout = ref<CardLayout>(
-      (localStorage.getItem(CARD_LAYOUT_KEY) as CardLayout) || 'default'
+      (localStorage.getItem(CARD_LAYOUT_KEY) as CardLayout) || 'detailed'
     );
     const showLayoutSettings = ref(false);
     const setCardLayout = (val: string) => { cardLayout.value = val as CardLayout; };
@@ -1942,6 +1942,8 @@ a:active { color: blue; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
 }
 .detailed-right {
   display: flex;
