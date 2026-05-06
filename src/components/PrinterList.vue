@@ -313,6 +313,9 @@
                   }"
                 ></span>
                 <a :href="printer.ui_url" target="_blank" class="compact-hostname">{{ printer.hostname }}</a>
+                <span class="version-badge" :class="printer.helm_version ? 'version-badge-versioned' : 'version-badge-legacy'">
+                  {{ printer.helm_version ? `v${printer.helm_version}` : $t('printerList.version.legacy') }}
+                </span>
                 <v-btn
                   v-if="isPrinterPrinting(printer)"
                   icon
@@ -396,6 +399,9 @@
                     <span class="ml-1">{{ printer.modelType || $t('printerList.unknownModel') }}</span>
                     <span class="detailed-ip">
                       <v-icon size="12" color="green" class="ml-2">mdi-wifi</v-icon>{{ printer.ip }}
+                    </span>
+                    <span class="version-badge ml-3" :class="printer.helm_version ? 'version-badge-versioned' : 'version-badge-legacy'">
+                      {{ printer.helm_version ? `v${printer.helm_version}` : $t('printerList.version.legacy') }}
                     </span>
                   </div>
                 </div>
@@ -593,6 +599,9 @@
                   <span class="printer-ip">
                     <v-icon small color="green" style="vertical-align: middle; margin-right: 4px;">mdi-wifi</v-icon>{{ printer.ip }}
                   </span>
+                  <span class="version-badge ml-2" :class="printer.helm_version ? 'version-badge-versioned' : 'version-badge-legacy'">
+                    {{ printer.helm_version ? `v${printer.helm_version}` : $t('printerList.version.legacy') }}
+                  </span>
                 </span>
               </div>
 
@@ -788,11 +797,12 @@
           <thead>
             <tr>
               <th style="width: 4%"></th>
-              <th style="width: 20%">{{ $t('printerList.columns.hostname') }}</th>
-              <th style="width: 15%">{{ $t('printerList.columns.type') }}</th>
-              <th style="width: 15%">{{ $t('printerList.columns.status') }}</th>
-              <th style="width: 15%">{{ $t('printerList.columns.progress') }}</th>
-              <th style="width: 31%">{{ $t('printerList.columns.printFile') }}</th>
+              <th style="width: 18%">{{ $t('printerList.columns.hostname') }}</th>
+              <th style="width: 13%">{{ $t('printerList.columns.type') }}</th>
+              <th style="width: 10%">{{ $t('printerList.columns.version') }}</th>
+              <th style="width: 13%">{{ $t('printerList.columns.status') }}</th>
+              <th style="width: 13%">{{ $t('printerList.columns.progress') }}</th>
+              <th style="width: 29%">{{ $t('printerList.columns.printFile') }}</th>
             </tr>
           </thead>
 
@@ -824,6 +834,11 @@
 
               <td>{{ printer.hostname }}</td>
               <td>{{ printer.extruder2_temperature ? $t('printerList.printerType.pellet') : $t('printerList.printerType.filament') }}</td>
+              <td>
+                <span class="version-badge" :class="printer.helm_version ? 'version-badge-versioned' : 'version-badge-legacy'">
+                  {{ printer.helm_version ? `v${printer.helm_version}` : $t('printerList.version.legacy') }}
+                </span>
+              </td>
               <td>
                 <span v-if="getTransientStatus(printer)" :class="transientStatusClass(printer)">
                   {{ getTransientStatus(printer) }}
@@ -899,6 +914,7 @@ interface Printer {
   file_path: string;
   thumbnail_url: string;
   modelType?: string;
+  helm_version?: string | null;
 
   derived_printing?: boolean;
 }
@@ -1930,6 +1946,29 @@ a:active { color: blue; }
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+}
+
+/* ==================== VERSION BADGE ==================== */
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 99px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.version-badge-versioned {
+  background: rgba(0, 188, 212, 0.15);
+  color: #4DD0E1;
+  border: 1px solid rgba(0, 188, 212, 0.35);
+}
+.version-badge-legacy {
+  background: rgba(255, 152, 0, 0.15);
+  color: #FFB74D;
+  border: 1px solid rgba(255, 152, 0, 0.35);
 }
 .compact-lock-btn {
   flex-shrink: 0;

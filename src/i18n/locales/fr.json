@@ -67,16 +67,23 @@
       "unlock": "Déverrouiller pour autoriser la sélection",
       "lock": "Verrouiller la sélection"
     },
-    "columns": {
-      "hostname": "Hôte",
-      "type": "Type",
-      "status": "Statut",
-      "progress": "Progression",
-      "printFile": "Fichier d’impression"
-    },
+
     "printerType": {
       "pellet": "Granules",
       "filament": "Filament"
+    },
+
+    "version": {
+      "legacy": "Héritage"
+    },
+
+    "columns": {
+      "hostname": "Nom d'hôte",
+      "type": "Type",
+      "version": "Version",
+      "status": "Statut",
+      "progress": "Progression",
+      "printFile": "Fichier d'impression"
     }
   },
   "controls": {

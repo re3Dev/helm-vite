@@ -67,16 +67,22 @@
       "unlock": "Desbloquear para permitir selección",
       "lock": "Bloquear selección"
     },
-    "columns": {
-      "hostname": "Host",
-      "type": "Tipo",
-      "status": "Estado",
-      "progress": "Progreso",
-      "printFile": "Archivo de impresión"
-    },
     "printerType": {
       "pellet": "Pellet",
       "filament": "Filamento"
+    },
+
+    "version": {
+      "legacy": "Legado"
+    },
+
+    "columns": {
+      "hostname": "Nombre de host",
+      "type": "Tipo",
+      "version": "Versión",
+      "status": "Estado",
+      "progress": "Progreso",
+      "printFile": "Archivo de impresión"
     }
   },
   "controls": {

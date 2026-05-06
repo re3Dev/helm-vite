@@ -533,6 +533,18 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
         heater_bed_temperature = heater_bed_data["result"]["status"].get("heater_bed", {}).get("temperature")
         heater_bed_target = heater_bed_data["result"]["status"].get("heater_bed", {}).get("target")
 
+        # Fetch helm theme version from custom CSS (non-blocking; None = legacy)
+        helm_version = None
+        try:
+            css_url = f"{base}/server/files/config/.theme/custom.css"
+            r_css = requests.get(css_url, timeout=2)
+            if r_css.ok:
+                m = re.search(r'content:\s*["\'][^"\']*?v(\d+[\.\d]+)', r_css.text)
+                if m:
+                    helm_version = m.group(1)
+        except requests.RequestException:
+            pass
+
         with device_list_lock:
             if hostname in processed_hostnames:
                 return
@@ -556,7 +568,8 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
                 "heater_bed_target": heater_bed_target,
                 "print_progress": print_progress,
                 "file_path": file_path,
-                "thumbnail_url": thumbnail_url
+                "thumbnail_url": thumbnail_url,
+                "helm_version": helm_version,
             })
 
     except requests.RequestException as e:

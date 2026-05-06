@@ -76,17 +76,22 @@
       "lock": "Lock selection"
     },
 
-    "columns": {
-      "hostname": "Hostname",
-      "type": "Type",
-      "status": "Status",
-      "progress": "Progress",
-      "printFile": "Print File"
-    },
-
     "printerType": {
       "pellet": "Pellet",
       "filament": "Filament"
+    },
+
+    "version": {
+      "legacy": "Legacy"
+    },
+
+    "columns": {
+      "hostname": "Hostname",
+      "type": "Type",
+      "version": "Version",
+      "status": "Status",
+      "progress": "Progress",
+      "printFile": "Print File"
     }
   },
 
