@@ -539,7 +539,7 @@ def fetch_printer_details(base: str, ip: str, mac: str, devices_list, processed_
             css_url = f"{base}/server/files/config/.theme/custom.css"
             r_css = requests.get(css_url, timeout=2)
             if r_css.ok:
-                m = re.search(r'content:\s*["\'][^"\']*?v(\d+[\.\d]+)', r_css.text)
+                m = re.search(r'content:\s*["\'][^"\']*?v([\d][^\s"\']+)', r_css.text)
                 if m:
                     helm_version = m.group(1)
         except requests.RequestException:
