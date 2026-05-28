@@ -1247,7 +1247,11 @@ export default defineComponent({
       }
 
       for (const device of newData) {
-        const index = updatedPrinters.findIndex((printer) => printer.mac === device.mac);
+        // Only match by MAC when both sides have a non-empty MAC address.
+        // An empty MAC (from CIDR-scan fallback on Linux) must never match another empty MAC.
+        const index = device.mac
+          ? updatedPrinters.findIndex((printer) => printer.mac && printer.mac === device.mac)
+          : -1;
         if (index !== -1) {
           updatedPrinters[index] = mergePreferGood(updatedPrinters[index], device);
         } else {

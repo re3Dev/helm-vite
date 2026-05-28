@@ -362,11 +362,16 @@ def get_my_ipv4() -> str:
 
 def ping_once(ip: str, timeout_ms: int = 150) -> None:
     """
-    Single ping used to warm Windows neighbor/ARP cache.
+    Single ping used to warm the neighbor/ARP cache (cross-platform).
     """
     try:
+        if _sys.platform.startswith("win"):
+            cmd = ["ping", "-n", "1", "-w", str(timeout_ms), ip]
+        else:
+            timeout_s = str(max(1, round(timeout_ms / 1000)))
+            cmd = ["ping", "-c", "1", "-W", timeout_s, ip]
         subprocess.run(
-            ["ping", "-n", "1", "-w", str(timeout_ms), ip],
+            cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
@@ -411,35 +416,64 @@ def warm_neighbor_table(cidr: str, limit: Optional[int] = None) -> None:
             except Exception:
                 pass
 
-def parse_arp_a() -> List[Tuple[str, str]]:
-    """
-    Parse `arp -a` output into (ip, mac).
-    Only includes entries that look like real unicast neighbors.
-    """
-    out = subprocess.check_output(["arp", "-a"], text=True, encoding="utf-8", errors="ignore")
-    entries: List[Tuple[str, str]] = []
-
-    # Matches lines like: "  192.168.1.210         d8-3a-dd-e0-c9-4b     dynamic"
-    line_re = re.compile(r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s+([0-9a-fA-F-]{17})\s+(\w+)\s*$")
-
-    for line in out.splitlines():
-        m = line_re.match(line)
-        if not m:
-            continue
-
-        ip, mac, typ = m.group(1), m.group(2).lower(), m.group(3).lower()
-
-        # Filter multicast / broadcast-ish entries
+def _filter_arp_entries(entries: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+    """Remove multicast/broadcast entries from a (ip, mac) list."""
+    out = []
+    for ip, mac in entries:
         if ip.startswith("224.") or ip.startswith("239.") or ip.endswith(".255") or ip == "255.255.255.255":
             continue
-
-        # Filter common multicast MAC prefixes
-        if mac.startswith("01-00-5e") or mac == "ff-ff-ff-ff-ff-ff":
+        if mac.startswith("01-00-5e") or mac.startswith("01:00:5e") or mac in ("ff-ff-ff-ff-ff-ff", "ff:ff:ff:ff:ff:ff"):
             continue
+        out.append((ip, mac))
+    return out
 
-        entries.append((ip, mac))
+def _parse_ip_neigh(out: str) -> List[Tuple[str, str]]:
+    """Parse `ip neigh` output (Linux modern replacement for arp -a)."""
+    # Format: "192.168.1.1 dev eth0 lladdr aa:bb:cc:dd:ee:ff REACHABLE"
+    neigh_re = re.compile(r"^(\d{1,3}(?:\.\d{1,3}){3})\s+dev\s+\S+\s+lladdr\s+([0-9a-fA-F:]{17})")
+    entries: List[Tuple[str, str]] = []
+    for line in out.splitlines():
+        m = neigh_re.match(line)
+        if m:
+            entries.append((m.group(1), m.group(2).lower()))
+    return _filter_arp_entries(entries)
 
-    return entries
+def parse_arp_a() -> List[Tuple[str, str]]:
+    """
+    Parse ARP neighbor table into (ip, mac) pairs.
+    Handles both Windows (`arp -a`) and Linux (`arp -a` or `ip neigh`) output formats.
+    Falls back to `ip neigh` if `arp` is not installed.
+    """
+    # Windows format:  "  192.168.1.210         d8-3a-dd-e0-c9-4b     dynamic"
+    win_re = re.compile(r"^\s*(\d{1,3}(?:\.\d{1,3}){3})\s+([0-9a-fA-F-]{17})\s+(\w+)\s*$")
+    # Linux arp -a format: "? (192.168.1.1) at aa:bb:cc:dd:ee:ff [ether] on eth0"
+    lin_re = re.compile(r"\((\d{1,3}(?:\.\d{1,3}){3})\)\s+at\s+([0-9a-fA-F:]{17})\b")
+
+    try:
+        out = subprocess.check_output(["arp", "-a"], text=True, encoding="utf-8", errors="ignore")
+    except FileNotFoundError:
+        # arp not available (net-tools not installed); try `ip neigh`
+        try:
+            out = subprocess.check_output(["ip", "neigh"], text=True, encoding="utf-8", errors="ignore")
+            return _parse_ip_neigh(out)
+        except Exception:
+            return []
+    except Exception:
+        return []
+
+    entries: List[Tuple[str, str]] = []
+    for line in out.splitlines():
+        # Try Windows format first
+        m = win_re.match(line)
+        if m:
+            entries.append((m.group(1), m.group(2).lower()))
+            continue
+        # Try Linux arp -a format
+        m = lin_re.search(line)
+        if m:
+            entries.append((m.group(1), m.group(2).lower()))
+
+    return _filter_arp_entries(entries)
 
 def port_open(ip: str, port: int, timeout: float = 0.25) -> bool:
     """
