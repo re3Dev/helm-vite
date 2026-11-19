@@ -1120,6 +1120,9 @@ export default defineComponent({
 
     const PRINTING_GRACE_MS = 4_000;
     const POLL_INTERVAL_MS = 1_000;
+    const DEVICE_POLL_TIMEOUT_MS = 30_000;
+    const MODEL_CONFIG_TIMEOUT_MS = 5_000;
+    const MODEL_RETRY_DELAY_MS = 60_000;
 
     const normalizeStatus = (s?: string | null) => (s ?? '').trim().toLowerCase();
     const isReady = (p: Printer) => normalizeStatus(p.status) === 'ready';
@@ -1209,7 +1212,10 @@ export default defineComponent({
     };
 
     let fetchInterval: number | null = null;
-    let fetchInFlight = false;
+    let fetchController: AbortController | null = null;
+    let isUnmounted = false;
+    const modelRequests = new Map<string, AbortController>();
+    const modelRetryAfter = new Map<string, number>();
     const statusTimers = new Map<string, number>();
 
     const byNameThenIp = (a: Printer, b: Printer) => {
@@ -1373,53 +1379,82 @@ export default defineComponent({
     };
 
     const fetchPrinters = async (opts?: { force?: boolean }) => {
-      if (fetchInFlight) return;
-      fetchInFlight = true;
+      if (fetchController || isUnmounted) return;
+      const controller = new AbortController();
+      fetchController = controller;
+      const timeout = window.setTimeout(() => controller.abort(), DEVICE_POLL_TIMEOUT_MS);
       try {
         const force = !!opts?.force;
         const cidr = scannerCidr.value;
         const path = force ? `/api/devices?force=1&cidr=${encodeURIComponent(cidr)}` : `/api/devices?cidr=${encodeURIComponent(cidr)}`;
-        const data = await apiFetch<Printer[]>(path);
-        await updatePrinters(data);
+        const data = await apiFetch<Printer[]>(path, { signal: controller.signal });
+        if (controller.signal.aborted || isUnmounted) return;
+        updatePrinters(data);
         isLoading.value = false;
       } catch (error) {
-        console.error('Failed to fetch devices:', error);
+        if (!isUnmounted) {
+          console.error(controller.signal.aborted
+            ? 'Device poll timed out; retrying on the next poll:'
+            : 'Failed to fetch devices:', error);
+        }
       } finally {
-        fetchInFlight = false;
+        window.clearTimeout(timeout);
+        fetchController = null;
       }
     };
 
-    const updatePrinters = async (newData: Printer[]) => {
-      const updatedPrinters = [...printers.value];
+    const fetchModelType = async (printer: Printer) => {
+      const baseUrl = printer.base_url;
+      if (isUnmounted || printer.modelType || modelRequests.has(baseUrl) ||
+          Date.now() < (modelRetryAfter.get(baseUrl) ?? 0)) return;
 
-      async function fetchModelType(baseUrl: string): Promise<string | null> {
-        try {
-          const res = await fetch(`${baseUrl}/server/files/config/.master.cfg`);
-          if (!res.ok) return null;
-          const text = await res.text();
+      const controller = new AbortController();
+      modelRequests.set(baseUrl, controller);
+      const timeout = window.setTimeout(() => controller.abort(), MODEL_CONFIG_TIMEOUT_MS);
+      try {
+        const res = await fetch(`${baseUrl}/server/files/config/.master.cfg`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`Model configuration returned HTTP ${res.status}`);
+        const text = await res.text();
+        if (controller.signal.aborted || isUnmounted) return;
 
-          const lines = text.split(/\r?\n/).slice(0, 2);
-          const firstLine = lines[0]?.trim();
-          const secondLine = lines[1]?.trim();
-          const platformMatch = secondLine?.match(/platform_type\s*=\s*(\w+)/i);
-          const platform = platformMatch ? platformMatch[1].toLowerCase() : '';
+        const lines = text.split(/\r?\n/).slice(0, 2);
+        const firstLine = lines[0]?.trim();
+        const secondLine = lines[1]?.trim();
+        const platformMatch = secondLine?.match(/platform_type\s*=\s*(\w+)/i);
+        const platform = platformMatch ? platformMatch[1].toLowerCase() : '';
 
-          let model = '';
-          if (firstLine === '[fff]') {
-            if (platform === 'regular') model = 'Gigabot 4';
-            else if (platform === 'xlt') model = 'Gigabot 4 XLT';
-            else if (platform === 'terabot') model = 'Terabot 4';
-          } else if (firstLine === '[fgf]') {
-            if (platform === 'regular') model = 'GigabotX 2';
-            else if (platform === 'xlt') model = 'GigabotX 2 XLT';
-            else if (platform === 'terabot') model = 'TerabotX 2';
-          }
-          return model || `${firstLine || ''} ${platform}`.trim() || null;
-        } catch (e) {
-          console.warn(`Failed to fetch model type for ${baseUrl}:`, e);
-          return null;
+        let model = '';
+        if (firstLine === '[fff]') {
+          if (platform === 'regular') model = 'Gigabot 4';
+          else if (platform === 'xlt') model = 'Gigabot 4 XLT';
+          else if (platform === 'terabot') model = 'Terabot 4';
+        } else if (firstLine === '[fgf]') {
+          if (platform === 'regular') model = 'GigabotX 2';
+          else if (platform === 'xlt') model = 'GigabotX 2 XLT';
+          else if (platform === 'terabot') model = 'TerabotX 2';
         }
+        model ||= `${firstLine || ''} ${platform}`.trim();
+        if (!model) throw new Error('Empty model configuration');
+
+        printers.value.forEach((current) => {
+          if (current.base_url === baseUrl) current.modelType = model;
+        });
+        modelRetryAfter.delete(baseUrl);
+      } catch (error) {
+        if (!isUnmounted) {
+          modelRetryAfter.set(baseUrl, Date.now() + MODEL_RETRY_DELAY_MS);
+          console.warn(controller.signal.aborted
+            ? `Model lookup timed out for ${baseUrl}; retrying after one minute:`
+            : `Failed to fetch model type for ${baseUrl}; retrying after one minute:`, error);
+        }
+      } finally {
+        window.clearTimeout(timeout);
+        modelRequests.delete(baseUrl);
       }
+    };
+
+    const updatePrinters = (newData: Printer[]) => {
+      const updatedPrinters = [...printers.value];
 
       for (const device of newData) {
         // Only match by MAC when both sides have a non-empty MAC address.
@@ -1430,8 +1465,7 @@ export default defineComponent({
         if (index !== -1) {
           updatedPrinters[index] = mergePreferGood(updatedPrinters[index], device);
         } else {
-          const modelType = await fetchModelType(device.base_url);
-          updatedPrinters.push({ ...device, modelType: modelType ?? undefined });
+          updatedPrinters.push({ ...device });
         }
       }
 
@@ -1456,6 +1490,8 @@ export default defineComponent({
         if (printingIps.has(ip)) nextUnlocked.add(ip);
       });
       unlockedWhilePrinting.value = nextUnlocked;
+
+      printers.value.forEach((printer) => { void fetchModelType(printer); });
     };
 
     const toggleSelection = (printer: Printer) => {
@@ -1649,8 +1685,13 @@ export default defineComponent({
     });
 
     onBeforeUnmount(() => {
+      isUnmounted = true;
       fileAvailabilityRun++;
       if (fetchInterval) clearInterval(fetchInterval);
+      fetchController?.abort();
+      modelRequests.forEach((controller) => controller.abort());
+      modelRequests.clear();
+      modelRetryAfter.clear();
       statusTimers.forEach((timer) => clearTimeout(timer));
       statusTimers.clear();
     });
