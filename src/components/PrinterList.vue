@@ -80,6 +80,8 @@
       </div>
     </div>
 
+    <v-alert v-if="layoutStorageError" type="error" variant="tonal" closable @click:close="layoutStorageError = ''">{{ layoutStorageError }}</v-alert>
+
     <v-dialog v-model="showNetworkSettings" max-width="480">
       <v-card color="background">
         <v-card-title class="d-flex align-center">
@@ -161,11 +163,47 @@
               <span class="text-caption" style="opacity: 0.6;">{{ $t(`cardLayout.hints.${opt.value}`) }}</span>
             </button>
           </div>
+          <div class="custom-layout-heading">
+            <h2>{{ $t('cardBuilder.savedLayouts') }}</h2>
+            <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" @click="openCardBuilder()">{{ $t('cardBuilder.create') }}</v-btn>
+          </div>
+          <p v-if="!customCardLayouts.length" class="text-caption text-medium-emphasis">{{ $t('cardBuilder.noLayouts') }}</p>
+          <div v-for="layout in customCardLayouts" :key="layout.id" class="custom-layout-row">
+            <button type="button" class="custom-layout-choice" :class="{ 'layout-option-active': cardLayout === `custom:${layout.id}` }" :aria-pressed="cardLayout === `custom:${layout.id}`" @click="setCardLayout(`custom:${layout.id}`)">
+              <v-icon size="20">mdi-card-edit-outline</v-icon>
+              <span>{{ layout.name }}</span>
+            </button>
+            <v-btn icon variant="text" :aria-label="$t('cardBuilder.editLayout', { name: layout.name })" @click="openCardBuilder(layout)"><v-icon>mdi-pencil</v-icon></v-btn>
+            <v-btn icon variant="text" :aria-label="$t('cardBuilder.copyLayout', { name: layout.name })" @click="openCardBuilder(layout, true)"><v-icon>mdi-content-copy</v-icon></v-btn>
+            <v-btn icon variant="text" color="error" :aria-label="$t('cardBuilder.deleteLayout', { name: layout.name })" @click="pendingLayoutDelete = layout"><v-icon>mdi-delete-outline</v-icon></v-btn>
+          </div>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer />
           <v-btn variant="tonal" color="primary" @click="showLayoutSettings = false">{{ $t('common.done') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <CardLayoutBuilder
+      v-if="showCardBuilder"
+      :layout="builderLayout"
+      :layouts="customCardLayouts"
+      :storage-error="layoutStorageError"
+      @save="saveCustomCardLayout"
+      @cancel="showCardBuilder = false; showLayoutSettings = true"
+    />
+
+    <v-dialog :model-value="!!pendingLayoutDelete" max-width="420" @update:model-value="pendingLayoutDelete = null">
+      <v-card color="background">
+        <v-card-title>{{ $t('cardBuilder.deleteTitle') }}</v-card-title>
+        <v-card-text>{{ $t('cardBuilder.deleteConfirm', { name: pendingLayoutDelete?.name }) }}</v-card-text>
+        <v-alert v-if="layoutStorageError" type="error" variant="tonal" class="mx-4">{{ layoutStorageError }}</v-alert>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="pendingLayoutDelete = null">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="error" variant="tonal" @click="deleteCustomCardLayout">{{ $t('cardBuilder.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -236,7 +274,7 @@
 
     <!-- GRID VIEW -->
     <v-card v-if="viewType === 'grid'" class="pa-4" color="background" width="100%">
-      <v-sheet class="grid-container" :class="`layout-${cardLayout}`" color="background">
+      <v-sheet class="grid-container" :class="activeCustomLayout ? 'layout-custom' : `layout-${cardLayout}`" color="background">
         <template v-if="isLoading">
           <!-- Compact skeletons -->
           <template v-if="cardLayout === 'compact'">
@@ -663,8 +701,10 @@
 
                 <WebcamSnapshot v-else-if="cardLayout === 'webcam'" :base-url="printer.base_url" :ui-url="printer.ui_url" />
 
-                <div class="fleet-job">
-                  <div class="fleet-filename" :title="isPrinterPrinting(printer) ? formatFileName(printer.file_path) : ''">
+                <CustomCardSections v-else-if="activeCustomLayout" :sections="activeCustomLayout.sections" :printer="customCardData(printer)" />
+
+                <div v-if="!activeCustomLayout || getTransientStatus(printer) || printer.state_message !== 'Printer is ready' || selectedFileName" class="fleet-job">
+                  <div v-if="!activeCustomLayout" class="fleet-filename" :title="isPrinterPrinting(printer) ? formatFileName(printer.file_path) : ''">
                     <v-icon size="16">mdi-file-outline</v-icon>
                     <span>{{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : $t('printerList.notPrinting') }}</span>
                     <strong v-if="cardLayout !== 'production' && isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'">
@@ -672,7 +712,7 @@
                     </strong>
                   </div>
                   <v-progress-linear
-                    v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
+                    v-if="!activeCustomLayout && isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
                     :model-value="printPercent(printer)"
                     color="primary"
                     :height="6"
@@ -691,7 +731,7 @@
                   </span>
                 </div>
 
-                <div v-if="cardLayout !== 'thermal'" class="fleet-temperatures">
+                <div v-if="cardLayout !== 'thermal' && !activeCustomLayout" class="fleet-temperatures">
                   <div v-for="temp in cardTemperatures(printer)" :key="temp.label" class="fleet-temperature">
                     <span>{{ temp.label }}</span>
                     <strong>{{ Math.round(temp.current) }}°<small v-if="temp.target"> → {{ Math.round(temp.target) }}°</small></strong>
@@ -1050,6 +1090,10 @@ import { SUPPORTED_LOCALES } from '../i18n';
 import type { LocaleCode } from '../i18n';
 import PrintPreview from './PrintPreview.vue';
 import WebcamSnapshot from './WebcamSnapshot.vue';
+import CardLayoutBuilder from './CardLayoutBuilder.vue';
+import CustomCardSections from './CustomCardSections.vue';
+import { copyCardLayout, defaultCardSections, parseCustomCardLayouts } from './cardLayouts';
+import type { CustomCardLayout, CustomCardData } from './cardLayouts';
 
 interface Printer {
   hostname: string;
@@ -1088,7 +1132,7 @@ type FileAvailability = 'checking' | 'exists' | 'missing' | 'error';
 
 export default defineComponent({
   name: 'PrinterGrid',
-  components: { PrintPreview, WebcamSnapshot },
+  components: { PrintPreview, WebcamSnapshot, CardLayoutBuilder, CustomCardSections },
   setup() {
     const { locale, t } = useI18n();
     const currentLocale = computed<LocaleCode>({
@@ -1133,15 +1177,84 @@ export default defineComponent({
       { value: 'thermal', icon: 'mdi-thermometer' },
       { value: 'webcam', icon: 'mdi-webcam' },
     ] as const;
-    type CardLayout = typeof layoutOptions[number]['value'];
+    type CardLayout = typeof layoutOptions[number]['value'] | `custom:${string}`;
     const CARD_LAYOUT_KEY = 'printerCardLayout';
-    const cardLayout = ref<CardLayout>(
-      (localStorage.getItem(CARD_LAYOUT_KEY) as CardLayout) || 'detailed'
-    );
+    const CUSTOM_LAYOUTS_KEY = 'printerCustomCardLayouts';
+    const customCardLayouts = ref<CustomCardLayout[]>([]);
+    const layoutStorageError = ref('');
+    const cardLayout = ref<CardLayout>('detailed');
+    try {
+      customCardLayouts.value = parseCustomCardLayouts(localStorage.getItem(CUSTOM_LAYOUTS_KEY));
+      const saved = localStorage.getItem(CARD_LAYOUT_KEY);
+      const builtin = layoutOptions.find(option => option.value === saved);
+      const custom = customCardLayouts.value.find(layout => `custom:${layout.id}` === saved);
+      if (builtin) cardLayout.value = builtin.value;
+      else if (custom) cardLayout.value = `custom:${custom.id}`;
+      else if (saved?.startsWith('custom:')) throw new Error('Selected custom card layout is missing');
+    } catch (error) {
+      console.warn('[CardLayoutBuilder] Could not load layouts:', error);
+      layoutStorageError.value = t('cardBuilder.loadFailed');
+    }
     const showLayoutSettings = ref(false);
-    const setCardLayout = (val: CardLayout) => { cardLayout.value = val; };
-    const isFleetLayout = computed(() => ['production', 'preview', 'rows', 'board', 'thermal', 'webcam'].includes(cardLayout.value));
-    watch(cardLayout, (val) => localStorage.setItem(CARD_LAYOUT_KEY, val));
+    const showCardBuilder = ref(false);
+    const builderLayout = ref<CustomCardLayout>({ id: '', name: '', sections: defaultCardSections() });
+    const pendingLayoutDelete = ref<CustomCardLayout | null>(null);
+    const activeCustomLayout = computed(() => customCardLayouts.value.find(layout => `custom:${layout.id}` === cardLayout.value));
+    const setCardLayout = (val: CardLayout) => {
+      cardLayout.value = val;
+      if (val.startsWith('custom:')) viewType.value = 'grid';
+    };
+    const isFleetLayout = computed(() => !!activeCustomLayout.value || ['production', 'preview', 'rows', 'board', 'thermal', 'webcam'].includes(cardLayout.value));
+    watch(cardLayout, (val) => {
+      try {
+        localStorage.setItem(CARD_LAYOUT_KEY, val);
+      } catch (error) {
+        console.warn('[CardLayoutBuilder] Could not save selected layout:', error);
+        layoutStorageError.value = t('cardBuilder.saveFailed');
+      }
+    });
+
+    const openCardBuilder = (layout?: CustomCardLayout, duplicate = false) => {
+      builderLayout.value = layout ? copyCardLayout(layout) : { id: '', name: '', sections: defaultCardSections() };
+      if (duplicate) {
+        builderLayout.value.id = '';
+        builderLayout.value.name = `${builderLayout.value.name} (${t('cardBuilder.copy')})`.slice(0, 60);
+      }
+      showLayoutSettings.value = false;
+      showCardBuilder.value = true;
+    };
+    const persistCustomCardLayouts = (layouts: CustomCardLayout[]) => {
+      try {
+        localStorage.setItem(CUSTOM_LAYOUTS_KEY, JSON.stringify({ version: 1, layouts }));
+        customCardLayouts.value = layouts;
+        layoutStorageError.value = '';
+        return true;
+      } catch (error) {
+        console.warn('[CardLayoutBuilder] Could not save layouts:', error);
+        layoutStorageError.value = t('cardBuilder.saveFailed');
+        return false;
+      }
+    };
+    const saveCustomCardLayout = (layout: CustomCardLayout) => {
+      const saved = copyCardLayout({
+        ...layout,
+        id: layout.id || `layout-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      });
+      const layouts = [...customCardLayouts.value];
+      const index = layouts.findIndex(item => item.id === saved.id);
+      if (index < 0) layouts.push(saved);
+      else layouts[index] = saved;
+      if (!persistCustomCardLayouts(layouts)) return;
+      setCardLayout(`custom:${saved.id}`);
+      showCardBuilder.value = false;
+    };
+    const deleteCustomCardLayout = () => {
+      const layout = pendingLayoutDelete.value;
+      if (!layout) return;
+      if (!persistCustomCardLayouts(customCardLayouts.value.filter(item => item.id !== layout.id))) return;
+      if (cardLayout.value === `custom:${layout.id}`) setCardLayout('detailed');
+      pendingLayoutDelete.value = null;
+    };
 
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
     const cacheByIp = ref<Record<string, PrinterCache>>({});
@@ -1252,6 +1365,21 @@ export default defineComponent({
       const valid = validTemperatureTarget(target);
       return valid ? Math.max(0, Math.min(100, current / valid * 100)) : 0;
     };
+
+    const customCardData = (printer: Printer): CustomCardData => ({
+      baseUrl: printer.base_url,
+      uiUrl: printer.ui_url,
+      printing: isPrinterPrinting(printer),
+      ready: printer.state_message === 'Printer is ready',
+      filename: formatFileName(printer.file_path),
+      progress: printPercent(printer),
+      temperatures: cardTemperatures(printer).map(temp => ({
+        ...temp,
+        target: validTemperatureTarget(temp.target),
+        state: thermalState(temp.current, temp.target),
+        progress: temperatureProgress(temp.current, temp.target),
+      })),
+    });
 
     const togglePrinterLock = (p: Printer) => {
       if (!isPrinterPrinting(p)) return;
@@ -1864,6 +1992,16 @@ export default defineComponent({
       temperatureProgress,
       showLayoutSettings,
       setCardLayout,
+      activeCustomLayout,
+      customCardLayouts,
+      customCardData,
+      showCardBuilder,
+      builderLayout,
+      openCardBuilder,
+      saveCustomCardLayout,
+      pendingLayoutDelete,
+      deleteCustomCardLayout,
+      layoutStorageError,
       t,
     };
   },
@@ -2210,13 +2348,21 @@ a:hover, a:active { color: var(--helm-brand); }
   outline-offset: 2px;
 }
 
+.custom-layout-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin: 24px 0 12px; }
+.custom-layout-heading h2 { font-size: 16px; }
+.custom-layout-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; min-width: 0; }
+.custom-layout-choice { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; padding: 12px; border: 2px solid var(--helm-border); border-radius: 8px; text-align: left; }
+.custom-layout-choice > span { min-width: 0; overflow-wrap: anywhere; }
+.custom-layout-choice:focus-visible { outline: 2px solid var(--helm-brand); outline-offset: 2px; }
+
 .layout-production,
 .layout-preview {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   align-items: stretch;
 }
 .layout-thermal,
-.layout-webcam {
+.layout-webcam,
+.layout-custom {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   align-items: stretch;
 }

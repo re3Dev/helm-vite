@@ -241,6 +241,42 @@
     "failed": "G-code failed: {command}"
   },
 
+  "cardBuilder": {
+    "title": "Card Layout Builder",
+    "savedLayouts": "Your layouts",
+    "create": "Create layout",
+    "noLayouts": "Build a layout with the sections you want to see.",
+    "name": "Layout name",
+    "description": "Show or hide sections, move them with the arrows, and choose compact or expanded displays.",
+    "fixedSections": "Printer identity, status, selection locks, errors, and command feedback always remain visible.",
+    "sections": {
+      "job": "Print file",
+      "progress": "Print progress",
+      "temperatures": "Temperatures",
+      "preview": "Print preview",
+      "webcam": "Webcam snapshots"
+    },
+    "display": "Display style",
+    "compact": "Compact",
+    "expanded": "Expanded",
+    "moveUp": "Move {section} up",
+    "moveDown": "Move {section} down",
+    "livePreview": "Live preview",
+    "sampleHint": "Sample data only. Cameras and print previews connect after applying the layout.",
+    "samplePrinter": "Sample printer",
+    "localOnly": "Saved in this browser only.",
+    "saveAndApply": "Save and apply",
+    "duplicateName": "A layout with this name already exists.",
+    "editLayout": "Edit {name}",
+    "copyLayout": "Copy {name}",
+    "deleteLayout": "Delete {name}",
+    "copy": "copy",
+    "deleteTitle": "Delete custom layout?",
+    "deleteConfirm": "Delete \"{name}\"? If it is active, cards will switch to Detailed.",
+    "delete": "Delete",
+    "loadFailed": "Saved custom layouts could not be loaded. Saving a new layout will replace unreadable layout data.",
+    "saveFailed": "Could not save layout settings. Check that browser storage is available and try again."
+  },
   "cardLayout": {
     "title": "Card Layout",
     "menuItem": "Card Layout",
