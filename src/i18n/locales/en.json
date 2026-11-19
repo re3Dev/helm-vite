@@ -241,6 +241,11 @@
     "failed": "G-code failed: {command}"
   },
 
+  "cardView": {
+    "enter": "Cards-only mode",
+    "exit": "Exit cards-only",
+    "exitHint": "Exit cards-only mode (Escape)"
+  },
   "cardBuilder": {
     "title": "Card Layout Builder",
     "savedLayouts": "Your layouts",

@@ -218,6 +218,11 @@
     "sent": "G-code: {command}",
     "failed": "Error en G-code: {command}"
   },
+  "cardView": {
+    "enter": "Modo solo tarjetas",
+    "exit": "Salir de solo tarjetas",
+    "exitHint": "Salir del modo solo tarjetas (Escape)"
+  },
   "cardBuilder": {
     "title": "Constructor de tarjetas",
     "savedLayouts": "Tus diseños",

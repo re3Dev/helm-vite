@@ -1,6 +1,7 @@
 <template>
   <!-- DO NOT nest another v-app here -->
   <v-app-bar
+    v-if="!cardsOnlyMode"
     app
     dark
     class="app-toolbar"
@@ -73,9 +74,9 @@
   </v-app-bar>
 
   <v-main class="layout-main">
-    <div class="layout-container" :class="{ 'auth-layout': isAuthRoute }">
+    <div class="layout-container" :class="{ 'auth-layout': isAuthRoute, 'cards-only': cardsOnlyMode }">
       <!-- ✅ Left sidebar hidden on auth routes -->
-      <div v-if="!isAuthRoute" class="sidebar-wrap">
+      <div v-if="!isAuthRoute" v-show="!cardsOnlyMode" class="sidebar-wrap">
         <MachineCommandSidebar :groups="commandGroups" />
       </div>
 
@@ -87,7 +88,7 @@
       </div>
 
       <!-- ✅ Right utility sidebar hidden on auth routes -->
-      <div v-if="!isAuthRoute" class="right-wrap">
+      <div v-if="!isAuthRoute" v-show="!cardsOnlyMode" class="right-wrap">
         <RightBar
           :collapsed="rightCollapsed"
           :width="rightWidth"
@@ -96,10 +97,21 @@
       </div>
     </div>
   </v-main>
+  <button
+    v-if="cardsOnlyMode"
+    ref="cardsOnlyExit"
+    type="button"
+    class="cards-only-exit"
+    :title="$t('cardView.exitHint')"
+    @click="cardsOnlyMode = false"
+  >
+    <v-icon size="18">mdi-arrow-collapse</v-icon>
+    {{ $t('cardView.exit') }}
+  </button>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import MachineCommandSidebar from './MachineCommandSidebar.vue'
@@ -108,8 +120,19 @@ import { commandGroups } from './commandService.ts'
 
 import router from '../router'
 import { auth, clearSession } from '../auth'
+import { cardsOnlyMode } from '../store/printerStore'
 
 const route = useRoute()
+const cardsOnlyExit = ref<HTMLButtonElement | null>(null)
+watch(cardsOnlyMode, active => {
+  if (active) cardsOnlyExit.value?.focus()
+}, { flush: 'post' })
+
+function onCardsOnlyKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && cardsOnlyMode.value) {
+    cardsOnlyMode.value = false
+  }
+}
 
 /** ✅ auth routes (no sidebars, no app nav) */
 const isAuthRoute = computed(() => route.path === '/login' || route.path === '/setup')
@@ -220,12 +243,15 @@ const heartbeatTitle = computed(() => {
 })
 
 onMounted(() => {
+  window.addEventListener('keydown', onCardsOnlyKeydown)
   // heartbeat polling (keep it even on login)
   pollHealthOnce()
   hbTimer = window.setInterval(pollHealthOnce, 2500)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onCardsOnlyKeydown)
+  cardsOnlyMode.value = false
   if (hbTimer) window.clearInterval(hbTimer)
   hbTimer = null
 })
@@ -382,6 +408,28 @@ onBeforeUnmount(() => {
   max-width: 100%;
   margin: 0;
 }
+
+.cards-only .main-scroll {
+  padding: 16px 16px 64px;
+}
+.cards-only-exit {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--helm-border-strong);
+  border-radius: var(--helm-radius-sm);
+  background: var(--helm-nav);
+  color: var(--helm-fg);
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.cards-only-exit:hover { background: var(--helm-raised); }
+.cards-only-exit:focus-visible { outline: 2px solid var(--helm-brand); outline-offset: 2px; }
 
 .layout-main{
   height: 100%;

@@ -1,7 +1,7 @@
 <template>
-  <v-container fluid class="printer-list-root">
+  <v-container fluid class="printer-list-root" :class="{ 'cards-only-root': cardsOnlyMode }">
     <!-- Top bar: centered view toggle + utilities on right -->
-    <div class="top-bar">
+    <div v-show="!cardsOnlyMode" class="top-bar">
       <div class="top-bar-left"></div>
 
       <div class="top-bar-center">
@@ -16,6 +16,17 @@
       </div>
 
       <div class="top-bar-right">
+        <button
+          v-if="viewType === 'grid'"
+          ref="cardsOnlyTrigger"
+          type="button"
+          class="cards-only-trigger"
+          :title="$t('cardView.enter')"
+          :aria-label="$t('cardView.enter')"
+          @click="cardsOnlyMode = true"
+        >
+          <v-icon size="20">mdi-arrow-expand</v-icon>
+        </button>
         <v-btn
           variant="outlined"
           color="red"
@@ -1081,9 +1092,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { defineComponent, ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { selectedPrinters } from '../store/printerStore';
+import { selectedPrinters, cardsOnlyMode } from '../store/printerStore';
 import { apiFetch } from '../api';
 import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPrintFile, refreshFileListFromBackend } from './commandService';
 import { SUPPORTED_LOCALES } from '../i18n';
@@ -1135,6 +1146,13 @@ export default defineComponent({
   components: { PrintPreview, WebcamSnapshot, CardLayoutBuilder, CustomCardSections },
   setup() {
     const { locale, t } = useI18n();
+    const cardsOnlyTrigger = ref<HTMLButtonElement | null>(null);
+    watch(cardsOnlyMode, async (active, previous) => {
+      if (!active && previous) {
+        await nextTick();
+        if (!cardsOnlyMode.value) cardsOnlyTrigger.value?.focus();
+      }
+    });
     const currentLocale = computed<LocaleCode>({
       get: () => locale.value as LocaleCode,
       set: (val: LocaleCode) => {
@@ -1863,6 +1881,7 @@ export default defineComponent({
     });
 
     onBeforeUnmount(() => {
+      cardsOnlyMode.value = false;
       isUnmounted = true;
       fileAvailabilityRun++;
       if (fetchInterval) clearInterval(fetchInterval);
@@ -1980,6 +1999,8 @@ export default defineComponent({
       currentLocale,
       SUPPORTED_LOCALES,
       cardLayout,
+      cardsOnlyMode,
+      cardsOnlyTrigger,
       layoutOptions,
       isFleetLayout,
       fleetGroups,
@@ -2041,6 +2062,18 @@ export default defineComponent({
 }
 
 .utility-btn { opacity: 0.9; }
+.cards-only-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: var(--helm-radius-sm);
+  color: var(--helm-brand);
+}
+.cards-only-trigger:hover { background: var(--helm-raised); }
+.cards-only-trigger:focus-visible { outline: 2px solid var(--helm-brand); outline-offset: 2px; }
 .utility-menu { min-width: 260px; }
 
 .custom-order-box {
@@ -2305,6 +2338,11 @@ a:hover, a:active { color: var(--helm-brand); }
   max-width: 100%;
   margin: 0;
   overflow-x: hidden;
+}
+
+.printer-list-root.cards-only-root {
+  padding: 0;
+  gap: 0;
 }
 
 .printer-list-root > .v-card {

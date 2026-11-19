@@ -219,6 +219,11 @@
     "sent": "G-code : {command}",
     "failed": "Échec G-code : {command}"
   },
+  "cardView": {
+    "enter": "Mode cartes seules",
+    "exit": "Quitter les cartes seules",
+    "exitHint": "Quitter le mode cartes seules (Échap)"
+  },
   "cardBuilder": {
     "title": "Créateur de cartes",
     "savedLayouts": "Vos dispositions",
