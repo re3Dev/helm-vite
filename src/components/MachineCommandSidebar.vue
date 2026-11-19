@@ -6,7 +6,7 @@
     >
       <div v-show="!isCollapsed" class="pm-drawer">
         <!-- ✅ Header: mirror of right rail (arrow far LEFT, title on RIGHT) -->
-        <div class="sidebar-header fancy">
+        <div class="sidebar-header">
           <div class="header-content header-content-mirror">
             <v-btn
               icon
@@ -29,7 +29,7 @@
           <v-expansion-panels multiple class="sidebar-panels">
             <v-expansion-panel v-for="(group, gIdx) in groups" :key="gIdx" class="sidebar-panel">
               <v-expansion-panel-title class="sidebar-panel-title">
-                <v-icon color="yellow">{{ group.icon }}</v-icon>&nbsp;
+                <v-icon color="primary">{{ group.icon }}</v-icon>&nbsp;
                 {{ tGroup(group.title) }}
               </v-expansion-panel-title>
 
@@ -162,7 +162,7 @@
                       <v-btn
                         block
                         size="small"
-                        color="yellow"
+                        color="primary"
                         variant="tonal"
                         :disabled="!pendingFiles[gIdx] || uploadState[gIdx]?.loading"
                         :loading="uploadState[gIdx]?.loading"
@@ -204,7 +204,7 @@
 
                       <v-btn
                         class="temp-set-btn"
-                        color="yellow"
+                        color="primary"
                         variant="tonal"
                         @click="setTemperature(cmd)"
                       >
@@ -295,7 +295,7 @@
             <!-- G-code Terminal Panel -->
             <v-expansion-panel class="sidebar-panel">
               <v-expansion-panel-title class="sidebar-panel-title">
-                <v-icon color="yellow">mdi-console</v-icon>&nbsp;
+                <v-icon color="primary">mdi-console</v-icon>&nbsp;
                 {{ $t('terminal.title') }}
               </v-expansion-panel-title>
 
@@ -603,9 +603,6 @@ function toggleCollapse() {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
-* { font-family: 'Lato', sans-serif !important; }
-
 .pm-shell{ position: relative; height: 100%; overflow: visible; }
 
 /* Sidebar surface is fully clipped when collapsed. */
@@ -615,59 +612,7 @@ function toggleCollapse() {
   overflow: hidden;
   transition: width 160ms ease; /* ✅ same as right rail */
 
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.14)),
-    radial-gradient(circle at 30% 20%, rgba(255,213,74,0.08), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 60%),
-    #1f2022;
-
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.05) inset,
-    0 -1px 0 rgba(0,0,0,0.35) inset;
-}
-
-.sidebar-container::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  opacity: 0.16;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(255,255,255,0.05) 0px,
-      rgba(255,255,255,0.05) 1px,
-      transparent 1px,
-      transparent 7px
-    );
-}
-
-.sidebar-container::after{
-  content:"";
-  position:absolute;
-  top:0;
-  right:0;
-  width: 3px;
-  height: 100%;
-  pointer-events:none;
-  background: linear-gradient(
-    180deg,
-    rgba(255,213,74,0.0),
-    rgba(255,213,74,0.20),
-    rgba(255,213,74,0.0)
-  );
-  opacity: 0.70;
-  filter: blur(0.4px);
-  animation: containerEdgeGlow 5.2s ease-in-out infinite;
-}
-
-@keyframes containerEdgeGlow{
-  0%, 100% { opacity: 0.45; }
-  50%      { opacity: 0.85; }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .sidebar-container::after{ animation: none !important; }
+  background: var(--helm-nav);
 }
 
 .pm-drawer{
@@ -675,71 +620,19 @@ function toggleCollapse() {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background-color: rgba(36,37,39,0.92);
-  border-right: 1px solid rgba(255,255,255,0.08);
+  background: var(--helm-nav);
+  border-right: 1px solid var(--helm-border);
 }
 
 /* Header base */
 .sidebar-header{
-  height: 30px;
-  background-color: #333131;
-  border-bottom: 1px solid rgba(255,255,255,0.10);
+  height: 48px;
+  background: var(--helm-nav);
+  border-bottom: 1px solid var(--helm-border);
   display:flex;
   align-items:center;
   justify-content:center;
   flex: 0 0 auto;
-}
-
-.sidebar-header.fancy{
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.10)),
-    #333131;
-}
-
-.sidebar-header.fancy::before{
-  content:"";
-  position:absolute;
-  top:-40%;
-  left:-60%;
-  width: 160%;
-  height: 200%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,213,74,0.10) 45%,
-    rgba(255,213,74,0.22) 50%,
-    rgba(255,213,74,0.10) 55%,
-    transparent 100%
-  );
-  transform: rotate(8deg);
-  animation: headerSheen 7.5s ease-in-out infinite;
-  pointer-events: none;
-  mix-blend-mode: screen;
-  opacity: 0.55;
-}
-
-.sidebar-header.fancy::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.06), transparent 45%),
-    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.04), transparent 55%);
-  pointer-events:none;
-  opacity: 0.6;
-}
-
-@keyframes headerSheen{
-  0%   { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
-  35%  { transform: translateX(0%)   rotate(8deg); opacity: 0.60; }
-  70%  { transform: translateX(18%)  rotate(8deg); opacity: 0.35; }
-  100% { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .sidebar-header.fancy::before{ animation: none !important; }
 }
 
 /* Mirror header layout */
@@ -760,10 +653,12 @@ function toggleCollapse() {
 .header-title{
   width: 100%;
   text-align:center;
-  font-weight: 650;
-  font-size: 13.5px;
+  font-weight: 600;
+  font-size: 13px;
   line-height: 30px;
-  letter-spacing: 0.25px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--helm-muted);
   position: relative;
 }
 
@@ -781,40 +676,11 @@ function toggleCollapse() {
 .header-close{ opacity: 0.85; }
 .header-close:hover{ opacity: 1; }
 
-/* Body glass well */
 .drawer-body{
   flex: 1 1 auto;
   overflow: auto;
-  padding: 10px;
+  padding: 16px 12px;
   position: relative;
-}
-
-.drawer-body::before{
-  content:"";
-  position:absolute;
-  inset: 10px;
-  border-radius: 14px;
-  pointer-events:none;
-  background: rgba(255,255,255,0.035);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.06) inset,
-    0 18px 46px rgba(0,0,0,0.30);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.drawer-body::after{
-  content:"";
-  position:absolute;
-  inset: 10px;
-  border-radius: 14px;
-  pointer-events:none;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(255,255,255,0.10), transparent 50%),
-    radial-gradient(circle at 82% 70%, rgba(255,213,74,0.07), transparent 58%),
-    linear-gradient(180deg, rgba(0,0,0,0.00), rgba(0,0,0,0.10));
-  opacity: 0.92;
 }
 
 .drawer-body :deep(.sidebar-panels){
@@ -824,30 +690,26 @@ function toggleCollapse() {
 }
 
 .drawer-body :deep(.sidebar-panel){
-  border-radius: 14px;
+  border-radius: var(--helm-radius);
   overflow: hidden;
-  background: rgba(0,0,0,0.16);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.04) inset,
-    0 10px 22px rgba(0,0,0,0.25);
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+  background: var(--helm-surface);
+  border: 1px solid var(--helm-border);
+  box-shadow: none;
+  transition: border-color 140ms ease;
 }
 
 .drawer-body :deep(.sidebar-panel:hover){
-  background: rgba(0,0,0,0.20);
-  border-color: rgba(255,255,255,0.14);
-  transform: translateY(-1px);
+  border-color: var(--helm-border-strong);
 }
 
 .drawer-body :deep(.sidebar-panel-title){
-  background: rgba(0,0,0,0.12);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: var(--helm-raised);
+  border-bottom: 1px solid var(--helm-border);
   min-height: 44px;
 }
 
 .drawer-body :deep(.v-expansion-panel--active > .v-expansion-panel-title){
-  box-shadow: 0 -1px 0 rgba(255,213,74,0.26) inset;
+  box-shadow: inset 2px 0 0 var(--helm-brand);
 }
 
 .drawer-body :deep(.sidebar-panel-text){
@@ -856,12 +718,9 @@ function toggleCollapse() {
 
 /* Inputs normalize */
 .sidebar-input :deep(.v-field){
-  background: rgba(0,0,0,0.18) !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+  background: var(--helm-nav);
+  border-radius: var(--helm-radius-sm);
 }
-.sidebar-input :deep(.v-field__outline){ opacity: 0 !important; }
 .sidebar-input :deep(.v-label){ opacity: 0.80; }
 .sidebar-input :deep(.v-field__input),
 .sidebar-input :deep(textarea){ font-size: 12.5px; }
@@ -888,14 +747,8 @@ function toggleCollapse() {
   border: none;
 }
 .resizer:hover{
-  background: linear-gradient(
-    180deg,
-    rgba(255,213,74,0.08),
-    rgba(255,213,74,0.18),
-    rgba(255,213,74,0.08)
-  );
-  box-shadow: -1px 0 0 rgba(255,213,74,0.25) inset;
-  transition: background 120ms ease, box-shadow 120ms ease;
+  background: var(--helm-brand-dim);
+  box-shadow: -1px 0 0 var(--helm-brand) inset;
 }
 
 /* Overlay the content edge without reserving layout width. */
@@ -908,9 +761,9 @@ function toggleCollapse() {
   height: 30px;
   min-width: 30px;
   border-radius: 6px;
-  background: #333131;
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+  background: var(--helm-raised);
+  border: 1px solid var(--helm-border-strong);
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -922,7 +775,7 @@ function toggleCollapse() {
   right:0;
   width: 3px;
   height: 100%;
-  background: #FFD54A;
+  background: var(--helm-brand);
   opacity: 0.9;
 }
 
@@ -977,27 +830,17 @@ function toggleCollapse() {
 .print-control-btn{
   min-width: 0;
   height: 42px;
-  border-radius: 12px;
+  border-radius: var(--helm-radius-sm);
   font-weight: 700;
   letter-spacing: 0.2px;
   text-transform: none;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.08) inset,
-    0 8px 16px rgba(0,0,0,0.25);
-  border: 1px solid rgba(255,255,255,0.16);
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  box-shadow: none;
+  border: 1px solid var(--helm-border-strong);
+  transition: border-color 120ms ease;
 }
 
 .print-control-btn:hover{
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.12) inset,
-    0 10px 18px rgba(0,0,0,0.30);
-  border-color: rgba(255,255,255,0.26);
-}
-
-.print-control-btn:active{
-  transform: translateY(0);
+  border-color: var(--helm-muted);
 }
 
 .print-control-btn :deep(.v-btn__content){
@@ -1016,9 +859,9 @@ function toggleCollapse() {
 .upload-status.ok{ color: #7CFFB2; }
 .upload-status.bad{ color: #FF8A8A; }
 .terminal-wrap{
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(0,0,0,0.14);
-  border-radius: 14px;
+  border: 1px solid var(--helm-border);
+  background: var(--helm-nav);
+  border-radius: var(--helm-radius);
   padding: 10px;
   display: flex;
   flex-direction: column;

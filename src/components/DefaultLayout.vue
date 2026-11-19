@@ -3,8 +3,8 @@
   <v-app-bar
     app
     dark
-    class="animated-toolbar"
-    :style="{ '--content-center-x': contentCenterPx + 'px' }"
+    class="app-toolbar"
+    :elevation="0"
   >
     <!-- ✅ Brand group (logo + HELM + indicator) -->
     <div class="brand-group">
@@ -70,14 +70,12 @@
       </v-menu>
     </template>
 
-    <!-- ✅ Bottom rail aligned to main-content center -->
-    <div class="toolbar-rail" aria-hidden="true"></div>
   </v-app-bar>
 
   <v-main class="layout-main">
     <div class="layout-container" :class="{ 'auth-layout': isAuthRoute }">
       <!-- ✅ Left sidebar hidden on auth routes -->
-      <div v-if="!isAuthRoute" ref="sidebarWrap" class="sidebar-wrap">
+      <div v-if="!isAuthRoute" class="sidebar-wrap">
         <MachineCommandSidebar :groups="commandGroups" />
       </div>
 
@@ -89,7 +87,7 @@
       </div>
 
       <!-- ✅ Right utility sidebar hidden on auth routes -->
-      <div v-if="!isAuthRoute" ref="rightWrap" class="right-wrap">
+      <div v-if="!isAuthRoute" class="right-wrap">
         <RightBar
           :collapsed="rightCollapsed"
           :width="rightWidth"
@@ -101,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
 import MachineCommandSidebar from './MachineCommandSidebar.vue'
@@ -132,7 +130,7 @@ const goUsers = () => {
 }
 
 const isActive = (path: string) => {
-  if (path === '/') return route.path === '/'
+  if (path === '/') return route.path === '/' || route.path === '/printers'
   return route.path.startsWith(path)
 }
 
@@ -144,37 +142,6 @@ const rightWidth = ref(300)
 const toggleRight = () => {
   rightCollapsed.value = !rightCollapsed.value
   localStorage.setItem('sidebarRightCollapsed', String(rightCollapsed.value))
-}
-
-/** ---------------------------
- * ✅ Main-content-center alignment logic (NOW accounts for left + right)
- * --------------------------- */
-const sidebarWrap = ref<HTMLElement | null>(null)
-const rightWrap = ref<HTMLElement | null>(null)
-
-const leftWidthPx = ref(0)
-const rightWidthPxMeasured = ref(0)
-const contentCenterPx = ref(0)
-
-let roLeft: ResizeObserver | null = null
-let roRight: ResizeObserver | null = null
-
-function computeContentCenter() {
-  const vw = window.innerWidth || 0
-
-  // If auth route, there are no sidebars, so center is the viewport center
-  if (isAuthRoute.value) {
-    contentCenterPx.value = vw / 2
-    return
-  }
-
-  const lw = leftWidthPx.value || 0
-  const rw = rightWidthPxMeasured.value || 0
-
-  // main content region is [lw .. (vw - rw)]
-  // center is lw + (vw - rw - lw)/2
-  const mainW = Math.max(0, vw - lw - rw)
-  contentCenterPx.value = lw + mainW / 2
 }
 
 /** ---------------------------
@@ -252,151 +219,29 @@ const heartbeatTitle = computed(() => {
   return `${hbMsg.value}\nRTT: ${rtt}\nLast OK: ${last}`
 })
 
-function startSidebarObservers() {
-  // measure left sidebar width continuously
-  if (sidebarWrap.value && !roLeft) {
-    roLeft = new ResizeObserver(entries => {
-      const entry = entries[0]
-      leftWidthPx.value = entry?.contentRect?.width ?? 0
-      computeContentCenter()
-    })
-    roLeft.observe(sidebarWrap.value)
-  }
-
-  // measure right rail width continuously (0 when collapsed)
-  if (rightWrap.value && !roRight) {
-    roRight = new ResizeObserver(entries => {
-      const entry = entries[0]
-      rightWidthPxMeasured.value = entry?.contentRect?.width ?? 0
-      computeContentCenter()
-    })
-    roRight.observe(rightWrap.value)
-  }
-}
-
-function stopSidebarObservers() {
-  if (roLeft && sidebarWrap.value) roLeft.unobserve(sidebarWrap.value)
-  roLeft = null
-  leftWidthPx.value = 0
-
-  if (roRight && rightWrap.value) roRight.unobserve(rightWrap.value)
-  roRight = null
-  rightWidthPxMeasured.value = 0
-}
-
 onMounted(() => {
-  window.addEventListener('resize', computeContentCenter)
-
   // heartbeat polling (keep it even on login)
   pollHealthOnce()
   hbTimer = window.setInterval(pollHealthOnce, 2500)
-
-  // initial observers depending on route
-  if (!isAuthRoute.value) startSidebarObservers()
-  computeContentCenter()
-})
-
-watch(isAuthRoute, (authRouteNow) => {
-  // Toggle observers cleanly when moving between login/setup and app pages
-  if (authRouteNow) {
-    stopSidebarObservers()
-  } else {
-    startSidebarObservers()
-  }
-  computeContentCenter()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', computeContentCenter)
-  stopSidebarObservers()
-
   if (hbTimer) window.clearInterval(hbTimer)
   hbTimer = null
 })
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
-* { font-family: 'Lato', sans-serif !important; }
-
 /* =========================
    Toolbar
    ========================= */
 
-.animated-toolbar{
+.app-toolbar{
   position: relative;
   overflow: hidden;
-
-  background: linear-gradient(270deg, #000000, #161616, #242424, #161616, #000000);
-  background-size: 1000% 100%;
-  animation: gradientFlow 30s ease infinite;
-
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.06) inset,
-    0 -1px 0 rgba(0,0,0,0.35) inset,
-    0 10px 24px rgba(0,0,0,0.28);
-
-  --content-center-x: 50vw; /* default if JS hasn't run yet */
-}
-
-@keyframes gradientFlow{
-  0% { background-position: 0% 50% }
-  50% { background-position: 100% 50% }
-  100% { background-position: 0% 50% }
-}
-
-/* subtle sheen sweep */
-.animated-toolbar::before{
-  content:"";
-  position:absolute;
-  top:-40%;
-  left:-60%;
-  width: 160%;
-  height: 200%;
-  pointer-events:none;
-
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,0.04) 42%,
-    rgba(255,213,74,0.14) 50%,
-    rgba(255,255,255,0.04) 58%,
-    transparent 100%
-  );
-
-  transform: rotate(8deg);
-  mix-blend-mode: screen;
-  opacity: 0.55;
-  animation: toolbarSweep 9s ease-in-out infinite;
-}
-
-/* scanline texture */
-.animated-toolbar::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  opacity: 0.22;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(255,255,255,0.04) 0px,
-      rgba(255,255,255,0.04) 1px,
-      transparent 1px,
-      transparent 6px
-    );
-}
-
-@keyframes toolbarSweep{
-  0%   { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
-  35%  { transform: translateX(0%)   rotate(8deg); opacity: 0.60; }
-  70%  { transform: translateX(18%)  rotate(8deg); opacity: 0.35; }
-  100% { transform: translateX(-18%) rotate(8deg); opacity: 0.25; }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .animated-toolbar{ animation: none !important; }
-  .animated-toolbar::before{ animation: none !important; }
+  background: var(--helm-nav);
+  border-bottom: 1px solid var(--helm-border);
+  box-shadow: none;
 }
 
 /* =========================
@@ -406,13 +251,13 @@ onBeforeUnmount(() => {
 .brand-group{
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-left: 10px;
+  gap: 12px;
+  padding-left: 20px;
 }
 
 .brand-logo{
-  width: 40.9px;
-  height: 47.5px;
+  width: auto;
+  height: 34px;
   display: block;
 }
 
@@ -424,8 +269,8 @@ onBeforeUnmount(() => {
 
 .helm-title{
   letter-spacing: 0.08em;
-  font-weight: 800;
-  opacity: 0.95;
+  font-weight: 600;
+  color: var(--helm-fg);
 }
 
 /* functional heartbeat */
@@ -436,90 +281,45 @@ onBeforeUnmount(() => {
   display: inline-block;
 }
 
-/* OK = green + ping */
 .heartbeat.ok{
-  background: #7CFFB2;
-  box-shadow:
-    0 0 0 0 rgba(124,255,178,0.55),
-    0 0 18px rgba(124,255,178,0.22);
-  animation: ping 1.6s ease-out infinite;
+  background: rgb(var(--v-theme-success));
 }
 
-/* WARN = yellow + slower ping */
 .heartbeat.warn{
-  background: #FFD54A;
-  box-shadow:
-    0 0 0 0 rgba(255,213,74,0.55),
-    0 0 18px rgba(255,213,74,0.22);
-  animation: ping 2.2s ease-out infinite;
+  background: rgb(var(--v-theme-warning));
 }
 
-/* DOWN = red + no ping (solid) */
 .heartbeat.down{
-  background: #FF6B6B;
-  box-shadow:
-    0 0 10px rgba(255,107,107,0.25);
-  animation: none;
-}
-
-@keyframes ping{
-  0%   { transform: scale(0.92); opacity: 1; }
-  65%  { transform: scale(1.0);  opacity: 1; }
-  100% { transform: scale(0.92); opacity: 0.95; }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .heartbeat.ok,
-  .heartbeat.warn{ animation: none !important; }
-}
-
-/* Bottom rail aligned to main-content center */
-.toolbar-rail{
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  pointer-events: none;
-
-  background:
-    radial-gradient(
-      circle at var(--content-center-x) 50%,
-      rgba(255,213,74,0.95) 0%,
-      rgba(255,213,74,0.65) 14%,
-      rgba(255,213,74,0.18) 32%,
-      rgba(255,213,74,0.00) 55%
-    );
-  opacity: 0.95;
+  background: rgb(var(--v-theme-error));
 }
 
 /* Nav buttons */
 .nav-btn{
-  color: rgba(255,255,255,0.92);
-  font-weight: 700;
+  color: var(--helm-muted);
+  font-weight: 600;
   text-transform: none;
   margin-right: 8px;
   position: relative;
-  border-radius: 10px;
+  border-radius: var(--helm-radius-sm);
   padding: 6px 10px;
-  transition: transform 140ms ease, background-color 140ms ease, color 140ms ease;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 .nav-btn:hover{
-  background: rgba(255,255,255,0.06);
-  transform: translateY(-1px);
+  background: var(--helm-raised);
+  color: var(--helm-fg);
 }
 .nav-btn.active{
-  color: #fff;
-  background: rgba(255,255,255,0.05);
+  color: var(--helm-fg);
+  background: var(--helm-raised);
+  box-shadow: inset 0 -2px 0 var(--helm-brand);
 }
 
 .account-btn{
-  border-radius: 12px;
+  border-radius: var(--helm-radius-sm);
   transition: background-color 140ms ease;
 }
 .account-btn:hover{
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  background: var(--helm-raised);
 }
 
 /* =========================
@@ -573,7 +373,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px;
+  padding: 24px;
   display: block;
 }
 

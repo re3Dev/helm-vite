@@ -25,7 +25,7 @@
 
     <!-- Top summary stats -->
     <div class="metrics-grid">
-      <v-card class="metric-card" color="#181B20">
+      <v-card class="metric-card" color="surface">
         <div class="metric-label">{{ $t('analytics.metrics.fleet') }}</div>
         <div class="metric-value">
           <template v-if="loadingPrinters">—</template>
@@ -34,7 +34,7 @@
         <div class="metric-footnote">{{ $t('analytics.metrics.fleetFootnote') }}</div>
       </v-card>
 
-      <v-card class="metric-card" color="#181B20">
+      <v-card class="metric-card" color="surface">
         <div class="metric-label">{{ $t('analytics.metrics.printingNow') }}</div>
         <div class="metric-value">
           <template v-if="loadingPrinters">—</template>
@@ -43,7 +43,7 @@
         <div class="metric-footnote">{{ $t('analytics.metrics.printingNowFootnote') }}</div>
       </v-card>
 
-      <v-card class="metric-card" color="#181B20">
+      <v-card class="metric-card" color="surface">
         <div class="metric-label">{{ $t('analytics.metrics.totalPrints') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
@@ -52,7 +52,7 @@
         <div class="metric-footnote">{{ $t('analytics.metrics.acrossAll') }}</div>
       </v-card>
 
-      <v-card class="metric-card" color="#181B20">
+      <v-card class="metric-card" color="surface">
         <div class="metric-label">{{ $t('analytics.metrics.totalPrintTime') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
@@ -61,7 +61,7 @@
         <div class="metric-footnote">{{ $t('analytics.metrics.acrossAll') }}</div>
       </v-card>
 
-      <v-card class="metric-card" color="#181B20">
+      <v-card class="metric-card" color="surface">
         <div class="metric-label">{{ $t('analytics.metrics.totalTimeIncPaused') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
@@ -70,7 +70,7 @@
         <div class="metric-footnote">{{ $t('analytics.metrics.workTimePaused') }}</div>
       </v-card>
 
-      <v-card class="metric-card" color="#181B20">
+      <v-card class="metric-card" color="surface">
         <div class="metric-label">{{ $t('analytics.metrics.filamentUsed') }}</div>
         <div class="metric-value">
           <template v-if="loadingHistory">—</template>
@@ -81,7 +81,7 @@
     </div>
 
     <!-- Time breakdown (Fleet) -->
-    <v-card class="section-card" color="#181B20">
+    <v-card class="section-card" color="surface">
       <div class="section-head">
         <div>
           <div class="section-title">{{ $t('analytics.timeBreakdown.title') }}</div>
@@ -138,7 +138,7 @@
     </v-card>
 
     <!-- Hours by month (Fleet) -->
-    <v-card class="section-card" color="#181B20">
+    <v-card class="section-card" color="surface">
       <div class="section-head">
         <div>
           <div class="section-title">{{ $t('analytics.hoursChart.title') }}</div>
@@ -188,7 +188,7 @@
     </v-card>
 
     <!-- Leaderboards -->
-    <v-card class="section-card" color="#181B20">
+    <v-card class="section-card" color="surface">
       <div class="section-head">
         <div>
           <div class="section-title">{{ $t('analytics.leaderboards.title') }}</div>
@@ -208,7 +208,7 @@
 
       <template v-else>
         <div class="metrics-grid" style="margin-top: 4px;">
-          <v-card class="metric-card" color="#181B20">
+          <v-card class="metric-card" color="surface">
             <div class="metric-label">{{ $t('analytics.leaderboards.longestJob') }}</div>
             <div class="metric-value">{{ humanDuration(fleetLongestJobSeconds) }}</div>
             <div class="metric-footnote">
@@ -217,7 +217,7 @@
             </div>
           </v-card>
 
-          <v-card class="metric-card" color="#181B20">
+          <v-card class="metric-card" color="surface">
             <div class="metric-label">{{ $t('analytics.leaderboards.mostPrintTime') }}</div>
             <div class="metric-value">{{ humanDuration(topByPrintTimeSeconds) }}</div>
             <div class="metric-footnote">
@@ -225,7 +225,7 @@
             </div>
           </v-card>
 
-          <v-card class="metric-card" color="#181B20">
+          <v-card class="metric-card" color="surface">
             <div class="metric-label">{{ $t('analytics.leaderboards.mostPrints') }}</div>
             <div class="metric-value">{{ topByPrintCount }}</div>
             <div class="metric-footnote">
@@ -237,7 +237,7 @@
     </v-card>
 
     <!-- Per-printer totals table -->
-    <v-card class="section-card" color="#181B20">
+    <v-card class="section-card" color="surface">
       <div class="section-head">
         <div>
           <div class="section-title">{{ $t('analytics.perPrinter.title') }}</div>
@@ -295,7 +295,7 @@
     </v-card>
 
     <!-- Calibration profiles -->
-    <v-card class="section-card" color="#181B20">
+    <v-card class="section-card" color="surface">
       <div class="section-head">
         <div>
           <div class="section-title">{{ $t('analytics.calibration.title') }}</div>
@@ -801,14 +801,15 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  color: var(--helm-fg);
 }
 
 .page-subtitle {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--helm-muted);
   margin-top: 2px;
 }
 
@@ -826,30 +827,29 @@ onMounted(() => {
 }
 
 .metric-card {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 10px 12px;
-  background: radial-gradient(circle at top left, rgba(255, 212, 0, 0.08), transparent 60%);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  border-radius: var(--helm-radius);
+  border: 1px solid var(--helm-border);
+  padding: 16px;
+  background-image: var(--helm-highlight);
 }
 
 .metric-label {
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--helm-muted);
 }
 
 .metric-value {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 600;
   color: rgba(255, 255, 255, 0.95);
   margin-top: 4px;
 }
 
 .metric-footnote {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--helm-muted);
   margin-top: 3px;
   white-space: nowrap;
   overflow: hidden;
@@ -858,10 +858,9 @@ onMounted(() => {
 
 /* Section cards */
 .section-card {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 12px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  border-radius: var(--helm-radius);
+  border: 1px solid var(--helm-border);
+  padding: 20px;
 }
 
 .section-head {
@@ -875,19 +874,19 @@ onMounted(() => {
 
 .section-title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   color: rgba(255, 255, 255, 0.95);
 }
 
 .section-sub {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--helm-muted);
   margin-top: 2px;
 }
 
 .empty {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--helm-muted);
   font-style: italic;
   padding: 6px 2px;
 }
@@ -898,14 +897,14 @@ onMounted(() => {
   height: 10px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--helm-nav);
+  border: 1px solid var(--helm-border);
 }
 .status-seg {
   height: 100%;
 }
 .status-seg.completed {
-  background: linear-gradient(to right, #FFBD00, #FFD400);
+  background: var(--helm-brand);
 }
 .status-seg.error {
   background: linear-gradient(to right, #5b2f35, #7b3b44);
@@ -937,7 +936,7 @@ onMounted(() => {
   display: inline-block;
 }
 .dot.completed {
-  background: linear-gradient(to right, #FFBD00, #FFD400);
+  background: var(--helm-brand);
 }
 .dot.cancelled {
   background: linear-gradient(to right, #343447, #4a4a63);
@@ -968,8 +967,8 @@ onMounted(() => {
 
 /* Simple bar chart */
 .chart-wrap {
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--helm-nav);
+  border: 1px solid var(--helm-border);
   border-radius: 10px;
   padding: 10px 10px 8px;
 }
@@ -983,7 +982,7 @@ onMounted(() => {
   flex: 1;
   min-width: 10px;
   border-radius: 6px 6px 0 0;
-  background: linear-gradient(to top, rgba(255, 179, 0, 0.9), rgba(255, 212, 0, 0.95));
+  background: var(--helm-brand);
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1065,10 +1064,10 @@ onMounted(() => {
   gap: 10px;
 }
 .profile-card {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--helm-radius);
+  border: 1px solid var(--helm-border);
   padding: 10px 12px;
-  background: radial-gradient(circle at top left, rgba(255, 212, 0, 0.08), rgba(0, 0, 0, 0.25) 65%);
+  background: var(--helm-raised);
   position: relative;
   overflow: hidden;
 }
@@ -1079,7 +1078,7 @@ onMounted(() => {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(to bottom, #FFD400, #FFB300);
+  background: var(--helm-brand);
   opacity: 0.9;
 }
 

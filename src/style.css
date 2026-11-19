@@ -1,11 +1,19 @@
+@font-face {
+  font-family: Lato;
+  src: url('/fonts/Lato-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Lato, Roboto, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: #F2F2F2;
+  background-color: #121314;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,13 +21,31 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.v-theme--dark,
+.v-theme--light {
+  --helm-brand: rgb(var(--v-theme-primary));
+  --helm-bg: rgb(var(--v-theme-background));
+  --helm-nav: rgb(var(--v-theme-surface-nav));
+  --helm-surface: rgb(var(--v-theme-surface));
+  --helm-raised: rgb(var(--v-theme-surface-raised));
+  --helm-hover: rgb(var(--v-theme-surface-hover));
+  --helm-border: rgb(var(--v-theme-border));
+  --helm-border-strong: rgb(var(--v-theme-border-strong));
+  --helm-fg: rgb(var(--v-theme-on-surface));
+  --helm-muted: rgb(var(--v-theme-muted));
+  --helm-brand-dim: rgba(var(--v-theme-primary), 0.08);
+  --helm-highlight: radial-gradient(ellipse at 90% 50%, rgba(57, 59, 62, 0.3), transparent 65%);
+  --helm-radius: 10px;
+  --helm-radius-sm: 8px;
+  --helm-focus: 0 0 0 3px rgba(var(--v-theme-primary), 0.4);
+}
+
 a {
-  font-weight: 500;
-  color: #646cff;
+  color: inherit;
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: rgb(var(--v-theme-primary));
 }
 
 html,
@@ -46,6 +72,99 @@ body {
 .v-application__wrap {
   height: 100vh;
   overflow: hidden;
+}
+
+.v-application {
+  font-family: Lato, Roboto, Arial, sans-serif;
+  font-size: 14px;
+}
+
+.v-application [class*="text-"] {
+  font-family: inherit !important;
+}
+
+.v-card {
+  border: 1px solid var(--helm-border);
+  border-radius: var(--helm-radius);
+  background-image: var(--helm-highlight);
+}
+
+.v-card-title {
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.v-btn {
+  border-radius: var(--helm-radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.v-btn--icon {
+  border-radius: 50%;
+}
+
+.v-btn-toggle {
+  background: var(--helm-nav);
+  border: 1px solid var(--helm-border);
+  border-radius: var(--helm-radius-sm);
+}
+
+.v-btn-toggle .v-btn--active {
+  color: var(--helm-brand);
+  background: var(--helm-raised);
+  box-shadow: inset 0 -2px 0 var(--helm-brand);
+}
+
+.v-btn:focus-visible,
+.v-list-item:focus-visible,
+.v-expansion-panel-title:focus-visible,
+.v-tab:focus-visible {
+  outline: none;
+  box-shadow: inset var(--helm-focus);
+}
+
+.v-field {
+  border-radius: var(--helm-radius-sm);
+  background: var(--helm-nav);
+}
+
+.v-field__outline {
+  color: var(--helm-border-strong);
+}
+
+.v-field--focused .v-field__outline {
+  color: var(--helm-brand);
+}
+
+.v-label,
+.v-messages {
+  color: var(--helm-muted);
+}
+
+.v-overlay .v-list {
+  background: var(--helm-surface);
+  border: 1px solid var(--helm-border);
+  border-radius: var(--helm-radius);
+}
+
+.v-table {
+  background: var(--helm-surface);
+}
+
+.v-table th {
+  color: var(--helm-muted);
+  background: var(--helm-raised);
+  font-weight: 600;
+}
+
+.v-table td,
+.v-table th {
+  border-color: var(--helm-border) !important;
+}
+
+.v-table tbody tr:hover {
+  background: var(--helm-raised);
 }
 
 .v-main,

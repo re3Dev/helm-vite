@@ -5,7 +5,7 @@
       <div class="top-bar-left"></div>
 
       <div class="top-bar-center">
-        <v-btn-toggle v-model="viewType" mandatory>
+        <v-btn-toggle v-model="viewType" mandatory class="view-toggle">
           <v-btn value="grid">
             <v-icon>mdi-grid</v-icon>
           </v-btn>
@@ -33,7 +33,7 @@
         <v-menu location="bottom end" offset="8">
           <template #activator="{ props }">
             <v-btn v-bind="props" icon variant="text" class="utility-btn" :title="$t('utilities.title')">
-              <v-icon color="yellow">mdi-cog</v-icon>
+              <v-icon color="primary">mdi-cog</v-icon>
             </v-btn>
           </template>
 
@@ -50,7 +50,7 @@
 
             <v-list-item @click="showSortSettings = true">
               <template #prepend>
-                <v-icon color="yellow">mdi-sort</v-icon>
+                <v-icon color="primary">mdi-sort</v-icon>
               </template>
               <v-list-item-title>{{ $t('sort.menuItem') }}</v-list-item-title>
             </v-list-item>
@@ -71,7 +71,7 @@
 
             <v-list-item @click="showLayoutSettings = true">
               <template #prepend>
-                <v-icon color="purple">mdi-card-multiple-outline</v-icon>
+                <v-icon color="primary">mdi-card-multiple-outline</v-icon>
               </template>
               <v-list-item-title>{{ $t('cardLayout.menuItem') }}</v-list-item-title>
             </v-list-item>
@@ -137,7 +137,7 @@
     <v-dialog v-model="showLayoutSettings" max-width="480">
       <v-card color="background">
         <v-card-title class="d-flex align-center">
-          <v-icon color="purple" class="mr-2">mdi-card-multiple-outline</v-icon>
+          <v-icon color="primary" class="mr-2">mdi-card-multiple-outline</v-icon>
           {{ $t('cardLayout.title') }}
         </v-card-title>
 
@@ -163,7 +163,7 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="tonal" color="purple" @click="showLayoutSettings = false">{{ $t('common.done') }}</v-btn>
+          <v-btn variant="tonal" color="primary" @click="showLayoutSettings = false">{{ $t('common.done') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -171,7 +171,7 @@
     <v-dialog v-model="showSortSettings" max-width="560">
       <v-card color="background">
         <v-card-title class="d-flex align-center">
-          <v-icon color="yellow" class="mr-2">mdi-sort</v-icon>
+          <v-icon color="primary" class="mr-2">mdi-sort</v-icon>
           {{ $t('sort.title') }}
         </v-card-title>
 
@@ -226,7 +226,7 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="tonal" color="yellow" @click="showSortSettings = false">{{ $t('common.done') }}</v-btn>
+          <v-btn variant="tonal" color="primary" @click="showSortSettings = false">{{ $t('common.done') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -237,13 +237,13 @@
         <template v-if="isLoading">
           <!-- Compact skeletons -->
           <template v-if="cardLayout === 'compact'">
-            <v-card v-for="n in 18" :key="n" color="#181B20" class="pa-2 floating-card compact-card">
+            <v-card v-for="n in 18" :key="n" color="surface" class="pa-2 floating-card compact-card">
               <v-skeleton-loader type="text, text" :loading="true" />
             </v-card>
           </template>
           <!-- Detailed skeletons -->
           <template v-else-if="cardLayout === 'detailed'">
-            <v-card v-for="n in 8" :key="n" color="#181B20" class="pa-3 floating-card detailed-card">
+            <v-card v-for="n in 8" :key="n" color="surface" class="pa-3 floating-card detailed-card">
               <!-- Header: hostname + subtitle row -->
               <div class="skel-bone" style="height: 20px; width: 45%; border-radius: 4px;"></div>
               <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
@@ -251,7 +251,7 @@
                 <div class="skel-bone" style="height: 12px; width: 30%; border-radius: 4px;"></div>
                 <div class="skel-bone" style="height: 10px; width: 20%; border-radius: 4px; opacity: 0.5;"></div>
               </div>
-              <v-divider color="yellow" :thickness="1" class="my-2"></v-divider>
+              <v-divider class="my-2"></v-divider>
               <!-- Two-column body -->
               <div class="detailed-body">
                 <div class="detailed-left">
@@ -279,7 +279,7 @@
           </template>
           <!-- Default skeletons -->
           <template v-else>
-            <v-card v-for="n in 12" :key="n" color="#181B20" class="pa-3 floating-card">
+            <v-card v-for="n in 12" :key="n" color="surface" class="pa-3 floating-card">
               <v-skeleton-loader type="heading, divider, list-item-two-line, ossein, chip, list-item-three-line" :loading="true" />
             </v-card>
           </template>
@@ -292,7 +292,7 @@
             <v-card
               v-for="printer in sortedPrinters"
               :key="printer.ip"
-              color="#181B20"
+              color="surface"
               class="pa-2 floating-card compact-card"
               :class="{
                 'selected-card': selectedPrinters.includes(printer.ip),
@@ -363,7 +363,7 @@
             <v-card
               v-for="printer in sortedPrinters"
               :key="printer.ip"
-              color="#181B20"
+              color="surface"
               class="pa-3 floating-card detailed-card"
               :class="{
                 'selected-card': selectedPrinters.includes(printer.ip),
@@ -407,7 +407,7 @@
                 </div>
               </div>
 
-              <v-divider color="yellow" :thickness="1" class="my-2"></v-divider>
+              <v-divider class="my-2"></v-divider>
 
               <!-- Two-column body -->
               <div class="detailed-body">
@@ -552,7 +552,7 @@
             <v-card
               v-for="printer in sortedPrinters"
               :key="printer.ip"
-              color="#181B20"
+              color="surface"
               class="pa-3 floating-card"
               :class="{
                 'selected-card': selectedPrinters.includes(printer.ip),
@@ -585,7 +585,7 @@
               </v-card-title>
             </v-divider>
 
-            <v-divider color="yellow" :thickness="1"></v-divider>
+            <v-divider></v-divider>
 
             <!-- body is a flex column so temps can pin to bottom -->
             <v-card-text class="card-body">
@@ -1595,9 +1595,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
-* { font-family: 'Lato', sans-serif !important; }
-
 /* three-column top bar: center toggle stays centered */
 .top-bar {
   position: relative;
@@ -1609,6 +1606,10 @@ export default defineComponent({
 }
 .top-bar-left { justify-self: start; }
 .top-bar-center { justify-self: center; }
+
+.top-bar-center .view-toggle {
+  height: 30px;
+}
 
 .estop-btn {
   text-transform: none;
@@ -1654,7 +1655,8 @@ export default defineComponent({
   font-size: 12px;
   font-weight: 700;
   border-radius: 50%;
-  background: rgba(255, 213, 74, 0.2);
+  background: var(--helm-brand-dim);
+  color: var(--helm-brand);
 }
 
 .order-actions {
@@ -1665,10 +1667,10 @@ export default defineComponent({
 /* Cards */
 .floating-card {
   position: relative;
-  border-radius: 12px;
-  box-shadow: 0px 4px 8px rgba(219, 219, 219, 0.788), 0px 2px 4px rgb(221, 221, 221);
-  background-color: surface;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: var(--helm-radius);
+  border: 1px solid var(--helm-border);
+  box-shadow: none;
+  transition: border-color 0.15s, background-color 0.15s;
   cursor: pointer;
 
   display: flex;
@@ -1678,13 +1680,12 @@ export default defineComponent({
   height: 100%;
 }
 .floating-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0px 8px 16px #FFBD00, 0px 4px 8px #F2F2F2;
+  border-color: var(--helm-border-strong);
 }
-.selected-card {
-  background-color: #393B3E;
-  border: 2px solid #FFD400;
-  box-shadow: 0px 8px 16px #FFDF00, 0px 4px 8px #FFC800;
+.floating-card.selected-card {
+  border-color: var(--helm-brand);
+  outline: 1px solid var(--helm-brand);
+  outline-offset: -2px;
 }
 .locked-card { opacity: 0.65; cursor: not-allowed; }
 .unlocked-printing-card { border: 1px dashed rgba(255, 255, 255, 0.25); }
@@ -1706,15 +1707,14 @@ export default defineComponent({
 .text-grey { color: grey; }
 .text-red { color: red; }
 
-a:link, a:visited { color: rgb(255, 255, 255); text-decoration: none; }
-a:hover { color: #FFDF00; }
-a:active { color: blue; }
+a:link, a:visited { color: var(--helm-fg); text-decoration: none; }
+a:hover, a:active { color: var(--helm-brand); }
 
 .status-container {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--helm-nav);
   border-radius: 8px;
   padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--helm-border);
   display: inline-block;
 }
 
@@ -1779,10 +1779,10 @@ a:active { color: blue; }
 }
 
 .temperature-container {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--helm-nav);
   border-radius: 8px;
   padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--helm-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1855,12 +1855,15 @@ a:active { color: blue; }
 
 .v-skeleton-loader { border-radius: 8px; }
 
-.selected-row { background-color: #393B3E; border: 2px solid #FFD400; }
+.selected-row {
+  background: var(--helm-raised);
+  box-shadow: inset 2px 0 0 var(--helm-brand);
+}
 
 .grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 24px;
+  gap: 16px;
   margin: 0 auto;
   width: 100%;
 }
@@ -1890,6 +1893,13 @@ a:active { color: blue; }
   overflow-x: hidden;
 }
 
+.printer-list-root > .v-card {
+  border: none;
+  border-radius: 0;
+  background-image: none;
+  padding: 0 !important;
+}
+
 /* ==================== LAYOUT PICKER DIALOG ==================== */
 .layout-options {
   display: grid;
@@ -1902,18 +1912,18 @@ a:active { color: blue; }
   align-items: center;
   text-align: center;
   padding: 16px 8px;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--helm-radius);
+  border: 2px solid var(--helm-border);
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
 }
 .layout-option:hover {
-  border-color: rgba(186, 104, 200, 0.5);
-  background: rgba(186, 104, 200, 0.08);
+  border-color: var(--helm-border-strong);
+  background: var(--helm-raised);
 }
 .layout-option-active {
-  border-color: #BA68C8 !important;
-  background: rgba(186, 104, 200, 0.15) !important;
+  border-color: var(--helm-brand) !important;
+  background: var(--helm-brand-dim) !important;
 }
 
 /* ==================== COMPACT LAYOUT ==================== */
