@@ -44,6 +44,24 @@
     "viewList": "Vista lista",
     "notPrinting": "Sin imprimir",
     "unknownModel": "Modelo desconocido",
+    "board": {
+      "printing": "Imprimiendo",
+      "homed": "Listas",
+      "busy": "Ocupadas",
+      "error": "Error",
+      "disengaged": "Inactivas",
+      "unknown": "Desconocidas",
+      "count": "{count} impresora | {count} impresoras",
+      "empty": "No hay impresoras en este estado"
+    },
+    "card": {
+      "bed": "Cama",
+      "noTemperatures": "Datos de temperatura no disponibles",
+      "previewAlt": "Vista previa de {filename}",
+      "previewLoading": "Cargando vista previa...",
+      "previewFailed": "No se pudo cargar la vista previa",
+      "noPreview": "No hay vista previa disponible"
+    },
     "status": {
       "printing": "IMPRIMIENDO",
       "busy": "OCUPADA",
@@ -98,6 +116,7 @@
     "title": "Ordenar impresoras",
     "menuItem": "Ajustes de orden",
     "dynamic": "Dinámico (sin imprimir primero, imprimiendo al final)",
+    "dynamicPrintingFirst": "Dinámico (imprimiendo primero, sin imprimir al final)",
     "alphabetical": "Alfabético (estático)",
     "custom": "Orden personalizado (estático)",
     "moveToSetOrder": "Mover impresoras para definir el orden de visualización:"
@@ -184,12 +203,20 @@
     "options": {
       "default": "Predeterminado",
       "compact": "Compacto",
-      "detailed": "Detallado"
+      "detailed": "Detallado",
+      "production": "Panel de producción",
+      "preview": "Vista previa de impresión",
+      "rows": "Filas compactas",
+      "board": "Tablero de estados"
     },
     "hints": {
       "default": "Vista equilibrada con estado y temperaturas",
       "compact": "Tarjetas mínimas, más en pantalla",
-      "detailed": "Tarjetas de dos columnas con estado de calentadores"
+      "detailed": "Tarjetas de dos columnas con estado de calentadores",
+      "production": "Estado y progreso grandes para supervisar la flota",
+      "preview": "Miniatura G-code, progreso y temperaturas",
+      "rows": "Tarjetas horizontales con estado, trabajo y temperaturas",
+      "board": "Columnas que agrupan las impresoras por estado en vivo"
     }
   },
 

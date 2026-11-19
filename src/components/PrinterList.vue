@@ -134,7 +134,7 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="showLayoutSettings" max-width="480">
+    <v-dialog v-model="showLayoutSettings" max-width="680">
       <v-card color="background">
         <v-card-title class="d-flex align-center">
           <v-icon color="primary" class="mr-2">mdi-card-multiple-outline</v-icon>
@@ -145,19 +145,21 @@
           <div class="text-body-2 mb-4" style="opacity: 0.7;">{{ $t('cardLayout.description') }}</div>
 
           <div class="layout-options">
-            <div
-              v-for="opt in ['default', 'compact', 'detailed']"
-              :key="opt"
+            <button
+              v-for="opt in layoutOptions"
+              :key="opt.value"
+              type="button"
               class="layout-option"
-              :class="{ 'layout-option-active': cardLayout === opt }"
-              @click="setCardLayout(opt)"
+              :class="{ 'layout-option-active': cardLayout === opt.value }"
+              :aria-pressed="cardLayout === opt.value"
+              @click="setCardLayout(opt.value)"
             >
               <v-icon size="32" class="mb-2">
-                {{ opt === 'default' ? 'mdi-card-outline' : opt === 'compact' ? 'mdi-view-grid-compact' : 'mdi-card-text-outline' }}
+                {{ opt.icon }}
               </v-icon>
-              <div class="text-subtitle-2">{{ $t(`cardLayout.options.${opt}`) }}</div>
-              <div class="text-caption" style="opacity: 0.6;">{{ $t(`cardLayout.hints.${opt}`) }}</div>
-            </div>
+              <span class="text-subtitle-2">{{ $t(`cardLayout.options.${opt.value}`) }}</span>
+              <span class="text-caption" style="opacity: 0.6;">{{ $t(`cardLayout.hints.${opt.value}`) }}</span>
+            </button>
           </div>
         </v-card-text>
 
@@ -178,6 +180,7 @@
         <v-card-text>
           <v-radio-group v-model="sortMode" density="compact">
             <v-radio value="dynamic" :label="$t('sort.dynamic')"></v-radio>
+            <v-radio value="dynamic-printing-first" :label="$t('sort.dynamicPrintingFirst')"></v-radio>
             <v-radio value="alphabetical" :label="$t('sort.alphabetical')"></v-radio>
             <v-radio value="custom" :label="$t('sort.custom')"></v-radio>
           </v-radio-group>
@@ -275,6 +278,11 @@
                   </div>
                 </div>
               </div>
+            </v-card>
+          </template>
+          <template v-else-if="isFleetLayout">
+            <v-card v-for="n in 6" :key="n" color="surface" class="fleet-card">
+              <v-skeleton-loader :type="cardLayout === 'preview' ? 'heading, image, text, paragraph' : cardLayout === 'rows' ? 'list-item-two-line' : 'heading, paragraph, text'" />
             </v-card>
           </template>
           <!-- Default skeletons -->
@@ -453,7 +461,7 @@
                     </span>
                     <span v-else-if="printer.state_message !== 'Printer is ready' && selectedPrinters.includes(printer.ip)" class="text-red">
                       <v-icon>mdi-alert-circle</v-icon>
-                      {{ printer.state_message }}
+                      {{ formatPrinterError(printer.state_message) }}
                     </span>
                   </div>
 
@@ -545,6 +553,122 @@
                 </div>
               </div>
             </v-card>
+          </template>
+
+          <template v-else-if="isFleetLayout">
+            <section
+              v-for="group in fleetGroups"
+              :key="group.key"
+              class="fleet-group"
+              :class="{ 'status-column': cardLayout === 'board' }"
+              :data-status="group.key"
+              :aria-label="cardLayout === 'board' ? $t(`printerList.board.${group.key}`) : undefined"
+            >
+              <div v-if="cardLayout === 'board'" class="status-column-heading">
+                <h2>{{ $t(`printerList.board.${group.key}`) }}</h2>
+                <span :aria-label="$t('printerList.board.count', group.printers.length)">{{ group.printers.length }}</span>
+              </div>
+              <div v-if="cardLayout === 'board' && !group.printers.length" class="status-empty">
+                {{ $t('printerList.board.empty') }}
+              </div>
+              <v-card
+                v-for="printer in group.printers"
+                :key="printer.ip"
+                color="surface"
+                class="floating-card fleet-card"
+                :class="{
+                  'production-card': cardLayout === 'production',
+                  'preview-card': cardLayout === 'preview',
+                  'slim-row-card': cardLayout === 'rows',
+                  'selected-card': selectedPrinters.includes(printer.ip),
+                  'locked-card': isPrinterLocked(printer),
+                  'unlocked-printing-card': isPrinterPrinting(printer) && !isPrinterLocked(printer)
+                }"
+                :style="{ '--card-status': `rgb(var(--v-theme-${printerCardStatus(printer).color}))` }"
+                @click="toggleSelection(printer)"
+                @dblclick.stop="selectLockedPrinter(printer)"
+              >
+                <div class="fleet-header">
+                  <div class="fleet-identity">
+                    <a :href="printer.ui_url" target="_blank" :title="printer.hostname" @click.stop @dblclick.stop>
+                      {{ printer.hostname }}
+                    </a>
+                    <span>{{ printer.modelType || $t('printerList.unknownModel') }} · {{ printer.ip }}</span>
+                  </div>
+                  <v-btn
+                    v-if="isPrinterPrinting(printer)"
+                    icon
+                    size="x-small"
+                    variant="text"
+                    :title="isPrinterLocked(printer) ? $t('printerList.lock.unlock') : $t('printerList.lock.lock')"
+                    :aria-label="isPrinterLocked(printer) ? $t('printerList.lock.unlock') : $t('printerList.lock.lock')"
+                    @click.stop="togglePrinterLock(printer)"
+                    @dblclick.stop
+                  >
+                    <v-icon :color="isPrinterLocked(printer) ? 'primary' : 'success'">
+                      {{ isPrinterLocked(printer) ? 'mdi-lock' : 'mdi-lock-open-variant' }}
+                    </v-icon>
+                  </v-btn>
+                </div>
+
+                <div class="fleet-status">
+                  <v-icon size="18">{{ printerCardStatus(printer).icon }}</v-icon>
+                  <span>{{ $t(`printerList.status.${printerCardStatus(printer).key}`) }}</span>
+                </div>
+
+                <div v-if="cardLayout === 'production'" class="production-hero">
+                  <strong v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'">
+                    {{ printPercent(printer) }}<small>%</small>
+                  </strong>
+                  <v-icon v-else size="44" :color="printerCardStatus(printer).color">
+                    {{ printerCardStatus(printer).icon }}
+                  </v-icon>
+                  <span>{{ $t(isPrinterPrinting(printer) ? 'printerList.columns.progress' : 'printerList.notPrinting') }}</span>
+                </div>
+
+                <PrintPreview
+                  v-else-if="cardLayout === 'preview'"
+                  :base-url="printer.base_url"
+                  :filename="isPrinterPrinting(printer) ? formatFileName(printer.file_path) : ''"
+                />
+
+                <div class="fleet-job">
+                  <div class="fleet-filename" :title="isPrinterPrinting(printer) ? formatFileName(printer.file_path) : ''">
+                    <v-icon size="16">mdi-file-outline</v-icon>
+                    <span>{{ isPrinterPrinting(printer) ? formatFileName(printer.file_path) : $t('printerList.notPrinting') }}</span>
+                    <strong v-if="cardLayout !== 'production' && isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'">
+                      {{ printPercent(printer) }}%
+                    </strong>
+                  </div>
+                  <v-progress-linear
+                    v-if="isPrinterPrinting(printer) && printer.state_message === 'Printer is ready'"
+                    :model-value="printPercent(printer)"
+                    color="primary"
+                    :height="6"
+                    rounded
+                    :aria-label="$t('printerList.columns.progress')"
+                  />
+                  <div v-if="getTransientStatus(printer)" class="fleet-message" :class="transientStatusClass(printer)">
+                    {{ getTransientStatus(printer) }}
+                  </div>
+                  <div v-else-if="printer.state_message !== 'Printer is ready'" class="fleet-message text-error">
+                    {{ formatPrinterError(printer.state_message) }}
+                  </div>
+                  <span v-if="selectedFileName" :class="['file-availability-badge', fileAvailabilityClass(printer)]">
+                    <v-icon size="14">{{ fileAvailabilityIcon(printer) }}</v-icon>
+                    {{ fileAvailabilityLabel(printer) }}
+                  </span>
+                </div>
+
+                <div class="fleet-temperatures">
+                  <div v-for="temp in cardTemperatures(printer)" :key="temp.label" class="fleet-temperature">
+                    <span>{{ temp.label }}</span>
+                    <strong>{{ Math.round(temp.current) }}°<small v-if="temp.target"> → {{ Math.round(temp.target) }}°</small></strong>
+                  </div>
+                  <span v-if="!cardTemperatures(printer).length" class="fleet-message">{{ $t('printerList.card.noTemperatures') }}</span>
+                </div>
+              </v-card>
+            </section>
           </template>
 
           <!-- ==================== DEFAULT LAYOUT ==================== -->
@@ -706,7 +830,7 @@
                     class="text-red"
                   >
                     <v-icon>mdi-alert-circle</v-icon>
-                    {{ printer.state_message }}
+                    {{ formatPrinterError(printer.state_message) }}
                   </span>
                 </div>
               </div>
@@ -893,6 +1017,7 @@ import { apiFetch } from '../api';
 import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPrintFile, refreshFileListFromBackend } from './commandService';
 import { SUPPORTED_LOCALES } from '../i18n';
 import type { LocaleCode } from '../i18n';
+import PrintPreview from './PrintPreview.vue';
 
 interface Printer {
   hostname: string;
@@ -926,11 +1051,12 @@ type PrinterCache = {
   lastKnownFilePath?: string;
 };
 
-type SortMode = 'dynamic' | 'alphabetical' | 'custom';
+type SortMode = 'dynamic' | 'dynamic-printing-first' | 'alphabetical' | 'custom';
 type FileAvailability = 'checking' | 'exists' | 'missing' | 'error';
 
 export default defineComponent({
   name: 'PrinterGrid',
+  components: { PrintPreview },
   setup() {
     const { locale, t } = useI18n();
     const currentLocale = computed<LocaleCode>({
@@ -964,13 +1090,23 @@ export default defineComponent({
     const sortMode = ref<SortMode>('dynamic');
     const customOrder = ref<string[]>([]);
 
-    type CardLayout = 'default' | 'compact' | 'detailed';
+    const layoutOptions = [
+      { value: 'default', icon: 'mdi-card-outline' },
+      { value: 'compact', icon: 'mdi-view-grid-compact' },
+      { value: 'detailed', icon: 'mdi-card-text-outline' },
+      { value: 'production', icon: 'mdi-view-dashboard-outline' },
+      { value: 'preview', icon: 'mdi-image-outline' },
+      { value: 'rows', icon: 'mdi-view-agenda-outline' },
+      { value: 'board', icon: 'mdi-view-column-outline' },
+    ] as const;
+    type CardLayout = typeof layoutOptions[number]['value'];
     const CARD_LAYOUT_KEY = 'printerCardLayout';
     const cardLayout = ref<CardLayout>(
       (localStorage.getItem(CARD_LAYOUT_KEY) as CardLayout) || 'detailed'
     );
     const showLayoutSettings = ref(false);
-    const setCardLayout = (val: string) => { cardLayout.value = val as CardLayout; };
+    const setCardLayout = (val: CardLayout) => { cardLayout.value = val; };
+    const isFleetLayout = computed(() => ['production', 'preview', 'rows', 'board'].includes(cardLayout.value));
     watch(cardLayout, (val) => localStorage.setItem(CARD_LAYOUT_KEY, val));
 
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
@@ -1037,6 +1173,33 @@ export default defineComponent({
       return isPrinterPrinting(p) && !unlockedWhilePrinting.value.has(p.ip);
     };
 
+    const formatPrinterError = (message: string) => {
+      return message.replace(/\s*\bOnce the (?:underlying|underlaying) issue\b[\s\S]*$/i, '');
+    };
+
+    const printerCardStatus = (p: Printer) => {
+      if (p.state_message !== 'Printer is ready') return { key: 'error', color: 'error', icon: 'mdi-alert-circle-outline' };
+      if (isPrinterBusy(p)) return { key: 'busy', color: 'warning', icon: 'mdi-timer-sand' };
+      if (isPrinterPrinting(p)) return { key: 'printing', color: 'primary', icon: 'mdi-printer-3d-nozzle' };
+      if (isReady(p)) return { key: 'homed', color: 'success', icon: 'mdi-check-circle-outline' };
+      if (isIdle(p)) return { key: 'disengaged', color: 'muted', icon: 'mdi-engine-off-outline' };
+      return { key: 'unknown', color: 'muted', icon: 'mdi-help-circle-outline' };
+    };
+
+    const printPercent = (p: Printer) => {
+      return Number.isFinite(p.print_progress) ? Math.round(Math.max(0, Math.min(1, p.print_progress)) * 100) : 0;
+    };
+
+    const cardTemperatures = (p: Printer) => {
+      const readings = [
+        { label: 'E0', current: p.extruder_temperature, target: p.extruder_target },
+        { label: 'E1', current: p.extruder1_temperature, target: p.extruder1_target },
+        { label: 'E2', current: p.extruder2_temperature, target: p.extruder2_target },
+        { label: t('printerList.card.bed'), current: p.heater_bed_temperature, target: p.heater_bed_target },
+      ];
+      return readings.filter(temp => typeof temp.current === 'number' && Number.isFinite(temp.current));
+    };
+
     const togglePrinterLock = (p: Printer) => {
       if (!isPrinterPrinting(p)) return;
       const s = new Set(unlockedWhilePrinting.value);
@@ -1082,13 +1245,25 @@ export default defineComponent({
       }
 
       const printing = (p: Printer) => isPrinterPrinting(p);
+      const printingFirst = sortMode.value === 'dynamic-printing-first';
       return [...printers.value].sort((a, b) => {
         const ap = printing(a);
         const bp = printing(b);
 
-        if (ap !== bp) return ap ? 1 : -1;
+        if (ap !== bp) return ap === printingFirst ? -1 : 1;
         return byNameThenIp(a, b);
       });
+    });
+
+    const fleetGroups = computed(() => {
+      if (cardLayout.value !== 'board') return [{ key: 'all', printers: sortedPrinters.value }];
+      const statuses = ['printing', 'homed', 'busy', 'error', 'disengaged', 'unknown'] as const;
+      return statuses
+        .map(key => ({
+          key,
+          printers: sortedPrinters.value.filter(printer => printerCardStatus(printer).key === key),
+        }))
+        .filter(group => group.printers.length > 0 || (group.key !== 'disengaged' && group.key !== 'unknown'));
     });
 
     const customOrderPrinters = computed(() => {
@@ -1113,7 +1288,7 @@ export default defineComponent({
     const loadSortSettings = () => {
       try {
         const rawMode = localStorage.getItem(SORT_MODE_KEY);
-        if (rawMode === 'dynamic' || rawMode === 'alphabetical' || rawMode === 'custom') {
+        if (rawMode === 'dynamic' || rawMode === 'dynamic-printing-first' || rawMode === 'alphabetical' || rawMode === 'custom') {
           sortMode.value = rawMode;
         }
 
@@ -1586,6 +1761,13 @@ export default defineComponent({
       currentLocale,
       SUPPORTED_LOCALES,
       cardLayout,
+      layoutOptions,
+      isFleetLayout,
+      fleetGroups,
+      printerCardStatus,
+      formatPrinterError,
+      printPercent,
+      cardTemperatures,
       showLayoutSettings,
       setCardLayout,
       t,
@@ -1903,7 +2085,7 @@ a:hover, a:active { color: var(--helm-brand); }
 /* ==================== LAYOUT PICKER DIALOG ==================== */
 .layout-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
 .layout-option {
@@ -1915,6 +2097,9 @@ a:hover, a:active { color: var(--helm-brand); }
   border-radius: var(--helm-radius);
   border: 2px solid var(--helm-border);
   cursor: pointer;
+  color: var(--helm-fg);
+  font: inherit;
+  background: transparent;
   transition: border-color 0.2s, background 0.2s;
 }
 .layout-option:hover {
@@ -1924,6 +2109,218 @@ a:hover, a:active { color: var(--helm-brand); }
 .layout-option-active {
   border-color: var(--helm-brand) !important;
   background: var(--helm-brand-dim) !important;
+}
+
+.layout-option:focus-visible {
+  outline: 2px solid var(--helm-brand);
+  outline-offset: 2px;
+}
+
+.layout-production,
+.layout-preview {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  align-items: stretch;
+}
+.fleet-group {
+  display: contents;
+}
+.layout-rows {
+  grid-template-columns: minmax(0, 1fr);
+  container-type: inline-size;
+}
+.layout-board {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  align-items: start;
+}
+.status-column {
+  --column-status: var(--helm-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--helm-border);
+  border-radius: var(--helm-radius);
+  background: var(--helm-nav);
+}
+.status-column[data-status="printing"] { --column-status: var(--helm-brand); }
+.status-column[data-status="homed"] { --column-status: rgb(var(--v-theme-success)); }
+.status-column[data-status="busy"] { --column-status: rgb(var(--v-theme-warning)); }
+.status-column[data-status="error"] { --column-status: rgb(var(--v-theme-error)); }
+.status-column-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 12px;
+  border-bottom: 2px solid var(--column-status);
+}
+.status-column-heading h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.status-column-heading > span {
+  min-width: 24px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--helm-raised);
+  color: var(--helm-muted);
+  text-align: center;
+  font-size: 12px;
+}
+.status-empty {
+  padding: 24px 8px;
+  color: var(--helm-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.status-column .fleet-card {
+  height: auto;
+  padding: 12px;
+}
+.fleet-card {
+  padding: 16px;
+  gap: 14px;
+  min-width: 0;
+}
+.fleet-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.fleet-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.fleet-identity a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 700;
+}
+.fleet-identity > span {
+  color: var(--helm-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.fleet-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--helm-nav);
+  border-left: 3px solid var(--card-status);
+  border-radius: 4px;
+  color: var(--card-status);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.production-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 100px;
+}
+.production-hero > strong {
+  font-size: 56px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -2px;
+}
+.production-hero small {
+  font-size: 24px;
+  color: var(--helm-muted);
+  margin-left: 4px;
+}
+.production-hero > span {
+  color: var(--helm-muted);
+  font-size: 11px;
+}
+.fleet-job {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fleet-filename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+.fleet-filename > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fleet-filename > strong {
+  color: var(--helm-brand);
+  font-variant-numeric: tabular-nums;
+}
+.fleet-message {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.fleet-temperatures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--helm-border);
+}
+.fleet-temperature {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+.fleet-temperature > span,
+.fleet-temperature small {
+  color: var(--helm-muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.slim-row-card {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.1fr) minmax(100px, 0.65fr) minmax(180px, 1.4fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 20px;
+  height: auto;
+}
+.slim-row-card .fleet-temperatures {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  justify-content: flex-end;
+}
+.slim-row-card .fleet-header,
+.slim-row-card .fleet-job {
+  min-width: 0;
+}
+@container (max-width: 900px) {
+  .slim-row-card {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+  }
+  .slim-row-card .fleet-temperatures {
+    justify-content: flex-start;
+  }
+}
+@container (max-width: 520px) {
+  .slim-row-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }
 
 /* ==================== COMPACT LAYOUT ==================== */

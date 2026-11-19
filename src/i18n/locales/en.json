@@ -48,6 +48,24 @@
     "viewList": "List view",
     "notPrinting": "Not Printing",
     "unknownModel": "Unknown Model",
+    "card": {
+      "bed": "Bed",
+      "noTemperatures": "Temperature data unavailable",
+      "previewAlt": "Print preview for {filename}",
+      "previewLoading": "Loading print preview...",
+      "previewFailed": "Print preview could not be loaded",
+      "noPreview": "No print preview available"
+    },
+    "board": {
+      "printing": "Printing",
+      "homed": "Ready",
+      "busy": "Busy",
+      "error": "Error",
+      "disengaged": "Idle",
+      "unknown": "Unknown",
+      "count": "{count} printer | {count} printers",
+      "empty": "No printers in this status"
+    },
 
     "status": {
       "printing": "PRINTING",
@@ -110,6 +128,7 @@
     "title": "Printer Sort Settings",
     "menuItem": "Sort Settings",
     "dynamic": "Dynamic (non-printing first, printing last)",
+    "dynamicPrintingFirst": "Dynamic (printing first, non-printing last)",
     "alphabetical": "Alphabetical (static)",
     "custom": "Custom order (static)",
     "moveToSetOrder": "Move printers to set display order:"
@@ -207,12 +226,20 @@
     "options": {
       "default": "Default",
       "compact": "Compact",
-      "detailed": "Detailed"
+      "detailed": "Detailed",
+      "production": "Production Wall",
+      "preview": "Print Preview",
+      "rows": "Slim Rows",
+      "board": "Status Board"
     },
     "hints": {
       "default": "Balanced view with status and temps",
       "compact": "Minimal cards, fits more on screen",
-      "detailed": "Two-column cards with heater states"
+      "detailed": "Two-column cards with heater states",
+      "production": "Large status and progress for fleet monitoring",
+      "preview": "G-code thumbnail, job progress, and temperatures",
+      "rows": "Horizontal cards with status, job, and temperatures",
+      "board": "Live columns grouping printers by status"
     }
   },
 

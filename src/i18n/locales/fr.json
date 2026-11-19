@@ -44,6 +44,24 @@
     "viewList": "Vue liste",
     "notPrinting": "Pas en impression",
     "unknownModel": "Modèle inconnu",
+    "board": {
+      "printing": "Impression",
+      "homed": "Prêtes",
+      "busy": "Occupées",
+      "error": "Erreur",
+      "disengaged": "Inactives",
+      "unknown": "Inconnu",
+      "count": "{count} imprimante | {count} imprimantes",
+      "empty": "Aucune imprimante dans cet état"
+    },
+    "card": {
+      "bed": "Plateau",
+      "noTemperatures": "Températures indisponibles",
+      "previewAlt": "Aperçu de {filename}",
+      "previewLoading": "Chargement de l'aperçu...",
+      "previewFailed": "Impossible de charger l'aperçu",
+      "noPreview": "Aucun aperçu disponible"
+    },
     "status": {
       "printing": "IMPRESSION",
       "busy": "OCCUPÉ",
@@ -99,6 +117,7 @@
     "title": "Tri des imprimantes",
     "menuItem": "Paramètres de tri",
     "dynamic": "Dynamique (non-impression en premier, impression en dernier)",
+    "dynamicPrintingFirst": "Dynamique (impression en premier, non-impression en dernier)",
     "alphabetical": "Alphabétique (statique)",
     "custom": "Ordre personnalisé (statique)",
     "moveToSetOrder": "Déplacer les imprimantes pour définir l’ordre :"
@@ -185,12 +204,20 @@
     "options": {
       "default": "Par défaut",
       "compact": "Compact",
-      "detailed": "Détaillé"
+      "detailed": "Détaillé",
+      "production": "Mur de production",
+      "preview": "Aperçu d'impression",
+      "rows": "Lignes compactes",
+      "board": "Tableau des états"
     },
     "hints": {
       "default": "Vue équilibrée avec état et températures",
       "compact": "Cartes minimales, plus à l'écran",
-      "detailed": "Cartes à deux colonnes avec état des chauffages"
+      "detailed": "Cartes à deux colonnes avec état des chauffages",
+      "production": "État et progression en grand pour surveiller le parc",
+      "preview": "Miniature G-code, progression et températures",
+      "rows": "Cartes horizontales avec état, tâche et températures",
+      "board": "Colonnes regroupant les imprimantes par état en direct"
     }
   },
 
