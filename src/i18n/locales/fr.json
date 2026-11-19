@@ -60,7 +60,10 @@
       "previewAlt": "Aperçu de {filename}",
       "previewLoading": "Chargement de l'aperçu...",
       "previewFailed": "Impossible de charger l'aperçu",
-      "noPreview": "Aucun aperçu disponible"
+      "noPreview": "Aucun aperçu disponible",
+      "target": "Cible",
+      "targetUnavailable": "Indisponible",
+      "targetProgress": "Température de {heater} par rapport à la cible"
     },
     "status": {
       "printing": "IMPRESSION",
@@ -70,10 +73,29 @@
       "error": "ERREUR",
       "unknown": "Statut inconnu"
     },
+    "webcam": {
+      "camera": "Caméra",
+      "alt": "Capture de {name}",
+      "interval": "Les captures sont actualisées toutes les secondes lorsqu'elles sont visibles",
+      "pause": "Suspendre les captures",
+      "resume": "Reprendre les captures",
+      "loadingSettings": "Chargement des réglages de caméra...",
+      "settingsFailed": "Impossible de charger les réglages de caméra",
+      "noCamera": "Aucune caméra activée",
+      "noSnapshot": "Cette caméra n'a pas d'URL de capture",
+      "invalidUrl": "L'URL de capture de la caméra est invalide",
+      "paused": "Captures en pause",
+      "snapshotFailed": "Capture indisponible ; nouvelle tentative automatique",
+      "loadingSnapshot": "Chargement de la capture...",
+      "configure": "Configurez une URL de capture accessible dans Moonraker/Mainsail.",
+      "retry": "Recharger les réglages de caméra"
+    },
     "heater": {
       "off": "Éteint",
       "on": "Allumé",
-      "heating": "Chauffe"
+      "heating": "Chauffe",
+      "cooling": "Refroidissement",
+      "unknown": "Inconnu"
     },
     "file": {
       "found": "Fichier sélectionné trouvé",
@@ -208,7 +230,9 @@
       "production": "Mur de production",
       "preview": "Aperçu d'impression",
       "rows": "Lignes compactes",
-      "board": "Tableau des états"
+      "board": "Tableau des états",
+      "thermal": "Suivi des températures",
+      "webcam": "Captures de caméra"
     },
     "hints": {
       "default": "Vue équilibrée avec état et températures",
@@ -217,7 +241,9 @@
       "production": "État et progression en grand pour surveiller le parc",
       "preview": "Miniature G-code, progression et températures",
       "rows": "Cartes horizontales avec état, tâche et températures",
-      "board": "Colonnes regroupant les imprimantes par état en direct"
+      "board": "Colonnes regroupant les imprimantes par état en direct",
+      "thermal": "Températures actuelles et cibles avec état des chauffages",
+      "webcam": "Captures automatiques des caméras configurées"
     }
   },
 

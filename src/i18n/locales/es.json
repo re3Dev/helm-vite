@@ -60,7 +60,10 @@
       "previewAlt": "Vista previa de {filename}",
       "previewLoading": "Cargando vista previa...",
       "previewFailed": "No se pudo cargar la vista previa",
-      "noPreview": "No hay vista previa disponible"
+      "noPreview": "No hay vista previa disponible",
+      "target": "Objetivo",
+      "targetUnavailable": "No disponible",
+      "targetProgress": "Temperatura de {heater} respecto al objetivo"
     },
     "status": {
       "printing": "IMPRIMIENDO",
@@ -70,10 +73,29 @@
       "error": "ERROR",
       "unknown": "Estado desconocido"
     },
+    "webcam": {
+      "camera": "Cámara",
+      "alt": "Captura de {name}",
+      "interval": "Las capturas se actualizan cada segundo mientras son visibles",
+      "pause": "Pausar capturas",
+      "resume": "Reanudar capturas",
+      "loadingSettings": "Cargando ajustes de cámara...",
+      "settingsFailed": "No se pudieron cargar los ajustes de cámara",
+      "noCamera": "No hay cámaras habilitadas",
+      "noSnapshot": "Esta cámara no tiene URL de captura",
+      "invalidUrl": "La URL de captura de la cámara no es válida",
+      "paused": "Capturas en pausa",
+      "snapshotFailed": "Captura no disponible; reintentando automáticamente",
+      "loadingSnapshot": "Cargando captura...",
+      "configure": "Configure una URL de captura accesible en Moonraker/Mainsail.",
+      "retry": "Recargar ajustes de cámara"
+    },
     "heater": {
       "off": "Apagado",
       "on": "Encendido",
-      "heating": "Calentando"
+      "heating": "Calentando",
+      "cooling": "Enfriando",
+      "unknown": "Desconocido"
     },
     "file": {
       "found": "Archivo seleccionado encontrado",
@@ -207,7 +229,9 @@
       "production": "Panel de producción",
       "preview": "Vista previa de impresión",
       "rows": "Filas compactas",
-      "board": "Tablero de estados"
+      "board": "Tablero de estados",
+      "thermal": "Control de temperatura",
+      "webcam": "Capturas de cámara"
     },
     "hints": {
       "default": "Vista equilibrada con estado y temperaturas",
@@ -216,7 +240,9 @@
       "production": "Estado y progreso grandes para supervisar la flota",
       "preview": "Miniatura G-code, progreso y temperaturas",
       "rows": "Tarjetas horizontales con estado, trabajo y temperaturas",
-      "board": "Columnas que agrupan las impresoras por estado en vivo"
+      "board": "Columnas que agrupan las impresoras por estado en vivo",
+      "thermal": "Lecturas grandes de temperatura actual y objetivo con estado de calentadores",
+      "webcam": "Capturas automáticas de las cámaras configuradas"
     }
   },
 

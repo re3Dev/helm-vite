@@ -632,6 +632,37 @@
                   :filename="isPrinterPrinting(printer) ? formatFileName(printer.file_path) : ''"
                 />
 
+                <div v-else-if="cardLayout === 'thermal'" class="thermal-grid">
+                  <div
+                    v-for="temp in cardTemperatures(printer)"
+                    :key="temp.label"
+                    class="thermal-cell"
+                    :data-heater-state="thermalState(temp.current, temp.target)"
+                  >
+                    <div class="thermal-heading">
+                      <v-icon size="18">{{ temp.icon }}</v-icon>
+                      <span>{{ temp.label }}</span>
+                      <small>{{ $t(`printerList.heater.${thermalState(temp.current, temp.target)}`) }}</small>
+                    </div>
+                    <strong>{{ Math.round(temp.current) }}<small>°C</small></strong>
+                    <div class="thermal-target">
+                      {{ $t('printerList.card.target') }}
+                      <span>{{ validTemperatureTarget(temp.target) === null ? $t('printerList.card.targetUnavailable') : `${validTemperatureTarget(temp.target)?.toFixed(0)}°C` }}</span>
+                    </div>
+                    <v-progress-linear
+                      v-if="(validTemperatureTarget(temp.target) ?? 0) > 0"
+                      :model-value="temperatureProgress(temp.current, temp.target)"
+                      color="primary"
+                      height="4"
+                      rounded
+                      :aria-label="$t('printerList.card.targetProgress', { heater: temp.label })"
+                    />
+                  </div>
+                  <div v-if="!cardTemperatures(printer).length" class="fleet-message">{{ $t('printerList.card.noTemperatures') }}</div>
+                </div>
+
+                <WebcamSnapshot v-else-if="cardLayout === 'webcam'" :base-url="printer.base_url" :ui-url="printer.ui_url" />
+
                 <div class="fleet-job">
                   <div class="fleet-filename" :title="isPrinterPrinting(printer) ? formatFileName(printer.file_path) : ''">
                     <v-icon size="16">mdi-file-outline</v-icon>
@@ -660,7 +691,7 @@
                   </span>
                 </div>
 
-                <div class="fleet-temperatures">
+                <div v-if="cardLayout !== 'thermal'" class="fleet-temperatures">
                   <div v-for="temp in cardTemperatures(printer)" :key="temp.label" class="fleet-temperature">
                     <span>{{ temp.label }}</span>
                     <strong>{{ Math.round(temp.current) }}°<small v-if="temp.target"> → {{ Math.round(temp.target) }}°</small></strong>
@@ -1018,6 +1049,7 @@ import { scannerCidr, printerBaseUrlByIp, printerTransientStatusByIp, selectedPr
 import { SUPPORTED_LOCALES } from '../i18n';
 import type { LocaleCode } from '../i18n';
 import PrintPreview from './PrintPreview.vue';
+import WebcamSnapshot from './WebcamSnapshot.vue';
 
 interface Printer {
   hostname: string;
@@ -1056,7 +1088,7 @@ type FileAvailability = 'checking' | 'exists' | 'missing' | 'error';
 
 export default defineComponent({
   name: 'PrinterGrid',
-  components: { PrintPreview },
+  components: { PrintPreview, WebcamSnapshot },
   setup() {
     const { locale, t } = useI18n();
     const currentLocale = computed<LocaleCode>({
@@ -1098,6 +1130,8 @@ export default defineComponent({
       { value: 'preview', icon: 'mdi-image-outline' },
       { value: 'rows', icon: 'mdi-view-agenda-outline' },
       { value: 'board', icon: 'mdi-view-column-outline' },
+      { value: 'thermal', icon: 'mdi-thermometer' },
+      { value: 'webcam', icon: 'mdi-webcam' },
     ] as const;
     type CardLayout = typeof layoutOptions[number]['value'];
     const CARD_LAYOUT_KEY = 'printerCardLayout';
@@ -1106,7 +1140,7 @@ export default defineComponent({
     );
     const showLayoutSettings = ref(false);
     const setCardLayout = (val: CardLayout) => { cardLayout.value = val; };
-    const isFleetLayout = computed(() => ['production', 'preview', 'rows', 'board'].includes(cardLayout.value));
+    const isFleetLayout = computed(() => ['production', 'preview', 'rows', 'board', 'thermal', 'webcam'].includes(cardLayout.value));
     watch(cardLayout, (val) => localStorage.setItem(CARD_LAYOUT_KEY, val));
 
     const unlockedWhilePrinting = ref<Set<string>>(new Set());
@@ -1195,12 +1229,28 @@ export default defineComponent({
 
     const cardTemperatures = (p: Printer) => {
       const readings = [
-        { label: 'E0', current: p.extruder_temperature, target: p.extruder_target },
-        { label: 'E1', current: p.extruder1_temperature, target: p.extruder1_target },
-        { label: 'E2', current: p.extruder2_temperature, target: p.extruder2_target },
-        { label: t('printerList.card.bed'), current: p.heater_bed_temperature, target: p.heater_bed_target },
+        { label: 'E0', icon: 'mdi-printer-3d-nozzle', current: p.extruder_temperature, target: p.extruder_target },
+        { label: 'E1', icon: 'mdi-printer-3d-nozzle', current: p.extruder1_temperature, target: p.extruder1_target },
+        { label: 'E2', icon: 'mdi-printer-3d-nozzle', current: p.extruder2_temperature, target: p.extruder2_target },
+        { label: t('printerList.card.bed'), icon: 'mdi-radiator', current: p.heater_bed_temperature, target: p.heater_bed_target },
       ];
       return readings.filter(temp => typeof temp.current === 'number' && Number.isFinite(temp.current));
+    };
+
+    const validTemperatureTarget = (target?: number | null) => {
+      return typeof target === 'number' && Number.isFinite(target) && target >= 0 ? target : null;
+    };
+
+    const thermalState = (current: number, target?: number | null) => {
+      const valid = validTemperatureTarget(target);
+      if (valid === null) return 'unknown';
+      if (valid > 0 && current > valid + 2) return 'cooling';
+      return heaterState(current, valid);
+    };
+
+    const temperatureProgress = (current: number, target?: number | null) => {
+      const valid = validTemperatureTarget(target);
+      return valid ? Math.max(0, Math.min(100, current / valid * 100)) : 0;
     };
 
     const togglePrinterLock = (p: Printer) => {
@@ -1809,6 +1859,9 @@ export default defineComponent({
       formatPrinterError,
       printPercent,
       cardTemperatures,
+      validTemperatureTarget,
+      thermalState,
+      temperatureProgress,
       showLayoutSettings,
       setCardLayout,
       t,
@@ -2161,6 +2214,65 @@ a:hover, a:active { color: var(--helm-brand); }
 .layout-preview {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   align-items: stretch;
+}
+.layout-thermal,
+.layout-webcam {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  align-items: stretch;
+}
+.thermal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.thermal-cell {
+  --thermal-color: var(--helm-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--helm-nav);
+  border: 1px solid var(--helm-border);
+  border-top: 2px solid var(--thermal-color);
+  border-radius: var(--helm-radius-sm);
+}
+.thermal-cell:only-child {
+  grid-column: 1 / -1;
+}
+.thermal-cell[data-heater-state="heating"] { --thermal-color: rgb(var(--v-theme-warning)); }
+.thermal-cell[data-heater-state="on"] { --thermal-color: rgb(var(--v-theme-success)); }
+.thermal-cell[data-heater-state="cooling"] { --thermal-color: rgb(var(--v-theme-info)); }
+.thermal-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--thermal-color);
+  font-size: 12px;
+}
+.thermal-heading small {
+  margin-left: auto;
+  font-size: 10px;
+}
+.thermal-cell > strong {
+  font-size: 36px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.thermal-cell > strong small {
+  margin-left: 3px;
+  color: var(--helm-muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+.thermal-target {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px;
+  color: var(--helm-muted);
+  font-size: 11px;
 }
 .fleet-group {
   display: contents;

@@ -54,7 +54,10 @@
       "previewAlt": "Print preview for {filename}",
       "previewLoading": "Loading print preview...",
       "previewFailed": "Print preview could not be loaded",
-      "noPreview": "No print preview available"
+      "noPreview": "No print preview available",
+      "target": "Target",
+      "targetUnavailable": "Unavailable",
+      "targetProgress": "{heater} temperature relative to target"
     },
     "board": {
       "printing": "Printing",
@@ -76,10 +79,29 @@
       "unknown": "Status Unknown"
     },
 
+    "webcam": {
+      "camera": "Camera",
+      "alt": "Snapshot from {name}",
+      "interval": "Snapshots refresh about every second while visible",
+      "pause": "Pause snapshots",
+      "resume": "Resume snapshots",
+      "loadingSettings": "Loading camera settings...",
+      "settingsFailed": "Could not load camera settings",
+      "noCamera": "No enabled camera configured",
+      "noSnapshot": "This camera has no snapshot URL",
+      "invalidUrl": "Camera snapshot URL is invalid",
+      "paused": "Snapshots paused",
+      "snapshotFailed": "Snapshot unavailable; retrying automatically",
+      "loadingSnapshot": "Loading snapshot...",
+      "configure": "Configure an accessible snapshot URL in Moonraker/Mainsail.",
+      "retry": "Reload camera settings"
+    },
     "heater": {
       "off": "Off",
       "on": "On",
-      "heating": "Heating"
+      "heating": "Heating",
+      "cooling": "Cooling",
+      "unknown": "Unknown"
     },
 
     "file": {
@@ -230,7 +252,9 @@
       "production": "Production Wall",
       "preview": "Print Preview",
       "rows": "Slim Rows",
-      "board": "Status Board"
+      "board": "Status Board",
+      "thermal": "Temperature Focus",
+      "webcam": "Webcam Snapshots"
     },
     "hints": {
       "default": "Balanced view with status and temps",
@@ -239,7 +263,9 @@
       "production": "Large status and progress for fleet monitoring",
       "preview": "G-code thumbnail, job progress, and temperatures",
       "rows": "Horizontal cards with status, job, and temperatures",
-      "board": "Live columns grouping printers by status"
+      "board": "Live columns grouping printers by status",
+      "thermal": "Large current and target readings with heater states",
+      "webcam": "Auto-refreshing snapshots from configured printer cameras"
     }
   },
 
