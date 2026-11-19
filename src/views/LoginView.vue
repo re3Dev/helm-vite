@@ -1,6 +1,6 @@
 <template>
   <v-container class="py-8" style="max-width:520px">
-    <v-card>
+    <v-card tag="form" @submit.prevent="login">
       <v-tabs v-model="tab" grow>
         <v-tab value="pin">{{ $t('auth.pinTab') }}</v-tab>
         <v-tab value="admin">{{ $t('auth.adminTab') }}</v-tab>
@@ -37,7 +37,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn :loading="loading" color="primary" @click="login">{{ $t('auth.loginBtn') }}</v-btn>
+        <v-btn type="submit" :loading="loading" color="primary">{{ $t('auth.loginBtn') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -99,6 +99,7 @@ onMounted(async () => {
 })
 
 async function login() {
+  if (loading.value) return
   err.value = ''
   loading.value = true
   try {

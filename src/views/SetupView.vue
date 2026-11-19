@@ -1,6 +1,6 @@
 <template>
   <v-container class="py-8" style="max-width:520px">
-    <v-card>
+    <v-card tag="form" @submit.prevent="setup">
       <v-card-title>First-time Setup</v-card-title>
       <v-card-subtitle>Create the admin login</v-card-subtitle>
 
@@ -12,7 +12,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn :loading="loading" color="primary" @click="setup">Create Admin</v-btn>
+        <v-btn type="submit" :loading="loading" color="primary">Create Admin</v-btn>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -30,6 +30,7 @@ const loading = ref(false)
 const err = ref('')
 
 async function setup() {
+  if (loading.value) return
   err.value = ''
   loading.value = true
   try {
