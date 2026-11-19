@@ -212,7 +212,7 @@
             <div class="metric-label">{{ $t('analytics.leaderboards.longestJob') }}</div>
             <div class="metric-value">{{ humanDuration(fleetLongestJobSeconds) }}</div>
             <div class="metric-footnote">
-              <strong>{{ fleetLongestJobPrinter || '—' }}</strong>
+              <strong class="printer-name">{{ fleetLongestJobPrinter || '—' }}</strong>
               <span v-if="fleetLongestJobFile"> · {{ fleetLongestJobFile }}</span>
             </div>
           </v-card>
@@ -221,7 +221,7 @@
             <div class="metric-label">{{ $t('analytics.leaderboards.mostPrintTime') }}</div>
             <div class="metric-value">{{ humanDuration(topByPrintTimeSeconds) }}</div>
             <div class="metric-footnote">
-              <strong>{{ topByPrintTimePrinter || '—' }}</strong>
+              <strong class="printer-name">{{ topByPrintTimePrinter || '—' }}</strong>
             </div>
           </v-card>
 
@@ -229,7 +229,7 @@
             <div class="metric-label">{{ $t('analytics.leaderboards.mostPrints') }}</div>
             <div class="metric-value">{{ topByPrintCount }}</div>
             <div class="metric-footnote">
-              <strong>{{ topByPrintCountPrinter || '—' }}</strong>
+              <strong class="printer-name">{{ topByPrintCountPrinter || '—' }}</strong>
             </div>
           </v-card>
         </div>
@@ -263,6 +263,10 @@
           class="history-table"
           :items-per-page="10"
         >
+          <template #item.hostname="{ item }">
+            <span class="printer-name">{{ item.hostname }}</span>
+          </template>
+
           <template #item.total_print_time="{ item }">
             <span class="mono">{{ humanDuration(item.total_print_time) }}</span>
           </template>
@@ -329,7 +333,7 @@
           >
             <div class="profile-header">
               <div>
-                <div class="profile-name">{{ g.machine }}</div>
+                <div class="profile-name printer-name">{{ g.machine }}</div>
                 <div class="profile-tagline">
                   {{ $t('analytics.calibration.material') }} <strong>{{ g.material }}</strong>
                   · {{ $t('analytics.calibration.extruders') }}

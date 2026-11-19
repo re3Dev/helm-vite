@@ -230,7 +230,7 @@
                       />
                     </template>
 
-                    <v-list-item-title>{{ d.hostname }}</v-list-item-title>
+                    <v-list-item-title class="printer-name">{{ d.hostname }}</v-list-item-title>
                     <v-list-item-subtitle>{{ d.ip }}</v-list-item-subtitle>
                   </v-list-item>
 

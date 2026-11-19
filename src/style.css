@@ -48,6 +48,10 @@ a:hover {
   color: rgb(var(--v-theme-primary));
 }
 
+.printer-name {
+  text-transform: uppercase;
+}
+
 html,
 body,
 #app {

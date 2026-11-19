@@ -197,7 +197,7 @@
                   <span class="order-index">{{ idx + 1 }}</span>
                 </template>
 
-                <v-list-item-title>{{ printer.hostname }}</v-list-item-title>
+                <v-list-item-title class="printer-name">{{ printer.hostname }}</v-list-item-title>
                 <v-list-item-subtitle>{{ printer.ip }}</v-list-item-subtitle>
 
                 <template #append>
@@ -320,7 +320,7 @@
                     'dot-busy': isPrinterBusy(printer)
                   }"
                 ></span>
-                <a :href="printer.ui_url" target="_blank" class="compact-hostname">{{ printer.hostname }}</a>
+                <a :href="printer.ui_url" target="_blank" class="compact-hostname printer-name">{{ printer.hostname }}</a>
                 <span class="version-badge" :class="printer.helm_version ? 'version-badge-versioned' : 'version-badge-legacy'">
                   {{ printer.helm_version ? `v${printer.helm_version}` : $t('printerList.version.legacy') }}
                 </span>
@@ -398,7 +398,7 @@
               <div class="detailed-header">
                 <div>
                   <v-card-title class="text-h6 pa-0">
-                    <a :href="printer.ui_url" target="_blank">{{ printer.hostname }}</a>
+                    <a :href="printer.ui_url" target="_blank" class="printer-name">{{ printer.hostname }}</a>
                   </v-card-title>
                   <div class="detailed-model-row">
                     <v-icon size="16" :color="printer.extruder2_temperature ? 'cyan' : 'cyan'">
@@ -590,7 +590,7 @@
               >
                 <div class="fleet-header">
                   <div class="fleet-identity">
-                    <a :href="printer.ui_url" target="_blank" :title="printer.hostname" @click.stop @dblclick.stop>
+                    <a :href="printer.ui_url" target="_blank" :title="printer.hostname" class="printer-name" @click.stop @dblclick.stop>
                       {{ printer.hostname }}
                     </a>
                     <span>{{ printer.modelType || $t('printerList.unknownModel') }} · {{ printer.ip }}</span>
@@ -705,7 +705,7 @@
 
             <v-divider>
               <v-card-title class="text-h6">
-                <a :href="printer.ui_url" target="_blank">{{ printer.hostname }}</a>
+                <a :href="printer.ui_url" target="_blank" class="printer-name">{{ printer.hostname }}</a>
               </v-card-title>
             </v-divider>
 
@@ -956,7 +956,7 @@
                 </v-btn>
               </td>
 
-              <td>{{ printer.hostname }}</td>
+              <td class="printer-name">{{ printer.hostname }}</td>
               <td>{{ printer.extruder2_temperature ? $t('printerList.printerType.pellet') : $t('printerList.printerType.filament') }}</td>
               <td>
                 <span class="version-badge" :class="printer.helm_version ? 'version-badge-versioned' : 'version-badge-legacy'">
