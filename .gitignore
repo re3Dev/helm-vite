@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local Helm accounts, assignments, notes, tasks, and scratchpad
+backend/data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
