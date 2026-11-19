@@ -1,9 +1,8 @@
 <template>
   <div class="pm-shell">
-    <!-- ✅ width mirrors right rail behavior: collapsed -> collapsedWidth, open -> sidebarWidth -->
     <div
       class="sidebar-container"
-      :style="{ width: isCollapsed ? collapsedWidth + 'px' : sidebarWidth + 'px' }"
+      :style="{ width: isCollapsed ? '0px' : sidebarWidth + 'px' }"
     >
       <div v-show="!isCollapsed" class="pm-drawer">
         <!-- ✅ Header: mirror of right rail (arrow far LEFT, title on RIGHT) -->
@@ -16,6 +15,7 @@
               class="header-close header-close-left"
               @click="toggleCollapse"
               :title="$t('sidebar.collapse')"
+              :aria-label="$t('sidebar.collapse')"
             >
               <v-icon>mdi-chevron-left</v-icon>
             </v-btn>
@@ -345,17 +345,18 @@
 
       <div v-if="!isCollapsed" class="resizer" @mousedown.stop.prevent="startResize"></div>
 
-      <!-- ✅ Edge toggle when collapsed (lives inside the collapsed strip now) -->
-      <v-btn
-        v-if="isCollapsed"
-        class="rail-toggle square yellow-accent"
-        icon
-        @click="toggleCollapse"
-        :title="$t('sidebar.expand')"
-      >
-        <v-icon>mdi-chevron-right</v-icon>
-      </v-btn>
     </div>
+
+    <v-btn
+      v-if="isCollapsed"
+      class="rail-toggle square yellow-accent"
+      icon
+      @click="toggleCollapse"
+      :title="$t('sidebar.expand')"
+      :aria-label="$t('sidebar.expand')"
+    >
+      <v-icon>mdi-chevron-right</v-icon>
+    </v-btn>
   </div>
 </template>
 
@@ -398,9 +399,6 @@ function tLabel(label) {
 const props = defineProps({
   groups: { type: Array, default: () => [] }
 })
-
-/** ✅ Match right rail behavior */
-const collapsedWidth = 38
 
 /** Gcode autocomplete width handler */
 const gcodeAutocomplete = ref(null)
@@ -610,7 +608,7 @@ function toggleCollapse() {
 
 .pm-shell{ position: relative; height: 100%; overflow: visible; }
 
-/* ✅ Overall “console” region (shows when collapsed too) */
+/* Sidebar surface is fully clipped when collapsed. */
 .sidebar-container{
   position: relative;
   height: 100%;
@@ -900,11 +898,11 @@ function toggleCollapse() {
   transition: background 120ms ease, box-shadow 120ms ease;
 }
 
-/* ✅ Collapsed toggle button: visible inside collapsedWidth strip (mirror of right rail) */
+/* Overlay the content edge without reserving layout width. */
 .rail-toggle{
   position: absolute;
   top: 0;
-  right: 4px; /* keep inside 38px strip */
+  left: 0;
   z-index: 50;
   width: 30px;
   height: 30px;

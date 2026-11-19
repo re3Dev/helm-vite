@@ -2,7 +2,7 @@
   <aside
     class="right-rail"
     :class="{ collapsed }"
-    :style="{ width: collapsed ? collapsedWidth + 'px' : width + 'px' }"
+    :style="{ width: collapsed ? '0px' : width + 'px' }"
   >
     <!-- Drawer -->
     <div v-show="!collapsed" class="rail-drawer">
@@ -17,6 +17,7 @@
             class="rail-close"
             @click="$emit('toggle')"
             :title="$t('rightBar.collapse')"
+            :aria-label="$t('rightBar.collapse')"
           >
             <v-icon>mdi-chevron-right</v-icon>
           </v-btn>
@@ -208,6 +209,7 @@
       icon
       @click="$emit('toggle')"
       :title="$t('rightBar.expand')"
+      :aria-label="$t('rightBar.expand')"
     >
       <v-icon>mdi-chevron-left</v-icon>
     </v-btn>
@@ -217,16 +219,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
-withDefaults(
-  defineProps<{
-    collapsed: boolean
-    width: number
-    collapsedWidth?: number
-  }>(),
-  {
-    collapsedWidth: 38,
-  }
-)
+defineProps<{
+  collapsed: boolean
+  width: number
+}>()
 
 defineEmits<{
   (e: 'toggle'): void
@@ -412,6 +408,15 @@ watch(scratchpad, scheduleSave)
   box-shadow:
     0 1px 0 rgba(255,255,255,0.05) inset,
     0 -1px 0 rgba(0,0,0,0.35) inset;
+}
+
+.right-rail.collapsed{
+  overflow: visible;
+}
+
+.right-rail.collapsed::before,
+.right-rail.collapsed::after{
+  display: none;
 }
 
 .right-rail::before{
@@ -784,11 +789,11 @@ watch(scratchpad, scheduleSave)
 .mini-icon{ opacity: 0.82; }
 .mini-icon:hover{ opacity: 1; }
 
-/* Collapsed toggle button */
+/* Overlay the content edge without reserving layout width. */
 .rail-toggle{
   position: absolute;
   top: 0;
-  left: 4px;
+  right: 0;
   z-index: 50;
   width: 30px;
   height: 30px;

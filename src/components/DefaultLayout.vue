@@ -535,19 +535,23 @@ onBeforeUnmount(() => {
 }
 
 .sidebar-wrap{
+  position: relative;
+  z-index: 1;
   display: block; /* wrapper is for measuring width */
   flex: 0 0 auto;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .right-wrap{
+  position: relative;
+  z-index: 1;
   display: block; /* wrapper is for measuring width */
   flex: 0 0 auto;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .main-content{
